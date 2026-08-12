@@ -1,0 +1,76 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="OmniExplorer.Desktop.App"
+             RequestedThemeVariant="Dark">
+  <Application.Styles>
+    <FluentTheme>
+      <FluentTheme.Palettes>
+        <ColorPaletteResources x:Key="Dark" Accent="#32C8FF" RegionColor="#030B1A" />
+        <ColorPaletteResources x:Key="Light" Accent="#0079D8" RegionColor="#EAF5FF" />
+      </FluentTheme.Palettes>
+    </FluentTheme>
+    <Style Selector="Window">
+      <Setter Property="FontFamily" Value="Inter" />
+      <Setter Property="Background" Value="{DynamicResource AppBackgroundBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+    </Style>
+    <Style Selector="Button.hud">
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Padding" Value="12,8" />
+    </Style>
+    <Style Selector="Button.hud:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+    </Style>
+    <Style Selector="Button.hud:focus">
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="TextBox.hud">
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="CornerRadius" Value="4" />
+    </Style>
+    <Style Selector="TextBox.hud:focus-within">
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="ComboBox.hud">
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="CornerRadius" Value="4" />
+    </Style>
+    <Style Selector="ComboBox.hud:focus">
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    </Style>
+  </Application.Styles>
+
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="AppBackgroundBrush" Color="#030B1A" />
+          <SolidColorBrush x:Key="SurfaceBrush" Color="#D90A1830" />
+          <SolidColorBrush x:Key="SurfaceStrongBrush" Color="#F20A1830" />
+          <SolidColorBrush x:Key="BorderBrush" Color="#426DA8" />
+          <SolidColorBrush x:Key="AccentBrush" Color="#32C8FF" />
+          <SolidColorBrush x:Key="AccentSoftBrush" Color="#2632C8FF" />
+          <SolidColorBrush x:Key="PrimaryTextBrush" Color="#EAF7FF" />
+          <SolidColorBrush x:Key="SecondaryTextBrush" Color="#82A6C8" />
+          <SolidColorBrush x:Key="DangerBrush" Color="#FF9EAB" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="AppBackgroundBrush" Color="#EAF5FF" />
+          <SolidColorBrush x:Key="SurfaceBrush" Color="#E6F8FCFF" />
+          <SolidColorBrush x:Key="SurfaceStrongBrush" Color="#FAFFFFFF" />
+          <SolidColorBrush x:Key="BorderBrush" Color="#6D9FC9" />
+          <SolidColorBrush x:Key="AccentBrush" Color="#006FCA" />
+          <SolidColorBrush x:Key="AccentSoftBrush" Color="#260079D8" />
+          <SolidColorBrush x:Key="PrimaryTextBrush" Color="#082B4C" />
+          <SolidColorBrush x:Key="SecondaryTextBrush" Color="#426A8E" />
+          <SolidColorBrush x:Key="DangerBrush" Color="#A82445" />
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
+</Application>

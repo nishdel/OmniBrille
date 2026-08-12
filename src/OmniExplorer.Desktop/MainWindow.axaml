@@ -1,0 +1,276 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:rendering="using:OmniExplorer.Desktop.Rendering"
+        x:Class="OmniExplorer.Desktop.MainWindow"
+        x:CompileBindings="False"
+        Title="OmniExplorer — Structure"
+        Width="1180"
+        Height="700"
+        MinWidth="860"
+        MinHeight="560"
+        WindowStartupLocation="CenterScreen">
+  <Grid RowDefinitions="68,*,40">
+    <Border Grid.Row="0"
+            Background="{DynamicResource SurfaceStrongBrush}"
+            BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="0,0,0,1"
+            Padding="16,11">
+      <Grid ColumnDefinitions="Auto,Auto,18,*,Auto,Auto" ColumnSpacing="8">
+        <Button x:Name="ChooseFolderButton"
+                Grid.Column="0"
+                Classes="hud"
+                Click="OnChooseFolderClick"
+                AutomationProperties.Name="Choose folder">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="⌑" FontSize="18" Foreground="{DynamicResource AccentBrush}" />
+            <TextBlock Text="Choose folder" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Button x:Name="BackButton"
+                Grid.Column="1"
+                Classes="hud"
+                Click="OnBackClick"
+                IsEnabled="False"
+                Content="← Back"
+                AutomationProperties.Name="Navigate back" />
+
+        <Grid Grid.Column="3" ColumnDefinitions="*,Auto" MaxWidth="620" HorizontalAlignment="Stretch">
+          <TextBox x:Name="SearchBox"
+                   Grid.Column="0"
+                   Classes="hud"
+                   PlaceholderText="Search name, folder, or path inside the selected root"
+                   KeyDown="OnSearchKeyDown"
+                   AutomationProperties.Name="Structural search" />
+          <Button Grid.Column="1"
+                  Classes="hud"
+                  Margin="6,0,0,0"
+                  Content="Search"
+                  Click="OnSearchClick" />
+        </Grid>
+
+        <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="4">
+          <Button Classes="hud" Content="−" Click="OnZoomOutClick" ToolTip.Tip="Zoom out" />
+          <Button Classes="hud" Content="◎" Click="OnResetViewClick" ToolTip.Tip="Reset view" />
+          <Button Classes="hud" Content="+" Click="OnZoomInClick" ToolTip.Tip="Zoom in" />
+        </StackPanel>
+
+        <ComboBox x:Name="ThemePicker"
+                  Grid.Column="5"
+                  Classes="hud"
+                  Width="104"
+                  SelectedIndex="0"
+                  SelectionChanged="OnThemeChanged"
+                  AutomationProperties.Name="Theme">
+          <ComboBoxItem Content="Dark" />
+          <ComboBoxItem Content="Light" />
+        </ComboBox>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1">
+      <rendering:GraphSceneControl x:Name="GraphScene"
+                                   AutomationProperties.Name="Spatial folder graph"
+                                   AutomationProperties.HelpText="Use arrow keys to select nodes, Enter to open a folder, Backspace to go back, mouse wheel to zoom, and drag empty space to pan." />
+
+      <Border x:Name="FocusHud"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Top"
+              Margin="0,14,0,0"
+              Padding="22,7"
+              Background="{DynamicResource SurfaceBrush}"
+              BorderBrush="{DynamicResource BorderBrush}"
+              BorderThickness="1"
+              CornerRadius="3">
+        <StackPanel HorizontalAlignment="Center">
+          <TextBlock Text="CURRENT FOCUS"
+                     FontSize="10"
+                     LetterSpacing="1.5"
+                     Foreground="{DynamicResource SecondaryTextBrush}"
+                     HorizontalAlignment="Center" />
+          <TextBlock x:Name="CurrentPathText"
+                     Text="No folder selected"
+                     FontSize="14"
+                     FontWeight="SemiBold"
+                     MaxWidth="660"
+                     TextTrimming="CharacterEllipsis"
+                     HorizontalAlignment="Center" />
+        </StackPanel>
+      </Border>
+
+      <Border x:Name="SearchResultsPanel"
+              IsVisible="False"
+              Width="360"
+              MaxHeight="430"
+              HorizontalAlignment="Left"
+              VerticalAlignment="Top"
+              Margin="16,16,0,0"
+              Padding="12"
+              Background="{DynamicResource SurfaceStrongBrush}"
+              BorderBrush="{DynamicResource BorderBrush}"
+              BorderThickness="1"
+              CornerRadius="5">
+        <Grid RowDefinitions="Auto,*,Auto">
+          <TextBlock x:Name="SearchSummaryText"
+                     Text="Search results"
+                     FontWeight="SemiBold"
+                     Margin="4,2,4,8" />
+          <ListBox x:Name="SearchResultsList"
+                   Grid.Row="1"
+                   Background="Transparent"
+                   BorderThickness="0"
+                   DoubleTapped="OnSearchResultDoubleTapped"
+                   KeyDown="OnSearchResultsKeyDown"
+                   AutomationProperties.Name="Search results">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <Grid Margin="4,6" RowDefinitions="Auto,Auto">
+                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Row="1"
+                             Text="{Binding Path}"
+                             FontSize="10"
+                             Foreground="{DynamicResource SecondaryTextBrush}"
+                             TextTrimming="CharacterEllipsis" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <Button Grid.Row="2"
+                  Classes="hud"
+                  Margin="4,8,4,2"
+                  Content="Focus selected result"
+                  Click="OnFocusSearchResultClick" />
+        </Grid>
+      </Border>
+
+      <Border x:Name="DetailsPanel"
+              IsVisible="False"
+              Width="302"
+              HorizontalAlignment="Right"
+              VerticalAlignment="Stretch"
+              Margin="0,16,16,16"
+              Padding="18"
+              Background="{DynamicResource SurfaceStrongBrush}"
+              BorderBrush="{DynamicResource BorderBrush}"
+              BorderThickness="1"
+              CornerRadius="5">
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*">
+          <TextBlock x:Name="DetailsNameText"
+                     Grid.Row="0"
+                     FontSize="18"
+                     FontWeight="SemiBold"
+                     TextWrapping="Wrap" />
+          <Border Grid.Row="1" Height="1" Background="{DynamicResource BorderBrush}" Margin="0,12" />
+          <Grid Grid.Row="2" ColumnDefinitions="70,*" Margin="0,3">
+            <TextBlock Text="Type" Foreground="{DynamicResource SecondaryTextBrush}" />
+            <TextBlock x:Name="DetailsTypeText" Grid.Column="1" />
+          </Grid>
+          <Grid Grid.Row="3" ColumnDefinitions="70,*" Margin="0,3">
+            <TextBlock Text="Size" Foreground="{DynamicResource SecondaryTextBrush}" />
+            <TextBlock x:Name="DetailsSizeText" Grid.Column="1" />
+          </Grid>
+          <Grid Grid.Row="4" ColumnDefinitions="70,*" Margin="0,3">
+            <TextBlock Text="Modified" Foreground="{DynamicResource SecondaryTextBrush}" />
+            <TextBlock x:Name="DetailsModifiedText" Grid.Column="1" />
+          </Grid>
+          <StackPanel Grid.Row="5" Margin="0,14,0,0">
+            <TextBlock Text="PATH" FontSize="10" LetterSpacing="1.2" Foreground="{DynamicResource SecondaryTextBrush}" />
+            <TextBlock x:Name="DetailsPathText" Margin="0,5,0,0" TextWrapping="Wrap" />
+          </StackPanel>
+          <TextBlock Grid.Row="6"
+                     Margin="0,18,0,0"
+                     VerticalAlignment="Bottom"
+                     Text="Double-click a folder to move it into focus. Reparse-point folders are shown but are not traversed."
+                     TextWrapping="Wrap"
+                     FontSize="11"
+                     Foreground="{DynamicResource SecondaryTextBrush}" />
+        </Grid>
+      </Border>
+
+      <Border x:Name="WelcomePanel"
+              Width="460"
+              Padding="32"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              Background="{DynamicResource SurfaceStrongBrush}"
+              BorderBrush="{DynamicResource BorderBrush}"
+              BorderThickness="1"
+              CornerRadius="6">
+        <StackPanel HorizontalAlignment="Center" Spacing="12">
+          <TextBlock Text="OMNIEXPLORER"
+                     FontSize="28"
+                     FontWeight="Light"
+                     LetterSpacing="5"
+                     Foreground="{DynamicResource AccentBrush}"
+                     HorizontalAlignment="Center" />
+          <TextBlock Text="Navigate your information universe"
+                     FontSize="16"
+                     HorizontalAlignment="Center" />
+          <TextBlock Text="Standalone Structure mode reads only the folder you explicitly choose. It does not crawl drives, run in the background, or modify files."
+                     TextWrapping="Wrap"
+                     TextAlignment="Center"
+                     Foreground="{DynamicResource SecondaryTextBrush}" />
+          <Button Classes="hud"
+                  Margin="0,10,0,0"
+                  HorizontalAlignment="Center"
+                  Content="Choose a folder"
+                  Click="OnChooseFolderClick" />
+        </StackPanel>
+      </Border>
+
+      <Border x:Name="LoadingOverlay"
+              IsVisible="False"
+              Background="#E6030B1A">
+        <Grid RowDefinitions="*,Auto,Auto">
+          <Grid Opacity="0.3" ColumnDefinitions="*,*,*,*,*,*,*,*" Margin="40">
+            <TextBlock Grid.Column="0" Text="0&#x0a;1&#x0a;PATH&#x0a;0x03EF&#x0a;1&#x0a;0&#x0a;NODE" Foreground="#258DDC" LineHeight="24" />
+            <TextBlock Grid.Column="1" Text="1&#x0a;0&#x0a;GRAPH&#x0a;1&#x0a;HASH&#x0a;0&#x0a;1" Foreground="#32C8FF" LineHeight="29" />
+            <TextBlock Grid.Column="2" Text="NODE&#x0a;0&#x0a;1&#x0a;CONTENT&#x0a;0x19&#x0a;0" Foreground="#258DDC" LineHeight="22" />
+            <TextBlock Grid.Column="3" Text="1&#x0a;RELATION&#x0a;0&#x0a;1&#x0a;0&#x0a;PATH" Foreground="#32C8FF" LineHeight="31" />
+            <TextBlock Grid.Column="4" Text="0xAE&#x0a;1&#x0a;0&#x0a;ENTITY&#x0a;1&#x0a;0" Foreground="#258DDC" LineHeight="26" />
+            <TextBlock Grid.Column="5" Text="GRAPH&#x0a;0&#x0a;MEDIA&#x0a;1&#x0a;0&#x0a;1" Foreground="#32C8FF" LineHeight="30" />
+            <TextBlock Grid.Column="6" Text="1&#x0a;0&#x0a;HASH&#x0a;NODE&#x0a;0xFF&#x0a;1" Foreground="#258DDC" LineHeight="23" />
+            <TextBlock Grid.Column="7" Text="PATH&#x0a;1&#x0a;0&#x0a;GRAPH&#x0a;1&#x0a;0" Foreground="#32C8FF" LineHeight="28" />
+          </Grid>
+          <TextBlock Grid.Row="1"
+                     Text="BUILDING YOUR UNIVERSE…"
+                     HorizontalAlignment="Center"
+                     Margin="0,0,0,14"
+                     LetterSpacing="2"
+                     Foreground="#B9EAFF" />
+          <Grid Grid.Row="2" Margin="48,0,48,34" RowDefinitions="Auto,Auto">
+            <ProgressBar IsIndeterminate="True" Height="3" Foreground="#32C8FF" />
+            <Button Grid.Row="1"
+                    Classes="hud"
+                    Margin="0,12,0,0"
+                    HorizontalAlignment="Center"
+                    Content="Cancel"
+                    Click="OnCancelClick" />
+          </Grid>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <Border Grid.Row="2"
+            Background="{DynamicResource SurfaceStrongBrush}"
+            BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="0,1,0,0"
+            Padding="16,0">
+      <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+        <TextBlock Text="STRUCTURE"
+                   FontSize="10"
+                   LetterSpacing="1.4"
+                   Foreground="{DynamicResource AccentBrush}" />
+        <TextBlock x:Name="StatusText"
+                   Grid.Column="1"
+                   Margin="18,0"
+                   Text="Choose a folder to begin. Only that location will be accessible."
+                   TextTrimming="CharacterEllipsis"
+                   Foreground="{DynamicResource SecondaryTextBrush}" />
+        <TextBlock Grid.Column="2"
+                   Text="Double-click to focus  ·  Wheel to zoom  ·  Drag to pan"
+                   FontSize="11"
+                   Foreground="{DynamicResource SecondaryTextBrush}" />
+      </Grid>
+    </Border>
+  </Grid>
+</Window>
