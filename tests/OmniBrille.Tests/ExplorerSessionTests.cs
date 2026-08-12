@@ -91,6 +91,99 @@ public sealed class ExplorerSessionTests
         Assert.Equal(6, session.Neighborhood.Nodes.Count);
     }
 
+    [Fact]
+    public async Task AggregateRefinement_ActivatesAndBackRestoresOverview()
+    {
+        var root = Normalize("aggregate-root");
+        var children = Enumerable.Range(0, 30)
+            .Select(index => Entry(Path.Combine(root, $"file-{index:D2}.txt"), ExplorerNodeKind.File))
+            .ToArray();
+        var provider = new FakeProvider(root, [Snapshot(root, children)]);
+        using var session = new ExplorerSession(new GraphNeighborhoodBuilder(8));
+        await session.OpenRootAsync(provider, provider);
+        var overviewIds = session.Neighborhood!.Nodes.Select(node => node.Id).ToArray();
+        var aggregate = Assert.Single(session.Neighborhood.Nodes, node => node.Kind == ExplorerNodeKind.Aggregate);
+
+        Assert.True(session.ActivateAggregate(aggregate.Id));
+        Assert.True(session.IsAggregateRefined);
+        Assert.True(session.CanGoBack);
+        Assert.NotEqual(overviewIds, session.Neighborhood.Nodes.Select(node => node.Id));
+
+        Assert.True(await session.GoBackAsync());
+        Assert.False(session.IsAggregateRefined);
+        Assert.Equal(overviewIds, session.Neighborhood.Nodes.Select(node => node.Id));
+        Assert.False(session.CanGoBack);
+    }
+
+    [Fact]
+    public async Task ProgressiveLoad_ExposesInteractiveShellAndPartialState()
+    {
+        var root = Normalize("progressive-root");
+        var provider = new ProgressiveFakeProvider(root);
+        using var session = new ExplorerSession();
+
+        var opening = session.OpenRootAsync(provider, provider);
+        await provider.Started.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Equal(ExplorerLoadState.Loading, session.LoadState);
+        Assert.NotNull(session.Neighborhood);
+        Assert.Equal(root, session.Neighborhood.Focus.Path);
+
+        provider.Publish([Entry(Path.Combine(root, "one.txt"), ExplorerNodeKind.File)], isComplete: false);
+        await WaitUntilAsync(() => session.LoadState == ExplorerLoadState.PartiallyLoaded);
+        Assert.Equal(1, session.LoadedItemCount);
+        Assert.NotNull(session.Neighborhood);
+
+        provider.Publish([Entry(Path.Combine(root, "two.txt"), ExplorerNodeKind.File)], isComplete: true);
+        await opening;
+        Assert.Equal(ExplorerLoadState.Ready, session.LoadState);
+        Assert.Equal(2, session.LoadedItemCount);
+    }
+
+    [Fact]
+    public async Task NewerNavigationPreventsStaleResultFromOverwritingScene()
+    {
+        var root = Normalize("stale-root");
+        var folderA = Path.Combine(root, "A");
+        var folderB = Path.Combine(root, "B");
+        var provider = new ControllableProvider(root, Snapshot(root,
+            Entry(folderA, ExplorerNodeKind.Folder),
+            Entry(folderB, ExplorerNodeKind.Folder)));
+        using var session = new ExplorerSession();
+        await session.OpenRootAsync(provider, provider);
+
+        var navigateA = session.NavigateAsync(folderA);
+        await provider.WaitForRequestAsync(folderA);
+        var navigateB = session.NavigateAsync(folderB);
+        await provider.WaitForRequestAsync(folderB);
+        provider.Complete(folderB, Snapshot(folderB, Entry(Path.Combine(folderB, "current.txt"), ExplorerNodeKind.File)));
+
+        Assert.True(await navigateB);
+        provider.Complete(folderA, Snapshot(folderA, Entry(Path.Combine(folderA, "stale.txt"), ExplorerNodeKind.File)));
+        Assert.False(await navigateA);
+
+        Assert.Equal(folderB, session.CurrentPath);
+        Assert.Equal(folderB, session.Neighborhood!.Focus.Path);
+        Assert.DoesNotContain(session.Neighborhood.Nodes, node => node.Name == "stale.txt");
+    }
+
+    [Fact]
+    public async Task ClearSearch_CancelsAndResetsPresentationState()
+    {
+        var root = Normalize("clear-search");
+        var provider = new FakeProvider(root, [Snapshot(root)]);
+        using var session = new ExplorerSession();
+        await session.OpenRootAsync(provider, provider);
+
+        await session.SearchAsync("anything");
+        session.ClearSearch();
+
+        Assert.Null(session.SearchResult);
+        Assert.Empty(session.HighlightedNodeIds);
+        Assert.Empty(session.SearchQuery);
+        Assert.False(session.IsSearching);
+    }
+
     private static string Normalize(string name) =>
         Path.Combine(Path.GetTempPath(), $"OmniBrilleSessionTests-{name}");
 
@@ -129,5 +222,127 @@ public sealed class ExplorerSessionTests
             cancellationToken.ThrowIfCancellationRequested();
             return Task.FromResult(SearchResult);
         }
+    }
+
+    private sealed class ProgressiveFakeProvider :
+        IExplorerProvider,
+        IProgressiveExplorerProvider,
+        IExplorerSearchProvider
+    {
+        private readonly System.Threading.Channels.Channel<ExplorerDirectoryBatch> _batches =
+            System.Threading.Channels.Channel.CreateUnbounded<ExplorerDirectoryBatch>();
+
+        public ProgressiveFakeProvider(string root)
+        {
+            AccessRoot = root;
+        }
+
+        public string AccessRoot { get; }
+
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task<ExplorerDirectorySnapshot> GetDirectoryAsync(string path, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public async IAsyncEnumerable<ExplorerDirectoryBatch> GetDirectoryBatchesAsync(
+            string path,
+            int batchSize,
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            yield return new ExplorerDirectoryBatch(Entry(path, ExplorerNodeKind.Folder), [], 0, false);
+            Started.TrySetResult();
+            await foreach (var batch in _batches.Reader.ReadAllAsync(cancellationToken))
+            {
+                yield return batch;
+                if (batch.IsComplete)
+                {
+                    yield break;
+                }
+            }
+        }
+
+        public Task<ExplorerSearchResult> SearchAsync(SearchRequest request, CancellationToken cancellationToken) =>
+            Task.FromResult(new ExplorerSearchResult([], false, 0));
+
+        public void Publish(IReadOnlyList<ExplorerEntry> entries, bool isComplete)
+        {
+            _batches.Writer.TryWrite(new ExplorerDirectoryBatch(
+                Entry(AccessRoot, ExplorerNodeKind.Folder),
+                entries,
+                entries.Count,
+                isComplete,
+                TotalChildCount: entries.Count));
+            if (isComplete)
+            {
+                _batches.Writer.TryComplete();
+            }
+        }
+    }
+
+    private sealed class ControllableProvider : IExplorerProvider, IExplorerSearchProvider
+    {
+        private readonly ExplorerDirectorySnapshot _rootSnapshot;
+        private readonly Dictionary<string, TaskCompletionSource<ExplorerDirectorySnapshot>> _requests =
+            new(StringComparer.OrdinalIgnoreCase);
+
+        public ControllableProvider(string root, ExplorerDirectorySnapshot rootSnapshot)
+        {
+            AccessRoot = root;
+            _rootSnapshot = rootSnapshot;
+        }
+
+        public string AccessRoot { get; }
+
+        public Task<ExplorerDirectorySnapshot> GetDirectoryAsync(string path, CancellationToken cancellationToken)
+        {
+            if (StringComparer.OrdinalIgnoreCase.Equals(path, AccessRoot))
+            {
+                return Task.FromResult(_rootSnapshot);
+            }
+
+            lock (_requests)
+            {
+                if (!_requests.TryGetValue(path, out var request))
+                {
+                    request = new TaskCompletionSource<ExplorerDirectorySnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    _requests[path] = request;
+                }
+
+                return request.Task;
+            }
+        }
+
+        public Task<ExplorerSearchResult> SearchAsync(SearchRequest request, CancellationToken cancellationToken) =>
+            Task.FromResult(new ExplorerSearchResult([], false, 0));
+
+        public async Task WaitForRequestAsync(string path)
+        {
+            await WaitUntilAsync(() =>
+            {
+                lock (_requests)
+                {
+                    return _requests.ContainsKey(path);
+                }
+            });
+        }
+
+        public void Complete(string path, ExplorerDirectorySnapshot snapshot)
+        {
+            lock (_requests)
+            {
+                _requests[path].TrySetResult(snapshot);
+            }
+        }
+    }
+
+    private static async Task WaitUntilAsync(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(2);
+        while (!condition() && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(10);
+        }
+
+        Assert.True(condition(), "The expected asynchronous state was not reached before the test deadline.");
     }
 }

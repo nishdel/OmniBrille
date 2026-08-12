@@ -16,7 +16,8 @@ public sealed class GraphNeighborhoodBuilderTests
         Assert.Equal(22, neighborhood.HiddenChildCount);
         var aggregate = Assert.Single(neighborhood.Nodes, node => node.Kind == ExplorerNodeKind.Aggregate);
         Assert.Equal(22, aggregate.AggregatedItemCount);
-        Assert.False(aggregate.IsNavigable);
+        Assert.True(aggregate.IsNavigable);
+        Assert.Equal(AggregateActionKind.OpenPage, aggregate.AggregateAction!.Kind);
     }
 
     [Fact]
@@ -52,6 +53,22 @@ public sealed class GraphNeighborhoodBuilderTests
     }
 
     [Fact]
+    public void Build_WhenPreviousContextIsAlsoAChild_EmitsOneNodeAndCorrectCounts()
+    {
+        var snapshot = new ExplorerDirectorySnapshot(
+            Entry("root", ExplorerNodeKind.Folder),
+            [Entry("root/child", ExplorerNodeKind.Folder), Entry("root/file.txt", ExplorerNodeKind.File)]);
+        var previous = Entry("root/child", ExplorerNodeKind.Folder);
+
+        var neighborhood = new GraphNeighborhoodBuilder().Build(snapshot, previous);
+
+        var previousNode = Assert.Single(neighborhood.Nodes, node => node.Id == previous.Id);
+        Assert.Equal(ExplorerNodeKind.Context, previousNode.Kind);
+        Assert.Equal(2, neighborhood.TotalChildCount);
+        Assert.Equal(0, neighborhood.HiddenChildCount);
+    }
+
+    [Fact]
     public void Build_PreservesTruncatedSourceSignal()
     {
         var source = SnapshotWithChildren(4) with { WasTruncated = true, TotalChildCount = 5 };
@@ -82,6 +99,42 @@ public sealed class GraphNeighborhoodBuilderTests
     public void Constructor_RejectsUnusableBudget()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new GraphNeighborhoodBuilder(2));
+    }
+
+    [Fact]
+    public void Build_AggregatePageIsDeterministicBoundedAndReversible()
+    {
+        var snapshot = SnapshotWithChildren(40);
+        var builder = new GraphNeighborhoodBuilder(10);
+        var overview = builder.Build(snapshot);
+        var openAction = Assert.Single(overview.Nodes, node => node.Kind == ExplorerNodeKind.Aggregate).AggregateAction!;
+
+        var page = builder.Build(snapshot, aggregatePage: new AggregatePage(openAction.TargetOffset!.Value, 0));
+
+        Assert.True(page.Nodes.Count <= 10);
+        Assert.NotNull(page.AggregatePage);
+        Assert.Contains(page.Nodes, node => node.AggregateAction?.Kind == AggregateActionKind.Overview);
+        Assert.Contains(page.Nodes, node => node.AggregateAction?.Kind == AggregateActionKind.NextPage);
+        Assert.Equal(
+            page.Nodes.Select(node => node.Id),
+            builder.Build(snapshot, aggregatePage: page.AggregatePage).Nodes.Select(node => node.Id));
+    }
+
+    [Fact]
+    public void Build_NextAggregatePageDoesNotRepeatStructuralItems()
+    {
+        var snapshot = SnapshotWithChildren(40);
+        var builder = new GraphNeighborhoodBuilder(10);
+        var first = builder.Build(snapshot, aggregatePage: new AggregatePage(8, 0));
+        var nextOffset = Assert.Single(
+            first.Nodes,
+            node => node.AggregateAction?.Kind == AggregateActionKind.NextPage).AggregateAction!.TargetOffset!.Value;
+
+        var second = builder.Build(snapshot, aggregatePage: new AggregatePage(nextOffset, 0));
+        var firstIds = first.Nodes.Where(node => node.Kind != ExplorerNodeKind.Aggregate).Select(node => node.Id).ToHashSet();
+        var secondIds = second.Nodes.Where(node => node.Kind != ExplorerNodeKind.Aggregate).Select(node => node.Id).ToHashSet();
+
+        Assert.Equal([snapshot.Focus.Id], firstIds.Intersect(secondIds));
     }
 
     private static ExplorerDirectorySnapshot SnapshotWithChildren(int count)

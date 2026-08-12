@@ -16,6 +16,31 @@ public enum ExplorerFailureKind
     EnumerationFailed,
 }
 
+public enum AggregateActionKind
+{
+    OpenPage,
+    PreviousPage,
+    NextPage,
+    Overview,
+}
+
+public enum ExplorerLoadState
+{
+    Idle,
+    Loading,
+    PartiallyLoaded,
+    Ready,
+    Cancelled,
+    Failed,
+}
+
+public sealed record AggregateAction(
+    AggregateActionKind Kind,
+    int? TargetOffset = null,
+    string? Description = null);
+
+public sealed record AggregatePage(int Offset, int PageSize);
+
 public sealed record ExplorerEntry(
     string Id,
     string Name,
@@ -42,7 +67,8 @@ public sealed record ExplorerNode(
     long? SizeBytes,
     DateTimeOffset? LastModified,
     bool IsNavigable,
-    int AggregatedItemCount = 0)
+    int AggregatedItemCount = 0,
+    AggregateAction? AggregateAction = null)
 {
     public static ExplorerNode FromEntry(ExplorerEntry entry) => new(
         entry.Id,
@@ -63,10 +89,21 @@ public sealed record ExplorerNeighborhood(
     int TotalChildCount,
     int HiddenChildCount,
     string? Warning = null,
-    bool SourceWasTruncated = false)
+    bool SourceWasTruncated = false,
+    AggregatePage? AggregatePage = null)
 {
     public ExplorerNode Focus => Nodes.First(node => node.Id == FocusNodeId);
 }
+
+public sealed record ExplorerDirectoryBatch(
+    ExplorerEntry Focus,
+    IReadOnlyList<ExplorerEntry> AddedChildren,
+    int ItemsObserved,
+    bool IsComplete,
+    ExplorerFailureKind Failure = ExplorerFailureKind.None,
+    string? Warning = null,
+    int? TotalChildCount = null,
+    bool WasTruncated = false);
 
 public sealed record SearchRequest(
     string RootPath,
@@ -99,5 +136,13 @@ public interface IExplorerSearchProvider
 {
     public Task<ExplorerSearchResult> SearchAsync(
         SearchRequest request,
+        CancellationToken cancellationToken);
+}
+
+public interface IProgressiveExplorerProvider
+{
+    public IAsyncEnumerable<ExplorerDirectoryBatch> GetDirectoryBatchesAsync(
+        string path,
+        int batchSize,
         CancellationToken cancellationToken);
 }

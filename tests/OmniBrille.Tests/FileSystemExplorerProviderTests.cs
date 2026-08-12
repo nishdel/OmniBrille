@@ -118,6 +118,57 @@ public sealed class FileSystemExplorerProviderTests
             provider.SearchAsync(new SearchRequest(directory.Path, "x"), cancellation.Token));
     }
 
+    [Fact]
+    public async Task ProgressiveEnumeration_EmitsShellBatchesAndCompletion()
+    {
+        using var directory = new TemporaryDirectory();
+        for (var index = 0; index < 9; index++)
+        {
+            await File.WriteAllTextAsync(Path.Combine(directory.Path, $"{index:D2}.txt"), "x");
+        }
+
+        var provider = new FileSystemExplorerProvider(directory.Path);
+        var batches = new List<ExplorerDirectoryBatch>();
+        await foreach (var batch in provider.GetDirectoryBatchesAsync(directory.Path, 3, CancellationToken.None))
+        {
+            batches.Add(batch);
+        }
+
+        Assert.Empty(batches[0].AddedChildren);
+        Assert.False(batches[0].IsComplete);
+        Assert.Equal([0, 3, 3, 3, 0], batches.Select(batch => batch.AddedChildren.Count));
+        Assert.True(batches[^1].IsComplete);
+        Assert.Equal(9, batches[^1].ItemsObserved);
+    }
+
+    [Fact]
+    public async Task ProgressiveEnumeration_CancellationStopsAdditionalBatches()
+    {
+        using var directory = new TemporaryDirectory();
+        for (var index = 0; index < 20; index++)
+        {
+            await File.WriteAllTextAsync(Path.Combine(directory.Path, $"{index:D2}.txt"), "x");
+        }
+
+        var provider = new FileSystemExplorerProvider(directory.Path);
+        using var cancellation = new CancellationTokenSource();
+        var batchesSeen = 0;
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
+        {
+            await foreach (var _ in provider.GetDirectoryBatchesAsync(directory.Path, 2, cancellation.Token))
+            {
+                batchesSeen++;
+                if (batchesSeen == 2)
+                {
+                    cancellation.Cancel();
+                }
+            }
+        });
+
+        Assert.Equal(2, batchesSeen);
+    }
+
     private sealed class TemporaryDirectory : IDisposable
     {
         public TemporaryDirectory()

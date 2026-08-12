@@ -1,10 +1,15 @@
+using System.Runtime.CompilerServices;
 using OmniBrille.Core;
 
 namespace OmniBrille.Infrastructure;
 
-public sealed class FileSystemExplorerProvider : IExplorerProvider, IExplorerSearchProvider
+public sealed class FileSystemExplorerProvider :
+    IExplorerProvider,
+    IProgressiveExplorerProvider,
+    IExplorerSearchProvider
 {
     public const int DefaultEnumerationLimit = 5_000;
+    public const int DefaultBatchSize = 32;
 
     private readonly int _enumerationLimit;
 
@@ -23,13 +28,42 @@ public sealed class FileSystemExplorerProvider : IExplorerProvider, IExplorerSea
 
     public string AccessRoot { get; }
 
-    public Task<ExplorerDirectorySnapshot> GetDirectoryAsync(
+    public async Task<ExplorerDirectorySnapshot> GetDirectoryAsync(
         string path,
         CancellationToken cancellationToken)
     {
+        var children = new List<ExplorerEntry>();
+        ExplorerDirectoryBatch? final = null;
+        await foreach (var batch in GetDirectoryBatchesAsync(path, 128, cancellationToken))
+        {
+            children.AddRange(batch.AddedChildren);
+            final = batch;
+        }
+
+        if (final is null)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            throw new InvalidOperationException("Directory enumeration produced no result.");
+        }
+
+        return new ExplorerDirectorySnapshot(
+            final.Focus,
+            children,
+            final.Failure,
+            final.Warning,
+            final.TotalChildCount ?? final.ItemsObserved,
+            final.WasTruncated);
+    }
+
+    public IAsyncEnumerable<ExplorerDirectoryBatch> GetDirectoryBatchesAsync(
+        string path,
+        int batchSize,
+        CancellationToken cancellationToken)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(batchSize, 1);
         var normalized = Normalize(path);
         EnsureWithinAccessRoot(normalized);
-        return Task.Run(() => EnumerateDirectory(normalized, cancellationToken), cancellationToken);
+        return EnumerateBatchesAsync(normalized, batchSize, cancellationToken);
     }
 
     public Task<ExplorerSearchResult> SearchAsync(
@@ -48,86 +82,162 @@ public sealed class FileSystemExplorerProvider : IExplorerProvider, IExplorerSea
         return Task.Run(() => SearchCore(request with { RootPath = root }, cancellationToken), cancellationToken);
     }
 
-    private ExplorerDirectorySnapshot EnumerateDirectory(string path, CancellationToken cancellationToken)
+    private async IAsyncEnumerable<ExplorerDirectoryBatch> EnumerateBatchesAsync(
+        string path,
+        int batchSize,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var focus = CreateFocus(path);
+        var focus = await Task.Run(() => CreateFocus(path), cancellationToken);
         if (!Directory.Exists(path))
         {
-            return new ExplorerDirectorySnapshot(
+            yield return new ExplorerDirectoryBatch(
                 focus,
                 [],
+                0,
+                true,
                 ExplorerFailureKind.NotFound,
-                "This folder no longer exists or is unavailable.");
+                "This folder no longer exists or is unavailable.",
+                0);
+            yield break;
         }
 
-        var children = new List<ExplorerEntry>(Math.Min(_enumerationLimit, 256));
-        var skippedEntries = 0;
-        var observedCount = 0;
-        var wasTruncated = false;
-
+        EnumerationState? state = null;
+        ExplorerDirectoryBatch? initializationFailure = null;
         try
         {
-            foreach (var childPath in Directory.EnumerateFileSystemEntries(path))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                observedCount++;
-
-                if (children.Count >= _enumerationLimit)
-                {
-                    wasTruncated = true;
-                    break;
-                }
-
-                try
-                {
-                    children.Add(CreateEntry(childPath));
-                }
-                catch (Exception exception) when (IsRecoverable(exception))
-                {
-                    skippedEntries++;
-                }
-            }
+            state = await Task.Run(
+                () => new EnumerationState(Directory.EnumerateFileSystemEntries(path).GetEnumerator()),
+                cancellationToken);
         }
         catch (UnauthorizedAccessException)
         {
-            return new ExplorerDirectorySnapshot(
+            initializationFailure = FailureBatch(
                 focus,
-                children,
                 ExplorerFailureKind.AccessDenied,
-                "Access to this folder was denied.",
-                observedCount,
-                wasTruncated);
+                "Access to this folder was denied.");
         }
         catch (Exception exception) when (IsRecoverable(exception))
         {
-            return new ExplorerDirectorySnapshot(
+            initializationFailure = FailureBatch(
                 focus,
-                children,
                 ExplorerFailureKind.EnumerationFailed,
-                $"The folder could not be fully read: {exception.Message}",
-                observedCount,
-                wasTruncated);
+                $"The folder could not be read: {exception.Message}");
         }
 
+        if (initializationFailure is not null)
+        {
+            yield return initializationFailure;
+            yield break;
+        }
+
+        var activeState = state!;
+        using (activeState)
+        {
+            yield return new ExplorerDirectoryBatch(focus, [], 0, false);
+
+            while (!activeState.IsComplete)
+            {
+                var batch = await Task.Run(
+                    () => ReadBatch(focus, activeState, batchSize, cancellationToken),
+                    cancellationToken);
+                yield return batch;
+            }
+        }
+    }
+
+    private ExplorerDirectoryBatch ReadBatch(
+        ExplorerEntry focus,
+        EnumerationState state,
+        int batchSize,
+        CancellationToken cancellationToken)
+    {
+        var added = new List<ExplorerEntry>(batchSize);
+        while (added.Count < batchSize && !state.IsComplete)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            bool hasNext;
+            try
+            {
+                hasNext = state.Enumerator.MoveNext();
+            }
+            catch (UnauthorizedAccessException)
+            {
+                state.Failure = ExplorerFailureKind.AccessDenied;
+                state.FailureMessage = "Access to this folder was denied during enumeration.";
+                state.IsComplete = true;
+                break;
+            }
+            catch (Exception exception) when (IsRecoverable(exception))
+            {
+                state.Failure = ExplorerFailureKind.EnumerationFailed;
+                state.FailureMessage = $"The folder could not be fully read: {exception.Message}";
+                state.IsComplete = true;
+                break;
+            }
+
+            if (!hasNext)
+            {
+                state.IsComplete = true;
+                break;
+            }
+
+            state.ItemsObserved++;
+            if (state.ValidItemCount >= _enumerationLimit)
+            {
+                state.WasTruncated = true;
+                state.IsComplete = true;
+                break;
+            }
+
+            try
+            {
+                added.Add(CreateEntry(state.Enumerator.Current));
+                state.ValidItemCount++;
+            }
+            catch (Exception exception) when (IsRecoverable(exception))
+            {
+                state.SkippedEntries++;
+            }
+        }
+
+        var warning = state.IsComplete ? BuildEnumerationWarning(state) : null;
+        return new ExplorerDirectoryBatch(
+            focus,
+            added,
+            state.ItemsObserved,
+            state.IsComplete,
+            state.Failure,
+            warning,
+            state.ItemsObserved,
+            state.WasTruncated);
+    }
+
+    private string? BuildEnumerationWarning(EnumerationState state)
+    {
         var warningParts = new List<string>();
-        if (wasTruncated)
+        if (!string.IsNullOrWhiteSpace(state.FailureMessage))
+        {
+            warningParts.Add(state.FailureMessage);
+        }
+
+        if (state.WasTruncated)
         {
             warningParts.Add($"Enumeration stopped after {_enumerationLimit:N0} items to protect responsiveness");
         }
 
-        if (skippedEntries > 0)
+        if (state.SkippedEntries > 0)
         {
-            warningParts.Add($"{skippedEntries:N0} unreadable entries were skipped");
+            warningParts.Add($"{state.SkippedEntries:N0} unreadable entries were skipped");
         }
 
-        return new ExplorerDirectorySnapshot(
-            focus,
-            children,
-            ExplorerFailureKind.None,
-            warningParts.Count == 0 ? null : string.Join(". ", warningParts) + ".",
-            wasTruncated ? observedCount : children.Count,
-            wasTruncated);
+        return warningParts.Count == 0 ? null : string.Join(". ", warningParts) + ".";
     }
+
+    private static ExplorerDirectoryBatch FailureBatch(
+        ExplorerEntry focus,
+        ExplorerFailureKind failure,
+        string warning) => new(focus, [], 0, true, failure, warning, 0);
 
     private static ExplorerSearchResult SearchCore(SearchRequest request, CancellationToken cancellationToken)
     {
@@ -285,4 +395,25 @@ public sealed class FileSystemExplorerProvider : IExplorerProvider, IExplorerSea
         System.Security.SecurityException or
         ArgumentException or
         NotSupportedException;
+
+    private sealed class EnumerationState(IEnumerator<string> enumerator) : IDisposable
+    {
+        public IEnumerator<string> Enumerator { get; } = enumerator;
+
+        public int ItemsObserved { get; set; }
+
+        public int ValidItemCount { get; set; }
+
+        public int SkippedEntries { get; set; }
+
+        public bool IsComplete { get; set; }
+
+        public bool WasTruncated { get; set; }
+
+        public ExplorerFailureKind Failure { get; set; }
+
+        public string? FailureMessage { get; set; }
+
+        public void Dispose() => Enumerator.Dispose();
+    }
 }
