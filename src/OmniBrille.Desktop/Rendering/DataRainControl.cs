@@ -1,9 +1,11 @@
+using System.Diagnostics;
 using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using OmniBrille.Core;
 
 namespace OmniBrille.Desktop.Rendering;
 
@@ -24,8 +26,11 @@ public sealed class DataRainControl : Control
     ];
 
     private readonly DispatcherTimer _timer;
+    private readonly BoundedLruCache<DataTokenKey, FormattedText> _textCache = new(96);
     private double _phase;
     private bool _isActive;
+    private TimeSpan _lastRenderDuration;
+    private int _renderedTokenCount;
 
     public DataRainControl()
     {
@@ -47,6 +52,12 @@ public sealed class DataRainControl : Control
 
     public bool ReducedEffects { get; set; }
 
+    public DataRainDiagnostics Diagnostics => new(
+        _isActive,
+        _renderedTokenCount,
+        _lastRenderDuration,
+        _textCache.Count);
+
     public void SetActive(bool isActive)
     {
         _isActive = isActive;
@@ -64,33 +75,47 @@ public sealed class DataRainControl : Control
 
     public override void Render(DrawingContext context)
     {
+        var clock = Stopwatch.StartNew();
         base.Render(context);
         if (!_isActive)
         {
+            _renderedTokenCount = 0;
+            clock.Stop();
+            _lastRenderDuration = clock.Elapsed;
             return;
         }
 
-        var streamCount = ReducedEffects ? 5 : Streams.Length;
+        var streamCount = ReducedMotion
+            ? ReducedEffects ? 2 : 3
+            : ReducedEffects ? 5 : Streams.Length;
+        var renderedTokens = 0;
         for (var streamIndex = 0; streamIndex < streamCount; streamIndex++)
         {
             var x = ((streamIndex + 0.7) / streamCount) * Bounds.Width;
             var tokens = Streams[streamIndex];
             var baseY = ((_phase * (0.55 + (streamIndex * 0.035))) + (streamIndex * 41)) % Math.Max(1, Bounds.Height + 180) - 180;
-            for (var tokenIndex = 0; tokenIndex < tokens.Length; tokenIndex++)
+            var tokenCount = ReducedMotion ? Math.Min(2, tokens.Length) : tokens.Length;
+            for (var tokenIndex = 0; tokenIndex < tokenCount; tokenIndex++)
             {
                 var alpha = (byte)Math.Clamp(34 + (tokenIndex * 18) + ((streamIndex * 11) % 46), 30, 155);
                 var color = Color.FromArgb(alpha, 48, streamIndex % 3 == 0 ? (byte)202 : (byte)142, 255);
-                var text = new FormattedText(
-                    tokens[tokenIndex],
+                var key = new DataTokenKey(tokens[tokenIndex], tokenIndex % 3 == 0 ? 10 : 9, color);
+                var text = _textCache.GetOrAdd(key, static item => new FormattedText(
+                    item.Text,
                     CultureInfo.InvariantCulture,
                     FlowDirection.LeftToRight,
                     new Typeface("Cascadia Mono"),
-                    tokenIndex % 3 == 0 ? 10 : 9,
-                    new SolidColorBrush(color));
+                    item.FontSize,
+                    new SolidColorBrush(item.Color)));
                 var y = baseY + (tokenIndex * (ReducedEffects ? 38 : 31));
                 context.DrawText(text, new Point(x, y));
+                renderedTokens++;
             }
         }
+
+        _renderedTokenCount = renderedTokens;
+        clock.Stop();
+        _lastRenderDuration = clock.Elapsed;
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
@@ -98,4 +123,12 @@ public sealed class DataRainControl : Control
         _timer.Stop();
         base.OnDetachedFromVisualTree(e);
     }
+
+    private readonly record struct DataTokenKey(string Text, double FontSize, Color Color);
 }
+
+public sealed record DataRainDiagnostics(
+    bool IsActive,
+    int RenderedTokens,
+    TimeSpan LastRenderDuration,
+    int TextCacheEntries);

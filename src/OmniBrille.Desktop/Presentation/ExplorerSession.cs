@@ -147,7 +147,7 @@ public sealed class ExplorerSession : IDisposable
         }
 
         var node = Neighborhood.Nodes.FirstOrDefault(item =>
-            StringComparer.OrdinalIgnoreCase.Equals(item.Id, nodeId));
+            ExplorerIdentity.Equals(item.Id, nodeId));
         var action = node?.AggregateAction;
         if (node?.Kind != ExplorerNodeKind.Aggregate || action is null)
         {
@@ -240,7 +240,7 @@ public sealed class ExplorerSession : IDisposable
     public void SelectNode(string nodeId)
     {
         SelectedNode = Neighborhood?.Nodes.FirstOrDefault(node =>
-            StringComparer.OrdinalIgnoreCase.Equals(node.Id, nodeId));
+            ExplorerIdentity.Equals(node.Id, nodeId));
         NotifyChanged();
     }
 
@@ -393,7 +393,7 @@ public sealed class ExplorerSession : IDisposable
         SelectedNode = preferredSelectionId is null
             ? Neighborhood.Focus
             : Neighborhood.Nodes.FirstOrDefault(node =>
-                StringComparer.OrdinalIgnoreCase.Equals(node.Id, preferredSelectionId)) ?? Neighborhood.Focus;
+                ExplorerIdentity.Equals(node.Id, preferredSelectionId)) ?? Neighborhood.Focus;
         UpdateHighlights(notify: false);
     }
 
@@ -450,11 +450,11 @@ public sealed class ExplorerSession : IDisposable
         }
         else
         {
-            var visibleIds = Neighborhood.Nodes.Select(node => node.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var visibleIds = Neighborhood.Nodes.Select(node => node.Id).ToHashSet(ExplorerIdentity.Comparer);
             HighlightedNodeIds = SearchResult.Hits
                 .Select(hit => hit.Id)
                 .Where(visibleIds.Contains)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                .ToHashSet(ExplorerIdentity.Comparer);
         }
 
         if (notify)

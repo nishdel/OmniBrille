@@ -57,4 +57,19 @@ public sealed class NavigationStateTests
 
         Assert.Equal(expected, PathBoundary.IsWithin(root, candidate));
     }
+
+    [Fact]
+    public void PathBoundary_UsesNativePlatformCaseSemantics()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "OmniBrilleCaseRoot");
+        var differentlyCased = Path.Combine(Path.GetTempPath(), "omnibrillecaseroot", "child");
+
+        Assert.Equal(OperatingSystem.IsWindows(), PathBoundary.IsWithin(root, differentlyCased));
+    }
+
+    [Fact]
+    public void ExplorerIdentity_RemainsOpaqueAndCaseSensitive()
+    {
+        Assert.False(ExplorerIdentity.Equals("node-A", "node-a"));
+    }
 }

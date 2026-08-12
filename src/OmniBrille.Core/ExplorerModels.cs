@@ -1,5 +1,12 @@
 namespace OmniBrille.Core;
 
+public static class ExplorerIdentity
+{
+    public static StringComparer Comparer { get; } = StringComparer.Ordinal;
+
+    public static bool Equals(string? left, string? right) => Comparer.Equals(left, right);
+}
+
 public enum ExplorerNodeKind
 {
     Folder,

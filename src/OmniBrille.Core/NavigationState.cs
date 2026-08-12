@@ -29,7 +29,7 @@ public sealed class NavigationState
             throw new InvalidOperationException("Navigation cannot leave the explicitly selected access root.");
         }
 
-        if (StringComparer.OrdinalIgnoreCase.Equals(CurrentPath, normalized))
+        if (PathBoundary.Comparer.Equals(CurrentPath, normalized))
         {
             return;
         }
@@ -66,16 +66,24 @@ public sealed class NavigationState
 
 public static class PathBoundary
 {
+    public static StringComparer Comparer { get; } = OperatingSystem.IsWindows()
+        ? StringComparer.OrdinalIgnoreCase
+        : StringComparer.Ordinal;
+
+    public static StringComparison Comparison { get; } = OperatingSystem.IsWindows()
+        ? StringComparison.OrdinalIgnoreCase
+        : StringComparison.Ordinal;
+
     public static bool IsWithin(string rootPath, string candidatePath)
     {
         var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(rootPath));
         var candidate = Path.TrimEndingDirectorySeparator(Path.GetFullPath(candidatePath));
 
-        if (StringComparer.OrdinalIgnoreCase.Equals(root, candidate))
+        if (Comparer.Equals(root, candidate))
         {
             return true;
         }
 
-        return candidate.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+        return candidate.StartsWith(root + Path.DirectorySeparatorChar, Comparison);
     }
 }

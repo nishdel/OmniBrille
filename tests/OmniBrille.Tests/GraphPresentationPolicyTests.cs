@@ -4,6 +4,16 @@ namespace OmniBrille.Tests;
 
 public sealed class GraphPresentationPolicyTests
 {
+    [Theory]
+    [InlineData(1.0, 22)]
+    [InlineData(1.25, 18)]
+    [InlineData(1.5, 14)]
+    [InlineData(2.0, 10)]
+    public void RecommendedLabelBudget_ReducesDensityAsTextScales(double textScale, int expected)
+    {
+        Assert.Equal(expected, GraphPresentationPolicy.RecommendedLabelBudget(1, 48, textScale));
+    }
+
     [Fact]
     public void Evaluate_PrioritizesFocusSelectionSearchAndHover()
     {

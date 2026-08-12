@@ -36,7 +36,7 @@ internal sealed record ScenePalette(
         Color.Parse("#0B62A5"),
         Color.Parse("#7CA6C5"),
         Color.Parse("#004B91"),
-        Color.Parse("#00A8CB"),
+        Color.Parse("#006D86"),
         Color.Parse("#082B4C"),
         Color.Parse("#527897"),
         Color.Parse("#0079D8"));

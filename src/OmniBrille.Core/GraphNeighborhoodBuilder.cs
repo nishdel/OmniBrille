@@ -33,7 +33,7 @@ public sealed class GraphNeighborhoodBuilder
         var edges = new List<ExplorerEdge>(_nodeBudget - 1);
 
         if (previousContext is not null &&
-            !StringComparer.OrdinalIgnoreCase.Equals(previousContext.Id, snapshot.Focus.Id))
+            !ExplorerIdentity.Equals(previousContext.Id, snapshot.Focus.Id))
         {
             var context = ExplorerNode.FromEntry(previousContext) with
             {
@@ -47,11 +47,11 @@ public sealed class GraphNeighborhoodBuilder
         var orderedChildren = Order(snapshot.Children);
         var sourceChildCount = orderedChildren.Length;
         var contextRepresentsChild = previousContext is not null && orderedChildren.Any(child =>
-            StringComparer.OrdinalIgnoreCase.Equals(child.Id, previousContext.Id));
+            ExplorerIdentity.Equals(child.Id, previousContext.Id));
         if (contextRepresentsChild)
         {
             orderedChildren = orderedChildren
-                .Where(child => !StringComparer.OrdinalIgnoreCase.Equals(child.Id, previousContext!.Id))
+                .Where(child => !ExplorerIdentity.Equals(child.Id, previousContext!.Id))
                 .ToArray();
         }
 
@@ -77,7 +77,9 @@ public sealed class GraphNeighborhoodBuilder
     private static ExplorerEntry[] Order(IReadOnlyList<ExplorerEntry> children) => children
         .OrderBy(entry => entry.Kind == ExplorerNodeKind.Folder ? 0 : 1)
         .ThenBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase)
+        .ThenBy(entry => entry.Name, StringComparer.Ordinal)
         .ThenBy(entry => entry.Path, StringComparer.OrdinalIgnoreCase)
+        .ThenBy(entry => entry.Path, StringComparer.Ordinal)
         .ToArray();
 
     private static int BuildOverview(
@@ -96,9 +98,9 @@ public sealed class GraphNeighborhoodBuilder
         if (preferredNodeId is not null && visibleCount > 0)
         {
             var preferred = orderedChildren.FirstOrDefault(entry =>
-                StringComparer.OrdinalIgnoreCase.Equals(entry.Id, preferredNodeId));
+                ExplorerIdentity.Equals(entry.Id, preferredNodeId));
             if (preferred is not null && visibleChildren.All(entry =>
-                    !StringComparer.OrdinalIgnoreCase.Equals(entry.Id, preferred.Id)))
+                    !ExplorerIdentity.Equals(entry.Id, preferred.Id)))
             {
                 visibleChildren[^1] = preferred;
             }

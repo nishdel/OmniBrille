@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Automation.Peers;
+using Avalonia.Automation.Provider;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
@@ -152,6 +153,239 @@ public sealed class MainWindowHeadlessTests
         Assert.True(window.FindControl<TextBox>("SearchBox")!.IsFocused);
     }
 
+    [AvaloniaFact]
+    public async Task GraphAutomationPeer_ExposesOnlyVisibleNodesWithStateAndAction()
+    {
+        using var window = CreateWindow(out var session, out _);
+        window.Show();
+        var root = Path.Combine(Path.GetTempPath(), "OmniBrilleAutomationRoot");
+        var child = Entry(Path.Combine(root, "child"), ExplorerNodeKind.Folder);
+        var provider = new ImmediateProvider(root, child);
+        await session.OpenRootAsync(provider, provider);
+        var graph = window.FindControl<GraphSceneControl>("GraphScene")!;
+
+        var peer = ControlAutomationPeer.CreatePeerForElement(graph);
+        var nodePeers = peer.GetChildren();
+
+        Assert.Equal(2, nodePeers.Count);
+        Assert.All(nodePeers, nodePeer => Assert.Equal(AutomationControlType.TreeItem, nodePeer.GetAutomationControlType()));
+        var focusPeer = Assert.Single(nodePeers, nodePeer => nodePeer.GetItemStatus()!.Contains("Current focus"));
+        Assert.Contains(Path.GetFileName(root), focusPeer.GetName());
+        var childPeer = Assert.Single(nodePeers, nodePeer => nodePeer.GetName().Contains("child"));
+        childPeer.SetFocus();
+        Assert.Equal(child.Id, session.SelectedNode!.Id);
+
+        var invoke = Assert.IsAssignableFrom<IInvokeProvider>(childPeer.GetProvider<IInvokeProvider>());
+        invoke.Invoke();
+        Assert.Equal(child.Path, session.CurrentPath);
+    }
+
+    [AvaloniaFact]
+    public async Task AccessibleList_UsesSharedSelectionNavigationSearchAndBackState()
+    {
+        using var window = CreateWindow(out var session, out _);
+        window.Show();
+        var root = Path.Combine(Path.GetTempPath(), "OmniBrilleAccessibleListRoot");
+        var child = Entry(Path.Combine(root, "match-child"), ExplorerNodeKind.Folder);
+        var provider = new ImmediateProvider(root, child);
+        await session.OpenRootAsync(provider, provider);
+
+        window.KeyPress(
+            Key.L,
+            RawInputModifiers.Control | RawInputModifiers.Shift,
+            PhysicalKey.L,
+            "l");
+        var panel = window.FindControl<Border>("AccessibleListPanel")!;
+        var list = window.FindControl<ListBox>("AccessibleNodesList")!;
+        Assert.True(panel.IsVisible);
+        Assert.Equal(2, list.ItemCount);
+
+        list.SelectedIndex = 1;
+        Assert.Equal(child.Id, session.SelectedNode!.Id);
+        await session.SearchAsync("match");
+        var selected = list.SelectedItem;
+        Assert.NotNull(selected);
+        var state = selected.GetType().GetProperty("StateText")!.GetValue(selected) as string;
+        Assert.Contains("MATCH", state);
+
+        window.FindControl<Button>("AccessibleOpenButton")!
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.Equal(child.Path, session.CurrentPath);
+        Assert.Equal(child.Path, window.FindControl<TextBlock>("AccessibleFocusText")!.Text);
+
+        window.FindControl<Button>("AccessibleBackButton")!
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.Equal(root, session.CurrentPath);
+        Assert.True(panel.IsVisible);
+    }
+
+    [AvaloniaTheory]
+    [InlineData(1.0)]
+    [InlineData(1.25)]
+    [InlineData(1.5)]
+    [InlineData(2.0)]
+    public async Task RepresentativeTextScale_KeepsHudListAndGraphUsable(double scale)
+    {
+        using var window = CreateWindow(out var session, out _);
+        window.FontSize = 13 * scale;
+        window.Show();
+        var root = Path.Combine(Path.GetTempPath(), $"OmniBrilleScale-{scale:0.00}");
+        var provider = new DenseProvider(root, 47);
+        await session.OpenRootAsync(provider, provider);
+        var graph = window.FindControl<GraphSceneControl>("GraphScene")!;
+        graph.TextScale = scale;
+        graph.ResetView();
+        window.FindControl<Button>("AccessibleListButton")!
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        using (window.CaptureRenderedFrame())
+        {
+        }
+
+        Assert.True(window.FindControl<Button>("ChooseFolderButton")!.Bounds.Height > 0);
+        Assert.True(window.FindControl<TextBox>("SearchBox")!.Bounds.Height > 0);
+        Assert.True(window.FindControl<Border>("AccessibleListPanel")!.IsVisible);
+        Assert.True(window.FindControl<ListBox>("AccessibleNodesList")!.Bounds.Height > 0);
+        Assert.True(graph.Diagnostics.Labels <= GraphPresentationPolicy.RecommendedLabelBudget(1, 48, scale));
+        Assert.Equal(scale, graph.Diagnostics.TextScale, 3);
+    }
+
+    [AvaloniaFact]
+    public async Task ReducedMotion_StopsSceneAnimationAndSimplifiesDataRain()
+    {
+        using var window = CreateWindow(out var session, out _);
+        window.Show();
+        window.FindControl<Button>("SettingsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        window.FindControl<CheckBox>("ReducedMotionToggle")!.IsChecked = true;
+        window.FindControl<CheckBox>("ReducedEffectsToggle")!.IsChecked = true;
+        var root = Path.Combine(Path.GetTempPath(), "OmniBrilleReducedMotion");
+        var provider = new DeferredProvider(root);
+
+        var opening = session.OpenRootAsync(provider, provider);
+        using (window.CaptureRenderedFrame())
+        {
+        }
+
+        var graph = window.FindControl<GraphSceneControl>("GraphScene")!;
+        var rain = window.FindControl<DataRainControl>("DataRain")!;
+        Assert.False(graph.Diagnostics.AnimationActive);
+        Assert.True(rain.Diagnostics.IsActive);
+        Assert.InRange(rain.Diagnostics.RenderedTokens, 1, 6);
+
+        provider.Complete(new ExplorerDirectorySnapshot(Entry(root, ExplorerNodeKind.Folder), []));
+        await opening;
+        Assert.False(rain.Diagnostics.IsActive);
+    }
+
+    [AvaloniaFact]
+    public async Task SearchHighlight_ReducedEffectsLowersDecorativeRenderCost()
+    {
+        using var window = CreateWindow(out var session, out _);
+        window.Show();
+        var root = Path.Combine(Path.GetTempPath(), "OmniBrilleReducedEffectsProfile");
+        var provider = new DenseProvider(root, 180);
+        await session.OpenRootAsync(provider, provider);
+        await session.SearchAsync("item");
+        var graph = window.FindControl<GraphSceneControl>("GraphScene")!;
+        graph.ReducedMotion = true;
+        graph.ReducedEffects = false;
+        graph.SetScene(session.Neighborhood, session.SelectedNode?.Id, session.HighlightedNodeIds, animate: false);
+        using (window.CaptureRenderedFrame())
+        {
+        }
+
+        var full = graph.Diagnostics;
+        graph.ReducedEffects = true;
+        graph.InvalidateVisual();
+        using (window.CaptureRenderedFrame())
+        {
+        }
+
+        var reduced = graph.Diagnostics;
+        Assert.Equal(full.Nodes, reduced.Nodes);
+        Assert.Equal(full.Labels, reduced.Labels);
+        Assert.True(reduced.EdgeDuration < full.EdgeDuration);
+        _output.WriteLine(
+            $"search-effects: full={full.LastRenderDuration.TotalMilliseconds:0.000} ms, " +
+            $"reduced={reduced.LastRenderDuration.TotalMilliseconds:0.000} ms, " +
+            $"full-edge={full.EdgeDuration.TotalMilliseconds:0.000} ms, " +
+            $"reduced-edge={reduced.EdgeDuration.TotalMilliseconds:0.000} ms");
+    }
+
+    [AvaloniaFact]
+    public async Task SyntheticContextDensity_RemainsInsideDocumentedCombinedBudget()
+    {
+        using var window = CreateWindow(out var session, out _);
+        window.Show();
+        var root = Path.Combine(Path.GetTempPath(), "OmniBrilleContextDensity");
+        var provider = new DenseProvider(root, 180);
+        await session.OpenRootAsync(provider, provider);
+        var neighborhood = session.Neighborhood!;
+        var ids = neighborhood.Nodes.Select(node => node.Id).ToArray();
+        var candidates = Enumerable.Range(0, 500).Select(index => new ContextRelationshipCandidate(
+            $"context-{index:D3}",
+            ids[index % ids.Length],
+            ids[(index + 7 + (index / ids.Length)) % ids.Length],
+            1 - (index / 500d),
+            TouchesFocus: index % 11 == 0));
+        var relationships = ContextRenderBudgetPolicy.SelectRelationships(candidates, neighborhood.Edges.Count);
+        var synthetic = neighborhood with
+        {
+            Edges = neighborhood.Edges
+                .Concat(relationships.Select(item => new ExplorerEdge(item.SourceId, item.TargetId)))
+                .ToArray(),
+        };
+        var graph = window.FindControl<GraphSceneControl>("GraphScene")!;
+        graph.ReducedMotion = true;
+        graph.SetScene(synthetic, session.SelectedNode?.Id, new HashSet<string>(), animate: false);
+        using (window.CaptureRenderedFrame())
+        {
+        }
+        graph.InvalidateVisual();
+        using (window.CaptureRenderedFrame())
+        {
+        }
+
+        var diagnostics = graph.Diagnostics;
+        Assert.Equal(48, diagnostics.Nodes);
+        Assert.True(diagnostics.Edges <= ContextRenderBudgetPolicy.Default.MaximumCombinedEdges);
+        Assert.True(relationships.Count <= ContextRenderBudgetPolicy.Default.MaximumContextualEdges);
+        _output.WriteLine(
+            $"context-density: nodes={diagnostics.Nodes}, structural={neighborhood.Edges.Count}, " +
+            $"contextual={relationships.Count}, combined={diagnostics.Edges}, " +
+            $"render={diagnostics.LastRenderDuration.TotalMilliseconds:0.000} ms, " +
+            $"edges={diagnostics.EdgeDuration.TotalMilliseconds:0.000} ms, " +
+            $"label-prep={diagnostics.LabelPreparationDuration.TotalMilliseconds:0.000} ms, " +
+            $"label-draw={diagnostics.LabelDrawDuration.TotalMilliseconds:0.000} ms, " +
+            $"alloc={diagnostics.RenderAllocatedBytes:N0} B");
+    }
+
+    [AvaloniaTheory]
+    [InlineData(32)]
+    [InlineData(48)]
+    [InlineData(64)]
+    public async Task CandidateSceneBudget_ProfilesRemainBounded(int nodeBudget)
+    {
+        var session = new ExplorerSession(new GraphNeighborhoodBuilder(nodeBudget));
+        var store = new MemoryPreferencesStore();
+        using var window = new MainWindow(session, store);
+        window.Show();
+        var root = Path.Combine(Path.GetTempPath(), $"OmniBrilleBudget-{nodeBudget}");
+        var provider = new DenseProvider(root, 180);
+        await session.OpenRootAsync(provider, provider);
+        var graph = window.FindControl<GraphSceneControl>("GraphScene")!;
+        graph.ReducedMotion = true;
+        graph.SetScene(session.Neighborhood, session.SelectedNode?.Id, new HashSet<string>(), animate: false);
+        using (window.CaptureRenderedFrame())
+        {
+        }
+
+        Assert.Equal(nodeBudget, graph.Diagnostics.Nodes);
+        Assert.Equal(nodeBudget - 1, graph.Diagnostics.Edges);
+        _output.WriteLine(
+            $"budget-{nodeBudget}: render={graph.Diagnostics.LastRenderDuration.TotalMilliseconds:0.000} ms, " +
+            $"labels={graph.Diagnostics.Labels}, alloc={graph.Diagnostics.RenderAllocatedBytes:N0} B");
+    }
+
     [AvaloniaTheory]
     [InlineData(12, false, "small")]
     [InlineData(47, false, "medium")]
@@ -193,6 +427,13 @@ public sealed class MainWindowHeadlessTests
             $"labels={diagnostics.Labels}, layout={diagnostics.LayoutDuration.TotalMilliseconds:0.000} ms, " +
             $"prep={diagnostics.ScenePreparationDuration.TotalMilliseconds:0.000} ms, " +
             $"render={diagnostics.LastRenderDuration.TotalMilliseconds:0.000} ms, " +
+            $"background={diagnostics.BackgroundDuration.TotalMilliseconds:0.000} ms, " +
+            $"edges={diagnostics.EdgeDuration.TotalMilliseconds:0.000} ms, " +
+            $"glyphs={diagnostics.GlyphDuration.TotalMilliseconds:0.000} ms, " +
+            $"label-prep={diagnostics.LabelPreparationDuration.TotalMilliseconds:0.000} ms, " +
+            $"collision={diagnostics.LabelCollisionDuration.TotalMilliseconds:0.000} ms, " +
+            $"label-draw={diagnostics.LabelDrawDuration.TotalMilliseconds:0.000} ms, " +
+            $"alloc={diagnostics.RenderAllocatedBytes:N0} B, " +
             $"load={session.LastLoadDuration.TotalMilliseconds:0.000} ms");
     }
 

@@ -21,6 +21,7 @@ public sealed partial class MainWindow : Window, IDisposable
     private ExplorerNeighborhood? _lastRenderedNeighborhood;
     private bool _detailsDismissed;
     private bool _isApplyingPreferences;
+    private bool _isSynchronizingAccessibleList;
     private bool _isDisposed;
 
     public MainWindow()
@@ -58,6 +59,11 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         _session.StateChanged += OnSessionStateChanged;
+        AccessibleNodesList.AddHandler(
+            InputElement.KeyDownEvent,
+            OnAccessibleNodesKeyDown,
+            RoutingStrategies.Tunnel,
+            handledEventsToo: true);
         GraphScene.NodeSelected += OnGraphNodeSelected;
         GraphScene.NodeActivated += OnGraphNodeActivated;
         GraphScene.BackRequested += async (_, _) => await GoBackAsync();
@@ -252,6 +258,7 @@ public sealed partial class MainWindow : Window, IDisposable
         SettingsPanel.IsVisible = !SettingsPanel.IsVisible;
         if (SettingsPanel.IsVisible)
         {
+            AccessibleListPanel.IsVisible = false;
             _detailsDismissed = true;
             DetailsPanel.IsVisible = false;
             ReducedMotionToggle.Focus();
@@ -283,6 +290,71 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private void OnCancelClick(object? sender, RoutedEventArgs e) => _session.CancelOperations();
 
+    private void OnAccessibleListClick(object? sender, RoutedEventArgs e)
+    {
+        AccessibleListPanel.IsVisible = !AccessibleListPanel.IsVisible;
+        if (AccessibleListPanel.IsVisible)
+        {
+            SettingsPanel.IsVisible = false;
+            SearchResultsPanel.IsVisible = false;
+            SynchronizeAccessibleList();
+            AccessibleNodesList.Focus();
+        }
+        else
+        {
+            GraphScene.Focus();
+            UpdateView();
+        }
+    }
+
+    private void OnAccessibleNodeSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_isSynchronizingAccessibleList || AccessibleNodesList.SelectedItem is not AccessibleNodeItem item)
+        {
+            return;
+        }
+
+        _detailsDismissed = false;
+        _session.SelectNode(item.NodeId);
+    }
+
+    private async void OnAccessibleNodeDoubleTapped(object? sender, TappedEventArgs e) =>
+        await ActivateSelectedAccessibleNodeAsync();
+
+    private async void OnOpenAccessibleNodeClick(object? sender, RoutedEventArgs e) =>
+        await ActivateSelectedAccessibleNodeAsync();
+
+    private async void OnAccessibleNodesKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            await ActivateSelectedAccessibleNodeAsync();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Back)
+        {
+            await GoBackAsync();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            AccessibleListPanel.IsVisible = false;
+            GraphScene.Focus();
+            e.Handled = true;
+        }
+    }
+
+    private async Task ActivateSelectedAccessibleNodeAsync()
+    {
+        if (AccessibleNodesList.SelectedItem is not AccessibleNodeItem item)
+        {
+            SetTransientStatus("Select a structural item first.");
+            return;
+        }
+
+        await ActivateNodeAsync(item.NodeId);
+    }
+
     private void OnGraphNodeSelected(object? sender, string nodeId)
     {
         _detailsDismissed = false;
@@ -292,8 +364,13 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private async void OnGraphNodeActivated(object? sender, string nodeId)
     {
+        await ActivateNodeAsync(nodeId);
+    }
+
+    private async Task ActivateNodeAsync(string nodeId)
+    {
         var node = _session.Neighborhood?.Nodes.FirstOrDefault(item =>
-            StringComparer.OrdinalIgnoreCase.Equals(item.Id, nodeId));
+            ExplorerIdentity.Equals(item.Id, nodeId));
         if (node is null)
         {
             return;
@@ -332,6 +409,13 @@ public sealed partial class MainWindow : Window, IDisposable
         else if ((e.Key == Key.Left && e.KeyModifiers.HasFlag(KeyModifiers.Alt)) || e.Key == Key.BrowserBack)
         {
             _ = GoBackAsync();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.L &&
+                 e.KeyModifiers.HasFlag(KeyModifiers.Control) &&
+                 e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+        {
+            OnAccessibleListClick(AccessibleListButton, new RoutedEventArgs());
             e.Handled = true;
         }
         else if (e.Key == Key.Escape)
@@ -373,13 +457,16 @@ public sealed partial class MainWindow : Window, IDisposable
 
         var results = _session.SearchResult;
         SearchResultsList.ItemsSource = results?.Hits;
-        SearchResultsPanel.IsVisible = results is not null && _session.SearchQuery.Length > 0;
+        SearchResultsPanel.IsVisible = results is not null &&
+            _session.SearchQuery.Length > 0 &&
+            !AccessibleListPanel.IsVisible;
         SearchSummaryText.Text = results is null
             ? "Search results"
             : $"{results.Hits.Count:N0} MATCHES{(results.WasTruncated ? " · BOUNDED" : string.Empty)}";
 
         GraphScene.ReducedMotion = _preferences.ReducedMotion;
         GraphScene.ReducedEffects = _preferences.ReducedEffects;
+        GraphScene.TextScale = Math.Clamp(FontSize / 13d, 1, 2);
         GraphScene.SearchActive = results is not null && _session.SearchQuery.Length > 0;
         DataRain.ReducedMotion = _preferences.ReducedMotion;
         DataRain.ReducedEffects = _preferences.ReducedEffects;
@@ -390,6 +477,7 @@ public sealed partial class MainWindow : Window, IDisposable
             _session.HighlightedNodeIds,
             animate: neighborhoodChanged && !_preferences.ReducedMotion);
         _lastRenderedNeighborhood = neighborhood;
+        SynchronizeAccessibleList();
         DiagnosticsPanel.IsVisible = _preferences.DiagnosticsVisible;
         UpdateDiagnostics();
     }
@@ -466,16 +554,66 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         var diagnostics = GraphScene.Diagnostics;
+        var rainDiagnostics = DataRain.Diagnostics;
         DiagnosticsText.Text = string.Create(
             CultureInfo.InvariantCulture,
             $"nodes {diagnostics.Nodes}/{_session.SceneBudget}  edges {diagnostics.Edges}  labels {diagnostics.Labels}  zoom {diagnostics.Zoom:0.00}\n" +
-            $"layout {diagnostics.LayoutDuration.TotalMilliseconds:0.00} ms  prep {diagnostics.ScenePreparationDuration.TotalMilliseconds:0.00} ms  render {diagnostics.LastRenderDuration.TotalMilliseconds:0.00} ms  load {_session.LastLoadDuration.TotalMilliseconds:0.0} ms");
+            $"layout {diagnostics.LayoutDuration.TotalMilliseconds:0.00} ms  prep {diagnostics.ScenePreparationDuration.TotalMilliseconds:0.00} ms  render {diagnostics.LastRenderDuration.TotalMilliseconds:0.00} ms  load {_session.LastLoadDuration.TotalMilliseconds:0.0} ms\n" +
+            $"bg {diagnostics.BackgroundDuration.TotalMilliseconds:0.00}  edge {diagnostics.EdgeDuration.TotalMilliseconds:0.00}  glyph {diagnostics.GlyphDuration.TotalMilliseconds:0.00}  label {diagnostics.LabelPreparationDuration.TotalMilliseconds + diagnostics.LabelDrawDuration.TotalMilliseconds:0.00} ms\n" +
+            $"alloc {diagnostics.RenderAllocatedBytes / 1024d:0.0} KiB  caches text {diagnostics.TextCacheEntries}/256 resources {diagnostics.ResourceCacheEntries}/576  rain {rainDiagnostics.RenderedTokens} @ {rainDiagnostics.LastRenderDuration.TotalMilliseconds:0.00} ms");
     }
 
     private void ClearSearch()
     {
         SearchBox.Text = string.Empty;
         _session.ClearSearch();
+    }
+
+    private void SynchronizeAccessibleList()
+    {
+        var neighborhood = _session.Neighborhood;
+        AccessibleFocusText.Text = neighborhood?.Focus.Path ?? "No folder selected";
+        var selectedId = _session.SelectedNode?.Id;
+        var highlights = _session.HighlightedNodeIds;
+        var items = neighborhood?.Nodes.Select(node =>
+        {
+            var isFocus = ExplorerIdentity.Equals(node.Id, neighborhood.FocusNodeId);
+            var isSelected = ExplorerIdentity.Equals(node.Id, selectedId);
+            var isMatch = highlights.Contains(node.Id);
+            var state = string.Join(" · ", new[]
+            {
+                isFocus ? "FOCUS" : null,
+                isMatch ? "MATCH" : null,
+                isSelected ? "SELECTED" : null,
+            }.Where(value => value is not null));
+            var kind = node.Kind switch
+            {
+                ExplorerNodeKind.Context => "Previous folder",
+                ExplorerNodeKind.Aggregate => "Aggregate",
+                ExplorerNodeKind.Folder => "Folder",
+                ExplorerNodeKind.File => "File",
+                _ => "Node",
+            };
+            var accessibleState = state.Length == 0 ? string.Empty : $", {state.ToLowerInvariant()}";
+            return new AccessibleNodeItem(
+                node.Id,
+                node.Name,
+                $"{kind} · {node.Path}",
+                state,
+                $"{node.Name}, {kind}{accessibleState}");
+        }).ToArray() ?? [];
+
+        _isSynchronizingAccessibleList = true;
+        try
+        {
+            AccessibleNodesList.ItemsSource = items;
+            AccessibleNodesList.SelectedItem = items.FirstOrDefault(item =>
+                ExplorerIdentity.Equals(item.NodeId, selectedId));
+        }
+        finally
+        {
+            _isSynchronizingAccessibleList = false;
+        }
     }
 
     private void DismissTransientSurfaces()
@@ -486,6 +624,7 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         SettingsPanel.IsVisible = false;
+        AccessibleListPanel.IsVisible = false;
         _detailsDismissed = true;
         DetailsPanel.IsVisible = false;
         if (_session.SearchResult is not null)
@@ -528,4 +667,11 @@ public sealed partial class MainWindow : Window, IDisposable
 
         return $"{value:0.#} {units[unit]}";
     }
+
+    private sealed record AccessibleNodeItem(
+        string NodeId,
+        string Name,
+        string Description,
+        string StateText,
+        string AccessibleName);
 }

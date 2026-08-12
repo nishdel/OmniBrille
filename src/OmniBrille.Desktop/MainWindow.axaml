@@ -4,18 +4,20 @@
         x:Class="OmniBrille.Desktop.MainWindow"
         x:CompileBindings="False"
         Title="OmniBrille — Structure"
+        FontSize="13"
         Width="980"
         Height="600"
         MinWidth="820"
         MinHeight="520"
         WindowStartupLocation="CenterScreen">
-  <Grid RowDefinitions="72,*,38">
+  <Grid RowDefinitions="Auto,*,Auto">
     <Border Grid.Row="0"
             Background="{DynamicResource SurfaceStrongBrush}"
             BorderBrush="{DynamicResource BorderBrush}"
             BorderThickness="0,0,0,1"
             Padding="16,12">
-      <Grid ColumnDefinitions="Auto,Auto,18,*,Auto,Auto,Auto" ColumnSpacing="8">
+      <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+      <Grid ColumnDefinitions="Auto,Auto,8,*,Auto,Auto,Auto,Auto" ColumnSpacing="8">
         <Button x:Name="ChooseFolderButton"
                 Grid.Column="0"
                 Classes="hud"
@@ -36,7 +38,7 @@
                 AutomationProperties.Name="Navigate back"
                 AutomationProperties.HelpText="Returns to the aggregate overview or previous folder." />
 
-        <Grid Grid.Column="3" ColumnDefinitions="*,Auto" Width="300" HorizontalAlignment="Center">
+        <Grid Grid.Column="3" ColumnDefinitions="*,Auto" MinWidth="160" MaxWidth="300" HorizontalAlignment="Stretch">
           <TextBox x:Name="SearchBox"
                    Grid.Column="0"
                    Classes="hud"
@@ -70,13 +72,22 @@
           <ComboBoxItem Content="Light" />
         </ComboBox>
 
-        <Button x:Name="SettingsButton"
+        <Button x:Name="AccessibleListButton"
                 Grid.Column="6"
+                Classes="hud"
+                Content="List"
+                Click="OnAccessibleListClick"
+                AutomationProperties.Name="Open accessible navigation list"
+                AutomationProperties.HelpText="Opens a keyboard and screen-reader friendly view of the same bounded graph scene." />
+
+        <Button x:Name="SettingsButton"
+                Grid.Column="7"
                 Classes="hud"
                 Content="Settings"
                 Click="OnSettingsClick"
                 AutomationProperties.Name="Visual settings" />
       </Grid>
+      </ScrollViewer>
     </Border>
 
     <Grid Grid.Row="1">
@@ -161,6 +172,56 @@
             </ListBox.ItemTemplate>
           </ListBox>
           <Button Grid.Row="2" Classes="hud" Margin="4,8,4,2" Content="Focus selected result" Click="OnFocusSearchResultClick" />
+        </Grid>
+      </Border>
+
+      <Border x:Name="AccessibleListPanel"
+              IsVisible="False"
+              Width="370"
+              MaxHeight="450"
+              HorizontalAlignment="Left"
+              VerticalAlignment="Top"
+              Margin="16,82,0,0"
+              Padding="12"
+              Background="{DynamicResource SurfaceStrongBrush}"
+              BorderBrush="{DynamicResource BorderBrush}"
+              BorderThickness="1"
+              CornerRadius="4"
+              AutomationProperties.Name="Accessible structural navigation">
+        <Grid RowDefinitions="Auto,Auto,*,Auto">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="ACCESSIBLE NAVIGATION" FontSize="10" LetterSpacing="1.5" Foreground="{DynamicResource AccentBrush}" />
+            <Button Grid.Column="1" Classes="hud compact" Content="×" Click="OnAccessibleListClick" AutomationProperties.Name="Close accessible navigation list" />
+          </Grid>
+          <StackPanel Grid.Row="1" Margin="4,8,4,7">
+            <TextBlock Text="CURRENT FOCUS" FontSize="9" LetterSpacing="1.2" Foreground="{DynamicResource SecondaryTextBrush}" />
+            <TextBlock x:Name="AccessibleFocusText" Text="No folder selected" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+          <ListBox x:Name="AccessibleNodesList"
+                   Grid.Row="2"
+                   Background="Transparent"
+                   BorderThickness="0"
+                   SelectionChanged="OnAccessibleNodeSelectionChanged"
+                   DoubleTapped="OnAccessibleNodeDoubleTapped"
+                   AutomationProperties.Name="Visible structural graph nodes"
+                   AutomationProperties.HelpText="Use arrows to select, Enter to open, and Backspace to return.">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <Grid Margin="4,5" RowDefinitions="Auto,Auto" AutomationProperties.Name="{Binding AccessibleName}">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="1" Text="{Binding StateText}" Margin="8,0,0,0" FontSize="9" Foreground="{DynamicResource AccentBrush}" />
+                  </Grid>
+                  <TextBlock Grid.Row="1" Text="{Binding Description}" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <Grid Grid.Row="3" ColumnDefinitions="*,*,Auto" ColumnSpacing="6" Margin="4,8,4,2">
+            <Button x:Name="AccessibleBackButton" Classes="hud" Content="Back" Click="OnBackClick" AutomationProperties.Name="Navigate back from accessible list" />
+            <Button x:Name="AccessibleOpenButton" Grid.Column="1" Classes="hud" Content="Open selected" Click="OnOpenAccessibleNodeClick" AutomationProperties.Name="Open selected structural node" />
+            <TextBlock Grid.Column="2" Text="Ctrl+Shift+L" FontSize="9" Foreground="{DynamicResource SecondaryTextBrush}" VerticalAlignment="Center" />
+          </Grid>
         </Grid>
       </Border>
 
@@ -297,7 +358,7 @@
         <TextBlock Text="STRUCTURE" FontSize="9" LetterSpacing="1.6" Foreground="{DynamicResource AccentBrush}" />
         <TextBlock x:Name="StatusText" Grid.Column="1" Margin="18,0" Text="Choose a folder to begin. Only that location will be accessible."
                    TextTrimming="CharacterEllipsis" Foreground="{DynamicResource SecondaryTextBrush}" AutomationProperties.LiveSetting="Polite" />
-        <TextBlock Grid.Column="2" Text="Enter open · Backspace back · +/− zoom · Ctrl+F search" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
+        <TextBlock Grid.Column="2" Text="Enter open · Backspace back · Ctrl+F search · Ctrl+Shift+L list" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
       </Grid>
     </Border>
   </Grid>

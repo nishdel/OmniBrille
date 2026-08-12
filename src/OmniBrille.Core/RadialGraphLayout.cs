@@ -23,7 +23,7 @@ public sealed class RadialGraphLayout : IGraphLayoutEngine
     {
         ArgumentNullException.ThrowIfNull(neighborhood);
 
-        var result = new Dictionary<string, GraphLayoutNode>(StringComparer.OrdinalIgnoreCase)
+        var result = new Dictionary<string, GraphLayoutNode>(ExplorerIdentity.Comparer)
         {
             [neighborhood.FocusNodeId] = new(neighborhood.FocusNodeId, 0, 0, 1.34, 1, 0),
         };
@@ -38,7 +38,8 @@ public sealed class RadialGraphLayout : IGraphLayoutEngine
             .Where(node => node.Id != neighborhood.FocusNodeId && node.Kind != ExplorerNodeKind.Context)
             .OrderBy(node => node.Kind == ExplorerNodeKind.Aggregate ? 0 : node.Kind == ExplorerNodeKind.Folder ? 1 : 2)
             .ThenBy(node => node.Name, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(node => node.Id, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(node => node.Name, StringComparer.Ordinal)
+            .ThenBy(node => node.Id, ExplorerIdentity.Comparer)
             .ToArray();
         var slots = CreateSlots(children.Length);
         var occupiedSlots = new HashSet<int>();

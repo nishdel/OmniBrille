@@ -16,7 +16,8 @@ public sealed record GraphPresentationContext(
     string? HoveredNodeId,
     IReadOnlySet<string> HighlightedNodeIds,
     bool SearchActive,
-    bool ReducedEffects);
+    bool ReducedEffects,
+    double TextScale = 1);
 
 public sealed record GraphNodePresentation(
     GraphLevelOfDetail LevelOfDetail,
@@ -73,7 +74,8 @@ public static class GraphPresentationPolicy
             : 340;
         var required = isFocus || isSelected || isHighlighted || isHovered;
         var effectiveScale = layout.Scale * Math.Clamp(context.Zoom, 0.5, 2.4);
-        var densityPenalty = context.SceneNodeCount > 36 ? 0.1 : 0;
+        var densityPenalty = (context.SceneNodeCount > 36 ? 0.1 : 0) +
+            (Math.Clamp(context.TextScale, 1, 2) - 1) * 0.16;
 
         var level = required || isFocus
             ? GraphLevelOfDetail.Focused
@@ -121,7 +123,7 @@ public static class GraphPresentationPolicy
         foreach (var candidate in candidates
                      .OrderByDescending(item => item.IsRequired)
                      .ThenByDescending(item => item.Priority)
-                     .ThenBy(item => item.NodeId, StringComparer.OrdinalIgnoreCase))
+                     .ThenBy(item => item.NodeId, ExplorerIdentity.Comparer))
         {
             if (!candidate.IsRequired && accepted.Count >= maximumLabels)
             {
@@ -136,24 +138,26 @@ public static class GraphPresentationPolicy
             accepted.Add(candidate);
         }
 
-        return accepted.Select(item => item.NodeId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return accepted.Select(item => item.NodeId).ToHashSet(ExplorerIdentity.Comparer);
     }
 
-    public static int RecommendedLabelBudget(double zoom, int sceneNodeCount)
+    public static int RecommendedLabelBudget(double zoom, int sceneNodeCount, double textScale = 1)
     {
+        var scale = Math.Clamp(textScale, 1, 2);
+        var scaleLimit = scale >= 1.75 ? 10 : scale >= 1.4 ? 14 : scale >= 1.15 ? 18 : int.MaxValue;
         if (zoom < 0.7)
         {
-            return Math.Min(10, sceneNodeCount);
+            return Math.Min(scaleLimit, Math.Min(10, sceneNodeCount));
         }
 
         if (zoom > 1.35)
         {
-            return Math.Min(34, sceneNodeCount);
+            return Math.Min(scaleLimit, Math.Min(34, sceneNodeCount));
         }
 
-        return Math.Min(sceneNodeCount <= 24 ? 24 : 22, sceneNodeCount);
+        return Math.Min(scaleLimit, Math.Min(sceneNodeCount <= 24 ? 24 : 22, sceneNodeCount));
     }
 
     private static bool EqualsId(string left, string? right) =>
-        right is not null && StringComparer.OrdinalIgnoreCase.Equals(left, right);
+        right is not null && ExplorerIdentity.Equals(left, right);
 }
