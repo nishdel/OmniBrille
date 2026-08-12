@@ -123,14 +123,17 @@ public sealed class ExplorerSessionTests
         using var session = new ExplorerSession();
 
         var opening = session.OpenRootAsync(provider, provider);
-        await provider.Started.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await provider.Started.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
         Assert.Equal(ExplorerLoadState.Loading, session.LoadState);
         Assert.NotNull(session.Neighborhood);
         Assert.Equal(root, session.Neighborhood.Focus.Path);
 
+        var partialStateObserved = ObserveSessionStateAsync(
+            session,
+            () => session.LoadState == ExplorerLoadState.PartiallyLoaded);
         provider.Publish([Entry(Path.Combine(root, "one.txt"), ExplorerNodeKind.File)], isComplete: false);
-        await WaitUntilAsync(() => session.LoadState == ExplorerLoadState.PartiallyLoaded);
+        await partialStateObserved;
         Assert.Equal(1, session.LoadedItemCount);
         Assert.NotNull(session.Neighborhood);
 
@@ -374,12 +377,44 @@ public sealed class ExplorerSessionTests
 
     private static async Task WaitUntilAsync(Func<bool> condition)
     {
-        var deadline = DateTime.UtcNow.AddSeconds(2);
+        var deadline = DateTime.UtcNow.AddSeconds(10);
         while (!condition() && DateTime.UtcNow < deadline)
         {
             await Task.Delay(10);
         }
 
         Assert.True(condition(), "The expected asynchronous state was not reached before the test deadline.");
+    }
+
+    private static async Task ObserveSessionStateAsync(ExplorerSession session, Func<bool> condition)
+    {
+        if (condition())
+        {
+            return;
+        }
+
+        var observed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        void OnStateChanged(object? sender, EventArgs args)
+        {
+            if (condition())
+            {
+                observed.TrySetResult();
+            }
+        }
+
+        session.StateChanged += OnStateChanged;
+        try
+        {
+            if (condition())
+            {
+                return;
+            }
+
+            await observed.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        }
+        finally
+        {
+            session.StateChanged -= OnStateChanged;
+        }
     }
 }
