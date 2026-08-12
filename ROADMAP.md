@@ -21,26 +21,28 @@ Status language is intentionally conservative: checked items exist in the applic
 - [x] Persisted reduced motion, reduced visual effects, and optional local diagnostics.
 - [x] Improved automation metadata, keyboard conventions, and Avalonia headless UI tests.
 
-## Stage 3 — Renderer performance and inclusive navigation
+## Stage 3 — Performance, accessibility, cross-platform hardening, and Context readiness (complete)
 
-- [ ] Profile representative integrated-GPU and weaker-hardware configurations.
-- [ ] Cache measured text/icon/background hotspots and introduce dynamic effects tiers only where justified.
-- [ ] Add a complete keyboard/list navigation alternative and per-node automation peers.
-- [ ] Formal contrast, platform text scaling, screen-reader, and reduced-motion validation.
-- [ ] Cross-platform interaction/rendering hardening.
+- [x] Phase-level renderer profiling and bounded caches for the measured text/resource hotspot.
+- [x] Explicit local performance targets and 32/48/64 scene-budget review; 48 remains the readability default.
+- [x] Complete synchronized keyboard/list navigation alternative and bounded visible-node automation peers.
+- [x] Structured contrast review, 100/125/150/200% text-scale tests, and reduced-motion/effects validation.
+- [x] Native path-case semantics, opaque case-sensitive IDs, and Windows/Ubuntu CI.
+- [x] Profile-backed Context renderer limits, relationship priority, provenance seam, and synthetic density tests.
 
-## Stage 4 — Structural search maturation
+## Stage 4 — OmniSorSe protocol foundation (recommended next)
 
+- [ ] Write the transport/security ADR and implement only the versioned explorer contract plus handshake/capability negotiation.
+- [ ] Add a connected provider behind existing explorer/search abstractions with cancellation, request IDs, scope enforcement, and clear offline/incompatible states.
+- [ ] Keep standalone mode fully independent and never read OmniSorSe SQLite or reference OmniSorSe internals.
+- [ ] Validate bounded Structure neighborhoods and search through the adapter before exposing any Context UI.
+
+## Stage 5 — Connected Structure and Search maturation
+
+- [ ] Accessible roots/current scope, neighborhoods, search, and node details.
 - [ ] Filter chips, structural metadata/ranking, and clearer very-large-root progress.
 - [ ] Persisted opt-in recent roots/session restoration without widening access silently.
 - [ ] Optional non-recursive structural filters for aggregate refinement.
-
-## Stage 5 — OmniSorSe integration
-
-- [ ] Versioned local protocol and capability negotiation.
-- [ ] Accessible roots/current scope, neighborhoods, search, and node details.
-- [ ] Connected provider adapter with clear offline/failure states.
-- [ ] No direct SQLite, indexer, or OmniSorSe-internal dependency.
 
 ## Stage 6 — Context mode
 

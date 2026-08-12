@@ -8,7 +8,7 @@ The future local integration should be a tiny, versioned contract—conceptually
 
 `OmniSorSe.ExplorerProtocol` remains the preferred conceptual package name. It describes the stable role of the contract rather than the current name of a particular client, so future product renames do not force protocol churn. `OmniSorSe.NavProtocol` and `OmniSorSe.OmniBrilleProtocol` were considered but would either be less precise or couple the contract to one application. Domain DTO names such as `ExplorerNode`, `ExplorerEdge`, and `ExplorerNeighborhood` remain semantically strong for the same reason.
 
-No protocol project, transport, package, or server is created by this rename.
+No protocol project, transport, package, client, or server exists in Stage 3.
 
 ## Responsibilities
 
@@ -24,7 +24,15 @@ Likely operations are:
 - `GetNodeDetails(nodeId)`;
 - `Search(query, mode)`.
 
-Every neighborhood/search operation must be bounded, cancellable, and scoped to roots OmniSorSe declares accessible. Results should carry stable opaque node IDs, provenance for non-structural relationships, truncation information, and user-safe failure codes.
+Every neighborhood/search operation must be bounded, cancellable, and scoped to roots OmniSorSe declares accessible. Requests should carry a unique request ID, expected scope/focus, explicit node/edge limits, and cancellation semantics. Results should carry case-sensitive stable opaque node and relationship IDs, relationship type/importance, provider-authored reason/provenance for non-structural relationships, truncation/completion information, and user-safe failure codes.
+
+The handshake must negotiate protocol major/minor version and optional capabilities. Incompatible major versions fail closed with a clear user-facing state; optional operations are never assumed. OmniSorSe remains authoritative for accessible roots, current scope, search, contextual relationships, and provenance.
+
+Large or expensive operations may return an internally consistent bounded initial snapshot followed by bounded incremental pages or explicitly versioned replacement snapshots. Every update must identify its request and scene revision so OmniBrille can discard cancelled/obsolete work. A late response for a prior focus must never replace the current scene.
+
+Provider limits and renderer limits are separate. OmniBrille supplies its current renderer envelope with requests and enforces it again on receipt. Stage 3 defaults are 48 combined visible nodes, 36 contextual edges, 84 combined edge slots, and three contextual edges touching one visible node; see [the future Context rendering contract](context-rendering-contract.md). These values may evolve through profiling without changing protocol identity, so the wire format must carry requested/returned limits rather than assuming constants.
+
+Relationship reason/provenance must be available on demand without requiring labels on every edge. A future details request may return a concise human-readable reason plus structured evidence references. Missing, redacted, or unsupported provenance is explicit and must not be fabricated by OmniBrille.
 
 ## Forbidden contents
 
@@ -36,6 +44,6 @@ The protocol must not expose or contain:
 - renderer/layout/theme types;
 - arbitrary unrestricted filesystem paths as an authority bypass.
 
-Transport is deliberately undecided. Before implementation, write an ADR comparing named pipes/local sockets and a loopback authenticated endpoint for lifecycle, security, streaming/cancellation, diagnostics, and cross-platform behavior. The handshake must reject incompatible major versions and negotiate optional capabilities rather than assuming them.
+Transport is deliberately undecided. Before implementation, write an ADR comparing named pipes/local sockets and a loopback authenticated endpoint for lifecycle, security, streaming/cancellation, diagnostics, authentication, and cross-platform behavior.
 
 Standalone mode remains fully usable without this protocol or any OmniSorSe installation.

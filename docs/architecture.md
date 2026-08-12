@@ -2,7 +2,7 @@
 
 ## Status and goals
 
-This document describes the Stage 2 standalone Structure explorer. The architecture keeps visual rendering independent from acquisition so a future OmniSorSe adapter can provide the same explorer graph without exposing database or indexing internals.
+This document describes the Stage 3 standalone Structure explorer and its performance/accessibility hardening. The architecture keeps visual rendering independent from acquisition so a future OmniSorSe adapter can provide the same explorer graph without exposing database or indexing internals.
 
 OmniSorSe owns scanning, indexing, Search, Content Intelligence, Media Intelligence, OCR, transcripts, Related Files, organization, safe file operations, and persistent intelligence/index state. OmniBrille owns standalone spatial navigation, Structure presentation, and future OmniSorSe-backed Context and voice experiences. In short, OmniSorSe is the brain; OmniBrille is the visual lens and spatial navigation interface.
 
@@ -42,6 +42,9 @@ The renderer uses deterministic radial coordinates rather than continuous force 
 - `GraphNeighborhoodBuilder` enforces the scene budget, produces reversible aggregate pages, and can pin a selected search result.
 - `RadialGraphLayout` assigns stable normalized positions across three depth rings and preserves coordinates for surviving node IDs.
 - `GraphPresentationPolicy` owns deterministic LOD, label priority, search emphasis, and priority-based label collision rejection without Avalonia dependencies.
+- `BoundedLruCache` supplies the small deterministic cache primitive used by renderer hot paths; cache capacity is always explicit.
+- `ContextRenderBudgetPolicy` defines renderer-facing limits and deterministic edge priority for future contextual relationships. It does not create relationships or enable Context mode.
+- `ContrastMath` makes documented theme text-pair checks reproducible without coupling Core to Avalonia colors.
 - `NavigationState` owns history and enforces the selected-root boundary.
 - `VisualPreferences` and `IVisualPreferencesStore` define the small persisted theme/effects contract.
 
@@ -58,9 +61,9 @@ Structural search is breadth-first, starts only on user action, and is capped at
 ### `OmniBrille.Desktop`
 
 - `ExplorerSession` coordinates provider/search requests, progressive states, cancellation, monotonically increasing request identities, navigation commit/rollback, aggregation, selection, and status.
-- `MainWindow` is an Avalonia interaction adapter for folder access, search/result navigation, HUD controls, details, persisted effects, diagnostics, keyboard shortcuts, and automation metadata.
-- `GraphSceneControl` owns only scene/input state: zoom, pan, hit targets, transition interpolation, hover, draw preparation, and local diagnostics.
-- `DataRainControl` renders a fixed, deterministic number of sparse blue token streams and stops when hidden.
+- `MainWindow` is an Avalonia interaction adapter for folder access, search/result navigation, HUD controls, details, the synchronized accessible list, persisted effects, diagnostics, keyboard shortcuts, and automation metadata.
+- `GraphSceneControl` owns only scene/input state: zoom, pan, hit targets, transition interpolation, hover, draw preparation, bounded drawing caches, per-phase local diagnostics, and the current visible-node automation projection.
+- `DataRainControl` renders a fixed, deterministic number of sparse blue token streams, caches its small token set, becomes static/sparse for reduced motion, and stops when hidden.
 - `ScenePalette` and application resources centralize the Dark/Light visual tokens.
 
 ## Progressive loading and stale-work safety
@@ -86,7 +89,7 @@ LOD combines zoom, layout scale, density, depth, and importance:
 - `Labeled`: glyph plus an eligible label.
 - `Focused`: guaranteed label and strong selection/focus treatment.
 
-Label priority is focus, selected, visible search match, hover, aggregate, immediate folder, immediate file, outer node, then context. Focus/selection/search/hover labels are required; other labels pass through a stable priority sort and bounding-box collision rejection. Zoom-aware budgets are 10 labels when distant, 22 at normal zoom (or all scenes of 24 or fewer), and up to 34 close. Required labels may overlap rather than disappear, preserving state over decoration.
+Label priority is focus, selected, visible search match, hover, aggregate, immediate folder, immediate file, outer node, then context. Focus/selection/search/hover labels are required; other labels pass through a stable priority sort and bounding-box collision rejection. Zoom-aware budgets are 10 labels when distant, 22 at normal zoom (or all scenes of 24 or fewer), and up to 34 close. At 125%, 150%, and 200% text scale, the normal-density caps reduce deterministically to 18, 14, and 10. Required labels may overlap rather than disappear, preserving state over decoration.
 
 During search, visible matches gain the search accent and unrelated nodes/edges recede. Focusing a result navigates to its folder and pins the match within the 48-node graph budget. The compact result surface remains secondary and dismissible.
 
@@ -94,7 +97,9 @@ During search, visible matches gain the search accent and unrelated nodes/edges 
 
 `Reduced motion` disables focus interpolation and turns the loading treatment into a static sparse pattern. `Reduced visual effects` lowers glow passes, atmospheric density, decorative token density, and label collision padding while preserving the complete graph and controls. The settings are independent and persist locally.
 
-The developer diagnostics overlay is disabled by default. It samples visible nodes, edges, accepted labels, scene budget, zoom, layout duration, scene-preparation duration, last render duration, and most recent load duration. This is local instrumentation, not telemetry. It intentionally avoids recording or exporting filesystem content.
+The developer diagnostics overlay is disabled by default. It samples visible nodes, edges, accepted labels, scene budget, zoom/text scale, layout and scene-preparation duration, total render duration, background/edge/glyph/label phases, per-render managed allocations, bounded cache occupancy, data-rain duration/token count, and most recent load duration. This is local instrumentation, not telemetry. It intentionally avoids recording or exporting filesystem content.
+
+Profiling isolated the Stage 2 search-highlight regression to repeated `FormattedText` construction/measurement plus repeated brush/pen creation. `GraphSceneControl` now holds a 256-entry LRU text-layout cache, a 192-entry brush cache, and a 384-entry pen cache. Text keys include content, culture, font size/weight, maximum width, and color; opacity is applied while drawing so animation/search dimming does not create new layouts. Theme and render-scale changes clear the caches, names are part of the key, zoom/LOD sizes are part of the key, and LRU capacity bounds stale variants. Folder/file glyphs remain inexpensive primitive geometry, so profiling did not justify a larger icon-geometry subsystem.
 
 ## Failure behavior
 
@@ -108,16 +113,30 @@ The developer diagnostics overlay is disabled by default. It samples visible nod
 
 ## Accessibility foundations
 
-Folder selection, Back, search, theme, graph canvas, settings toggles, details, and compact results have meaningful automation names/help. The graph is focusable; arrows change selection, Enter activates, Backspace/Alt+Left navigate back, Escape dismisses or cancels, `Ctrl+F` focuses search, and `+`/`-`/`0` control zoom. Search supplies a textual result alternative. Details and settings are dismissible and keyboard reachable. Avalonia headless tests cover window creation, automation names, themes, persisted reduced settings, loading/details state, and search-result dismissal.
+Folder selection, Back, search, theme, graph canvas, settings toggles, details, compact results, and the accessible list have meaningful automation names/help. The graph is focusable; arrows change selection, Enter activates, Backspace/Alt+Left navigate back, Escape dismisses or cancels, `Ctrl+F` focuses search, `Ctrl+Shift+L` opens the list, and `+`/`-`/`0` control zoom.
 
-Known accessibility gaps remain: the custom canvas exposes selected-node help text but not one automation peer per graph node; a complete list/tree navigation alternative and formal screen-reader/contrast validation remain future work.
+The graph automation peer exposes one `TreeItem` peer for each node in the current bounded scene—never the unrendered source set. Each peer supplies name/type, bounds, current-focus/selected/aggregate item status, help, keyboard focus, and an invoke action. Children are invalidated when the scene changes and selection status changes are raised locally. The accessible list consumes the same `ExplorerSession.Neighborhood` and `SelectedNode`; it has no provider or navigation state of its own. Graph/list selection, search match state, drill-down, aggregate actions, details, and Back therefore cannot diverge.
+
+Headless UI tests exercise this shared state, node automation actions, keyboard graph navigation, themes, loading, search, reduced motion/effects, and simulated 100/125/150/200% text scale. Standard UI text pairs are checked against a 4.5:1 floor (primary text is substantially higher); decorative network lines are explicitly not treated as text. Practical screen-reader behavior remains platform/backend dependent and is not presented as certification.
+
+Known accessibility gaps remain: contextual edge/reason navigation is not defined until Context data exists; the graph peers expose selected state through item status rather than a multi-select pattern; no formal assistive-technology certification has been performed; and macOS automation runtime behavior is untested.
 
 ## Performance baseline and budget decision
 
-Stage 2 retains 48 rather than raising the budget. It gives a readable 12/18/remaining depth split and keeps label collision work small. The diagnostics overlay and representative fixture profiling establish local baselines; results are development-machine observations, not guarantees. Exact measurements from the final validation run are recorded in the task report.
+Stage 3 retains 48 rather than raising the budget. Candidate 32/48/64 fixtures were all comfortable on the development machine, so readability—not raw draw throughput—is the deciding constraint: 48 preserves the readable 12/18/remaining depth split without increasing outer-ring/label pressure. The diagnostics overlay and representative fixtures establish local engineering baselines, not product guarantees.
 
-Before increasing the scene budget, profile text shaping, label collision, frame/render time, allocations, and weaker GPUs. Likely measured evolutions are cached text/icon geometry, viewport culling, cached background layers, and dynamic effects tiers. A different rendering host remains a fallback, not an architectural rewrite, because provider/session/layout contracts do not depend on Avalonia.
+The untouched Stage 2 search sample was 25.835 ms. With bounded text/resource caching, representative warmed samples place normal 48-node scenes around 1–3 ms and search emphasis around 6 ms in the Avalonia headless renderer. Reduced effects removes edge-glow passes and lowers decorative density; the paired search fixture measured a meaningful reduction. Isolated cold frames may exceed 16.7 ms while fonts are first shaped or a scene arrives; the target is representative interactive rendering below the 60 Hz frame budget, not a claim that every transition frame is universally below it.
 
-## Stage 2 non-goals
+A synthetic 48-node/72-context-edge fixture was rejected as too dense and produced a costly cold frame. The readiness policy instead permits at most 36 contextual edges, three per visible node, and 84 combined edge slots (a normal tree plus maximum context uses 83). The warmed 47-structural/36-context synthetic fixture rendered comfortably in the local headless sample. See [the Context rendering contract](context-rendering-contract.md) for semantics and update rules.
+
+No automatic hardware fingerprint or adaptive node-count system was introduced. The default remains deterministic. The two user-facing controls—Reduced motion and Reduced visual effects—are reliable, reversible degradation paths; a future sustained-frame guardrail may reduce decoration only after GPU-backed runtime evidence justifies it.
+
+## Cross-platform posture
+
+Avalonia platform detection, storage providers, rendering, input, and automation abstractions remain in Desktop. Core and Infrastructure use `Path`/`Environment.SpecialFolder` rather than Windows literals. Root-boundary comparison follows native semantics: case-insensitive on Windows and case-sensitive on Linux/macOS. Explorer/protocol IDs are opaque case-sensitive strings on every platform, preventing Linux `A`/`a` collisions and avoiding assumptions about future OmniSorSe IDs. Folder reparse/symbolic-link children remain non-navigable and are not recursively followed.
+
+GitHub Actions restores, verifies format, builds Release with analyzers-as-errors, and runs all tests on Windows and Ubuntu. Windows runtime is the primary interactive validation platform. Linux is build/test validated; no Linux GUI runtime or macOS runtime claim is made in this stage.
+
+## Stage 3 non-goals
 
 No OmniSorSe IPC, protocol transport, Context mode, semantic relationships, Related Files, voice, OCR/transcription, content/media intelligence, indexing database, cloud service, telemetry, destructive file operation, installer, or updater is implemented.
