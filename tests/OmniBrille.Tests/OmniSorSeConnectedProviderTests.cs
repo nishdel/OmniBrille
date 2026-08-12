@@ -35,6 +35,25 @@ public sealed class OmniSorSeConnectedProviderTests
     }
 
     [Fact]
+    public async Task LargeConnectedSource_IsClientBoundedAndAggregatesToSceneBudget()
+    {
+        var root = Node("large-root", "Large indexed root", Protocol.ExplorerNodeKind.Source, null, childCount: 5_000);
+        var children = Enumerable.Range(0, 5_000)
+            .Select(index => Node($"large-{index:D4}", $"Item {index:D4}", Protocol.ExplorerNodeKind.File, root.Id))
+            .ToArray();
+        var provider = new OmniSorSeConnectedProvider(new FakeProtocolClient(root, children), Info(), root);
+
+        var snapshot = await provider.GetDirectoryAsync(root.Id, CancellationToken.None);
+        var graph = new GraphNeighborhoodBuilder().Build(snapshot);
+
+        Assert.Equal(512, snapshot.Children.Count);
+        Assert.Equal(5_000, snapshot.TotalChildCount);
+        Assert.True(snapshot.WasTruncated);
+        Assert.Equal(GraphNeighborhoodBuilder.DefaultNodeBudget, graph.Nodes.Count);
+        Assert.Contains(graph.Nodes, node => node.Kind == OmniBrille.Core.ExplorerNodeKind.Aggregate);
+    }
+
+    [Fact]
     public async Task SearchAndDetails_AdaptOnlyProtocolFields()
     {
         var root = Node("root", "Indexed", Protocol.ExplorerNodeKind.Source, null);
