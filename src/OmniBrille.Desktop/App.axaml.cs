@@ -12,7 +12,10 @@ public sealed partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow(Program.StartupRoot, Program.StartupTheme);
+            desktop.MainWindow = new MainWindow(
+                Program.StartupRoot,
+                Program.StartupTheme,
+                Program.OmniSorSeHandoffEndpoint);
         }
 
         base.OnFrameworkInitializationCompleted();

@@ -17,7 +17,7 @@
             BorderThickness="0,0,0,1"
             Padding="16,12">
       <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-      <Grid ColumnDefinitions="Auto,Auto,8,*,Auto,Auto,Auto,Auto" ColumnSpacing="8">
+      <Grid ColumnDefinitions="Auto,Auto,8,*,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8">
         <Button x:Name="ChooseFolderButton"
                 Grid.Column="0"
                 Classes="hud"
@@ -54,14 +54,23 @@
                   AutomationProperties.Name="Run structural search" />
         </Grid>
 
-        <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="4">
+        <Button x:Name="ConnectionButton"
+                Grid.Column="4"
+                Classes="hud"
+                Content="Standalone"
+                Click="OnConnectionClick"
+                AutomationProperties.Name="Provider connection status"
+                AutomationProperties.HelpText="Shows whether navigation is standalone or supplied by OmniSorSe."
+                AutomationProperties.LiveSetting="Polite" />
+
+        <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="4">
           <Button Classes="hud" Content="-" Click="OnZoomOutClick" ToolTip.Tip="Zoom out" AutomationProperties.Name="Zoom out" />
           <Button Classes="hud" Content="0" Click="OnResetViewClick" ToolTip.Tip="Reset view" AutomationProperties.Name="Reset graph view" />
           <Button Classes="hud" Content="+" Click="OnZoomInClick" ToolTip.Tip="Zoom in" AutomationProperties.Name="Zoom in" />
         </StackPanel>
 
         <ComboBox x:Name="ThemePicker"
-                  Grid.Column="5"
+                  Grid.Column="6"
                   Classes="hud"
                   Width="104"
                   SelectedIndex="0"
@@ -73,7 +82,7 @@
         </ComboBox>
 
         <Button x:Name="AccessibleListButton"
-                Grid.Column="6"
+                Grid.Column="7"
                 Classes="hud"
                 Content="List"
                 Click="OnAccessibleListClick"
@@ -81,7 +90,7 @@
                 AutomationProperties.HelpText="Opens a keyboard and screen-reader friendly view of the same bounded graph scene." />
 
         <Button x:Name="SettingsButton"
-                Grid.Column="7"
+                Grid.Column="8"
                 Classes="hud"
                 Content="Settings"
                 Click="OnSettingsClick"
@@ -135,6 +144,61 @@
           <ProgressBar Width="62" Height="2" IsIndeterminate="True" Foreground="{DynamicResource AccentBrush}" />
           <TextBlock x:Name="ProgressText" Text="Reading structural items…" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
           <Button Classes="hud compact" Content="Cancel" Click="OnCancelClick" AutomationProperties.Name="Cancel loading or search" />
+        </StackPanel>
+      </Border>
+
+      <Border x:Name="ConnectionPanel"
+              IsVisible="False"
+              Width="360"
+              MaxHeight="430"
+              HorizontalAlignment="Right"
+              VerticalAlignment="Top"
+              Margin="0,82,16,0"
+              Padding="14"
+              Background="{DynamicResource SurfaceStrongBrush}"
+              BorderBrush="{DynamicResource BorderBrush}"
+              BorderThickness="1"
+              CornerRadius="4"
+              AutomationProperties.Name="OmniSorSe connection">
+        <StackPanel Spacing="10">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="PROVIDER" FontSize="10" LetterSpacing="1.5" Foreground="{DynamicResource AccentBrush}" />
+            <Button Grid.Column="1" Classes="hud compact" Content="×" Click="OnConnectionClick" AutomationProperties.Name="Close connection panel" />
+          </Grid>
+          <TextBlock x:Name="ConnectionStatusText"
+                     Text="Standalone"
+                     FontSize="15"
+                     FontWeight="SemiBold"
+                     AutomationProperties.LiveSetting="Polite" />
+          <TextBlock x:Name="ConnectionDescriptionText"
+                     Text="Choose a folder for explicit standalone access. OmniSorSe v2.4 supplies connected sessions only through an authorized launch handoff."
+                     TextWrapping="Wrap"
+                     FontSize="10"
+                     Foreground="{DynamicResource SecondaryTextBrush}" />
+          <ComboBox x:Name="ConnectedRootPicker"
+                    Classes="hud"
+                    IsVisible="False"
+                    AutomationProperties.Name="OmniSorSe accessible roots"
+                    AutomationProperties.HelpText="Contains only indexed roots authorized by OmniSorSe." />
+          <Button x:Name="OpenConnectedRootButton"
+                  Classes="hud"
+                  IsVisible="False"
+                  Content="Open authorized root"
+                  Click="OnOpenConnectedRootClick"
+                  AutomationProperties.Name="Open selected OmniSorSe root" />
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="6">
+            <Button x:Name="ReconnectButton"
+                    Classes="hud"
+                    Content="Retry connection"
+                    Click="OnReconnectClick"
+                    AutomationProperties.Name="Retry OmniSorSe connection" />
+            <Button x:Name="UseStandaloneButton"
+                    Grid.Column="1"
+                    Classes="hud"
+                    Content="Use standalone"
+                    Click="OnUseStandaloneClick"
+                    AutomationProperties.Name="Switch to standalone mode" />
+          </Grid>
         </StackPanel>
       </Border>
 
@@ -238,7 +302,7 @@
               BorderThickness="1"
               CornerRadius="4"
               AutomationProperties.Name="Selected node details">
-        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
           <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
             <TextBlock x:Name="DetailsNameText" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap" />
             <Button Grid.Column="1" Classes="hud compact" Content="×" Click="OnCloseDetailsClick" AutomationProperties.Name="Close node details" />
@@ -265,6 +329,18 @@
             <TextBlock x:Name="DetailsPathText" Margin="0,5,0,0" TextWrapping="Wrap" />
           </StackPanel>
           <TextBlock x:Name="DetailsHintText" Grid.Row="7" Margin="0,14,0,0" TextWrapping="Wrap" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
+          <Grid Grid.Row="8" ColumnDefinitions="78,*" Margin="0,10,0,0">
+            <TextBlock Text="Index" Foreground="{DynamicResource SecondaryTextBrush}" />
+            <TextBlock x:Name="DetailsIndexText" Grid.Column="1" Text="—" />
+          </Grid>
+          <TextBlock x:Name="DetailsSummaryText"
+                     Grid.Row="9"
+                     Margin="0,10,0,0"
+                     MaxHeight="96"
+                     TextWrapping="Wrap"
+                     TextTrimming="CharacterEllipsis"
+                     FontSize="10"
+                     Foreground="{DynamicResource SecondaryTextBrush}" />
         </Grid>
       </Border>
 

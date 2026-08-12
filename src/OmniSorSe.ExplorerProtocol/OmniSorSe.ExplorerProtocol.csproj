@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>OmniSorSe.ExplorerProtocol</AssemblyName>
+    <RootNamespace>OmniSorSe.ExplorerProtocol</RootNamespace>
+    <Product>OmniSorSe Explorer Protocol</Product>
+    <Description>Exact Explorer Protocol v1 wire contracts consumed by OmniBrille.</Description>
+  </PropertyGroup>
+</Project>

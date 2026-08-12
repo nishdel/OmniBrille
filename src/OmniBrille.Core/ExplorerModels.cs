@@ -15,6 +15,12 @@ public enum ExplorerNodeKind
     Context,
 }
 
+public enum ExplorerProviderMode
+{
+    Standalone,
+    Connected,
+}
+
 public enum ExplorerFailureKind
 {
     None,
@@ -56,7 +62,11 @@ public sealed record ExplorerEntry(
     long? SizeBytes = null,
     DateTimeOffset? LastModified = null,
     bool IsReparsePoint = false,
-    bool IsNavigable = true);
+    bool IsNavigable = true,
+    string? NavigationTarget = null)
+{
+    public string Target => NavigationTarget ?? Path;
+}
 
 public sealed record ExplorerDirectorySnapshot(
     ExplorerEntry Focus,
@@ -75,8 +85,11 @@ public sealed record ExplorerNode(
     DateTimeOffset? LastModified,
     bool IsNavigable,
     int AggregatedItemCount = 0,
-    AggregateAction? AggregateAction = null)
+    AggregateAction? AggregateAction = null,
+    string? NavigationTarget = null)
 {
+    public string Target => NavigationTarget ?? Path;
+
     public static ExplorerNode FromEntry(ExplorerEntry entry) => new(
         entry.Id,
         entry.Name,
@@ -84,7 +97,8 @@ public sealed record ExplorerNode(
         entry.Kind,
         entry.SizeBytes,
         entry.LastModified,
-        entry.IsNavigable);
+        entry.IsNavigable,
+        NavigationTarget: entry.NavigationTarget);
 }
 
 public sealed record ExplorerEdge(string SourceId, string TargetId);
@@ -122,7 +136,14 @@ public sealed record ExplorerSearchHit(
     string Id,
     string Name,
     string Path,
-    ExplorerNodeKind Kind);
+    ExplorerNodeKind Kind,
+    string? NavigationTarget = null,
+    string? ParentNavigationTarget = null,
+    string? Explanation = null,
+    string? Snippet = null)
+{
+    public string Target => NavigationTarget ?? Path;
+}
 
 public sealed record ExplorerSearchResult(
     IReadOnlyList<ExplorerSearchHit> Hits,
@@ -134,9 +155,36 @@ public interface IExplorerProvider
 {
     public string AccessRoot { get; }
 
+    public string DisplayRoot => AccessRoot;
+
+    public ExplorerProviderMode Mode => ExplorerProviderMode.Standalone;
+
     public Task<ExplorerDirectorySnapshot> GetDirectoryAsync(
         string path,
         CancellationToken cancellationToken);
+}
+
+public sealed record ExplorerNodeDetails(
+    string NodeId,
+    DateTimeOffset? CreatedAt,
+    DateTimeOffset? ModifiedAt,
+    string? Summary,
+    IReadOnlyList<string> Topics,
+    IReadOnlyList<string> Entities,
+    IReadOnlyList<string> RelationshipSummaries,
+    bool IsFullyIndexed,
+    IReadOnlyDictionary<string, string> Metadata);
+
+public interface IExplorerNodeDetailsProvider
+{
+    public Task<ExplorerNodeDetails?> GetNodeDetailsAsync(
+        string nodeId,
+        CancellationToken cancellationToken);
+}
+
+public interface IExplorerProviderDiagnostics
+{
+    public void ReportStaleResponseRejected();
 }
 
 public interface IExplorerSearchProvider

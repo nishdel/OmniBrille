@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using OmniBrille.Core;
+using OmniBrille.Infrastructure.OmniSorSe;
 
 namespace OmniBrille.Desktop.Presentation;
 
@@ -13,11 +14,13 @@ public sealed class ExplorerSession : IDisposable
     private IExplorerSearchProvider? _searchProvider;
     private CancellationTokenSource? _loadCancellation;
     private CancellationTokenSource? _searchCancellation;
+    private CancellationTokenSource? _detailsCancellation;
     private ExplorerDirectorySnapshot? _currentSnapshot;
     private ExplorerEntry? _previousContext;
     private AggregatePage? _aggregatePage;
     private long _loadRequestVersion;
     private long _searchRequestVersion;
+    private long _detailsRequestVersion;
 
     public ExplorerSession(GraphNeighborhoodBuilder? neighborhoodBuilder = null)
     {
@@ -26,11 +29,15 @@ public sealed class ExplorerSession : IDisposable
 
     public event EventHandler? StateChanged;
 
+    public event Action<Exception>? ProviderFailed;
+
     public ExplorerNeighborhood? Neighborhood { get; private set; }
 
     public ExplorerNode? SelectedNode { get; private set; }
 
     public ExplorerSearchResult? SearchResult { get; private set; }
+
+    public ExplorerNodeDetails? SelectedNodeDetails { get; private set; }
 
     public IReadOnlySet<string> HighlightedNodeIds { get; private set; } = new HashSet<string>();
 
@@ -54,6 +61,12 @@ public sealed class ExplorerSession : IDisposable
 
     public int SceneBudget => _neighborhoodBuilder.NodeBudget;
 
+    public ExplorerProviderMode ProviderMode => _provider?.Mode ?? ExplorerProviderMode.Standalone;
+
+    public string ProviderDisplayName => ProviderMode == ExplorerProviderMode.Connected
+        ? "Connected · OmniSorSe"
+        : "Standalone";
+
     public bool CanGoBack => _aggregatePage is not null || _navigation.CanGoBack;
 
     public bool IsAggregateRefined => _aggregatePage is not null;
@@ -71,11 +84,12 @@ public sealed class ExplorerSession : IDisposable
         CancelActiveOperations(reportCancellation: false);
         _provider = provider;
         _searchProvider = searchProvider;
-        _navigation.SetRoot(provider.AccessRoot);
+        _navigation.SetRoot(provider.AccessRoot, provider.Mode);
         SearchResult = null;
         SearchQuery = string.Empty;
         HighlightedNodeIds = new HashSet<string>();
         SelectedNode = null;
+        SelectedNodeDetails = null;
         Neighborhood = null;
         _currentSnapshot = null;
         _previousContext = null;
@@ -196,13 +210,16 @@ public sealed class ExplorerSession : IDisposable
                 _searchCancellation.Token);
             if (requestVersion != Volatile.Read(ref _searchRequestVersion))
             {
+                (_provider as IExplorerProviderDiagnostics)?.ReportStaleResponseRejected();
                 return;
             }
 
             SearchResult = result;
             UpdateHighlights(notify: false);
             var suffix = result.WasTruncated ? " · bounded" : string.Empty;
-            Status = $"{result.Hits.Count:N0} matches across {result.DirectoriesVisited:N0} folders{suffix}.";
+            Status = ProviderMode == ExplorerProviderMode.Connected
+                ? $"{result.Hits.Count:N0} indexed matches from OmniSorSe{suffix}."
+                : $"{result.Hits.Count:N0} matches across {result.DirectoriesVisited:N0} folders{suffix}.";
             if (!string.IsNullOrWhiteSpace(result.Warning))
             {
                 Status += $" {result.Warning}";
@@ -211,6 +228,13 @@ public sealed class ExplorerSession : IDisposable
         catch (OperationCanceledException) when (requestVersion == Volatile.Read(ref _searchRequestVersion))
         {
             Status = "Search cancelled.";
+        }
+        catch (Exception exception) when (IsProviderFailure(exception))
+        {
+            Status = ProviderMode == ExplorerProviderMode.Connected
+                ? "OmniSorSe Search is temporarily unavailable. The current graph remains visible."
+                : "Search failed safely.";
+            ProviderFailed?.Invoke(exception);
         }
         finally
         {
@@ -230,10 +254,12 @@ public sealed class ExplorerSession : IDisposable
 
         if (hit.Kind == ExplorerNodeKind.Folder)
         {
-            return await NavigateAsync(hit.Path, cancellationToken: cancellationToken);
+            return await NavigateAsync(hit.Target, cancellationToken: cancellationToken);
         }
 
-        var parent = Path.GetDirectoryName(hit.Path);
+        var parent = ProviderMode == ExplorerProviderMode.Connected
+            ? hit.ParentNavigationTarget
+            : Path.GetDirectoryName(hit.Path);
         return parent is not null && await NavigateAsync(parent, hit.Id, cancellationToken);
     }
 
@@ -241,6 +267,70 @@ public sealed class ExplorerSession : IDisposable
     {
         SelectedNode = Neighborhood?.Nodes.FirstOrDefault(node =>
             ExplorerIdentity.Equals(node.Id, nodeId));
+        SelectedNodeDetails = null;
+        _detailsCancellation?.Cancel();
+        _ = RefreshSelectedNodeDetailsAsync();
+        NotifyChanged();
+    }
+
+    public async Task RefreshSelectedNodeDetailsAsync(CancellationToken cancellationToken = default)
+    {
+        if (SelectedNode is null || _provider is not IExplorerNodeDetailsProvider detailsProvider)
+        {
+            return;
+        }
+
+        _detailsCancellation?.Cancel();
+        _detailsCancellation?.Dispose();
+        _detailsCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var requestVersion = Interlocked.Increment(ref _detailsRequestVersion);
+        var nodeId = SelectedNode.Id;
+        try
+        {
+            var details = await detailsProvider.GetNodeDetailsAsync(nodeId, _detailsCancellation.Token);
+            if (requestVersion != Volatile.Read(ref _detailsRequestVersion) ||
+                !ExplorerIdentity.Equals(SelectedNode?.Id, nodeId))
+            {
+                (_provider as IExplorerProviderDiagnostics)?.ReportStaleResponseRejected();
+                return;
+            }
+
+            SelectedNodeDetails = details;
+            NotifyChanged();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception) when (IsProviderFailure(exception))
+        {
+            if (requestVersion == Volatile.Read(ref _detailsRequestVersion))
+            {
+                Status = "Connected node details are temporarily unavailable.";
+                ProviderFailed?.Invoke(exception);
+                NotifyChanged();
+            }
+        }
+    }
+
+    public void Reset(string status = "Choose a folder to begin. Only that location will be accessible.")
+    {
+        CancelActiveOperations(reportCancellation: false);
+        _provider = null;
+        _searchProvider = null;
+        _navigation.Clear();
+        Neighborhood = null;
+        SelectedNode = null;
+        SelectedNodeDetails = null;
+        SearchResult = null;
+        SearchQuery = string.Empty;
+        HighlightedNodeIds = new HashSet<string>();
+        _currentSnapshot = null;
+        _previousContext = null;
+        _aggregatePage = null;
+        LoadState = ExplorerLoadState.Idle;
+        IsSearching = false;
+        LoadedItemCount = 0;
+        Status = status;
         NotifyChanged();
     }
 
@@ -263,6 +353,7 @@ public sealed class ExplorerSession : IDisposable
         CancelActiveOperations(reportCancellation: false);
         _loadCancellation?.Dispose();
         _searchCancellation?.Dispose();
+        _detailsCancellation?.Dispose();
     }
 
     private async Task<LoadOutcome> LoadDirectoryAsync(
@@ -298,6 +389,7 @@ public sealed class ExplorerSession : IDisposable
                 {
                     if (requestVersion != Volatile.Read(ref _loadRequestVersion))
                     {
+                        (_provider as IExplorerProviderDiagnostics)?.ReportStaleResponseRejected();
                         return LoadOutcome.Obsolete;
                     }
 
@@ -337,6 +429,7 @@ public sealed class ExplorerSession : IDisposable
                 var snapshot = await _provider!.GetDirectoryAsync(path, _loadCancellation.Token);
                 if (requestVersion != Volatile.Read(ref _loadRequestVersion))
                 {
+                    (_provider as IExplorerProviderDiagnostics)?.ReportStaleResponseRejected();
                     return LoadOutcome.Obsolete;
                 }
 
@@ -372,6 +465,17 @@ public sealed class ExplorerSession : IDisposable
             NotifyChanged();
             throw;
         }
+        catch (Exception exception) when (IsProviderFailure(exception))
+        {
+            RestoreScene(backup);
+            LoadState = ExplorerLoadState.Failed;
+            Status = ProviderMode == ExplorerProviderMode.Connected
+                ? "OmniSorSe disconnected or could not complete the request. The previous graph is retained."
+                : "The folder could not be read.";
+            ProviderFailed?.Invoke(exception);
+            NotifyChanged();
+            return new LoadOutcome(false, ExplorerFailureKind.EnumerationFailed);
+        }
         finally
         {
             stopwatch.Stop();
@@ -394,6 +498,9 @@ public sealed class ExplorerSession : IDisposable
             ? Neighborhood.Focus
             : Neighborhood.Nodes.FirstOrDefault(node =>
                 ExplorerIdentity.Equals(node.Id, preferredSelectionId)) ?? Neighborhood.Focus;
+        SelectedNodeDetails = null;
+        _detailsCancellation?.Cancel();
+        _ = RefreshSelectedNodeDetailsAsync();
         UpdateHighlights(notify: false);
     }
 
@@ -435,7 +542,9 @@ public sealed class ExplorerSession : IDisposable
 
         var total = Neighborhood?.TotalChildCount ?? snapshot.Children.Count;
         var visible = Math.Max(0, (Neighborhood?.Nodes.Count ?? 1) - 1);
-        Status = $"{total:N0} items · {visible:N0} graph nodes visible";
+        Status = ProviderMode == ExplorerProviderMode.Connected
+            ? $"{total:N0} indexed items · {visible:N0} graph nodes visible"
+            : $"{total:N0} items · {visible:N0} graph nodes visible";
         if (!string.IsNullOrWhiteSpace(snapshot.Warning))
         {
             Status += $" · {snapshot.Warning}";
@@ -467,8 +576,10 @@ public sealed class ExplorerSession : IDisposable
     {
         _loadCancellation?.Cancel();
         _searchCancellation?.Cancel();
+        _detailsCancellation?.Cancel();
         Interlocked.Increment(ref _loadRequestVersion);
         Interlocked.Increment(ref _searchRequestVersion);
+        Interlocked.Increment(ref _detailsRequestVersion);
 
         if (!reportCancellation)
         {
@@ -510,7 +621,8 @@ public sealed class ExplorerSession : IDisposable
             node.SizeBytes,
             node.LastModified,
             false,
-            true);
+            true,
+            node.Target);
 
     private void EnsureProvider()
     {
@@ -519,6 +631,14 @@ public sealed class ExplorerSession : IDisposable
             throw new InvalidOperationException("Choose a folder before exploring.");
         }
     }
+
+    private static bool IsProviderFailure(Exception exception) => exception is
+        IOException or
+        UnauthorizedAccessException or
+        InvalidDataException or
+        TimeoutException or
+        ExplorerProtocolException or
+        ExplorerProtocolMalformedResponseException;
 
     private void NotifyChanged() => StateChanged?.Invoke(this, EventArgs.Empty);
 

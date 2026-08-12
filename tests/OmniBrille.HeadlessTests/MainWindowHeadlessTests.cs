@@ -12,6 +12,8 @@ using OmniBrille.Core;
 using OmniBrille.Desktop;
 using OmniBrille.Desktop.Presentation;
 using OmniBrille.Desktop.Rendering;
+using OmniBrille.Infrastructure.OmniSorSe;
+using Protocol = OmniSorSe.ExplorerProtocol;
 
 namespace OmniBrille.HeadlessTests;
 
@@ -220,6 +222,82 @@ public sealed class MainWindowHeadlessTests
             .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         Assert.Equal(root, session.CurrentPath);
         Assert.True(panel.IsVisible);
+    }
+
+    [AvaloniaFact]
+    public async Task ConnectedMode_UsesSharedGraphListSearchDetailsAndAccessibleStatus()
+    {
+        var session = new ExplorerSession();
+        var store = new MemoryPreferencesStore();
+        var connection = new FakeConnectedCoordinator();
+        using var window = new MainWindow(
+            session,
+            store,
+            connection: connection,
+            handoffEndpoint: "one-time-handoff");
+        window.Show();
+        await WaitUntilAsync(() => session.ProviderMode == ExplorerProviderMode.Connected && !session.IsLoading);
+
+        var statusButton = window.FindControl<Button>("ConnectionButton")!;
+        Assert.Equal("Connected Â· OmniSorSe", statusButton.Content);
+        Assert.Equal(
+            "Provider status: Connected Â· OmniSorSe",
+            AutomationProperties.GetName(statusButton));
+        Assert.Equal("opaque-root", session.AccessRoot);
+        Assert.Contains(session.Neighborhood!.Nodes, node => node.Id == "opaque-folder");
+
+        window.FindControl<Button>("AccessibleListButton")!
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        var list = window.FindControl<ListBox>("AccessibleNodesList")!;
+        Assert.Equal(3, list.ItemCount);
+        list.SelectedItem = list.ItemsSource!.Cast<object>()
+            .Single(item => item.ToString()!.Contains("Indexed Folder", StringComparison.Ordinal));
+        Assert.Equal("opaque-folder", session.SelectedNode!.Target);
+        await WaitUntilAsync(() => session.SelectedNodeDetails?.Summary == "Indexed folder details");
+        Assert.Equal("Indexed folder details", window.FindControl<TextBlock>("DetailsSummaryText")!.Text);
+
+        await session.SearchAsync("report");
+        Assert.Equal("opaque-file", Assert.Single(session.SearchResult!.Hits).Target);
+        Assert.True(window.FindControl<Border>("SearchResultsPanel")!.IsVisible is false);
+        Assert.Contains(list.ItemsSource!.Cast<object>(), item =>
+            item.GetType().GetProperty("StateText")?.GetValue(item)?.ToString()?.Contains("MATCH", StringComparison.Ordinal) is true);
+
+        window.FindControl<Button>("AccessibleOpenButton")!
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await WaitUntilAsync(() => session.CurrentPath.Contains("Indexed Folder", StringComparison.Ordinal));
+        Assert.True(session.CanGoBack);
+        window.FindControl<Button>("AccessibleBackButton")!
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await WaitUntilAsync(() => session.Neighborhood?.Focus.Id == "opaque-root");
+    }
+
+    [AvaloniaFact]
+    public async Task ConnectedDisconnect_IsAnnouncedAndStandaloneSwitchClearsOpaqueSession()
+    {
+        var session = new ExplorerSession();
+        var connection = new FakeConnectedCoordinator();
+        using var window = new MainWindow(
+            session,
+            new MemoryPreferencesStore(),
+            connection: connection,
+            handoffEndpoint: "one-time-handoff");
+        window.Show();
+        await WaitUntilAsync(() => session.ProviderMode == ExplorerProviderMode.Connected && !session.IsLoading);
+
+        connection.ReportDisconnected(new IOException("controlled disconnect"));
+        await WaitUntilAsync(() => Equals(window.FindControl<Button>("ConnectionButton")!.Content, "OmniSorSe disconnected"));
+        Assert.Equal(
+            "Provider status: OmniSorSe disconnected",
+            AutomationProperties.GetName(window.FindControl<Button>("ConnectionButton")!));
+        Assert.NotNull(session.Neighborhood);
+
+        window.FindControl<Button>("ConnectionButton")!
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        window.FindControl<Button>("UseStandaloneButton")!
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.Equal(ExplorerProviderMode.Standalone, session.ProviderMode);
+        Assert.Null(session.Neighborhood);
+        Assert.Equal("Standalone", window.FindControl<Button>("ConnectionButton")!.Content);
     }
 
     [AvaloniaTheory]
@@ -447,6 +525,17 @@ public sealed class MainWindowHeadlessTests
         return new MainWindow(session, store);
     }
 
+    private static async Task WaitUntilAsync(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(3);
+        while (!condition() && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(10);
+        }
+
+        Assert.True(condition(), "The expected connected UI state was not reached before the test deadline.");
+    }
+
     private static ExplorerEntry Entry(string path, ExplorerNodeKind kind) =>
         new(path, Path.GetFileName(path), path, kind);
 
@@ -528,5 +617,131 @@ public sealed class MainWindowHeadlessTests
                 _entries.Take(8).Select(entry => new ExplorerSearchHit(entry.Id, entry.Name, entry.Path, entry.Kind)).ToArray(),
                 true,
                 1));
+    }
+
+    private sealed class FakeConnectedCoordinator : IOmniSorSeConnectionCoordinator
+    {
+        private readonly FakeConnectedClient _client = new();
+
+        public event EventHandler? StateChanged;
+
+        public OmniSorSeConnectionState State { get; private set; } = OmniSorSeConnectionState.Standalone;
+
+        public string UserStatus => State switch
+        {
+            OmniSorSeConnectionState.Connected => "Connected Â· OmniSorSe",
+            OmniSorSeConnectionState.Disconnected => "OmniSorSe disconnected",
+            _ => "Standalone",
+        };
+
+        public Protocol.ExplorerProtocolInfo? ProtocolInfo => _client.Info;
+
+        public IReadOnlyList<Protocol.ExplorerNode> AccessibleRoots => [_client.Root];
+
+        public IExplorerProtocolClient? Client => _client;
+
+        public OmniSorSeConnectionDiagnostics Diagnostics => _client.Diagnostics with { State = State };
+
+        public Task<bool> ConnectFromHandoffAsync(string handoffEndpoint, CancellationToken cancellationToken = default)
+        {
+            State = OmniSorSeConnectionState.Connected;
+            StateChanged?.Invoke(this, EventArgs.Empty);
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> ConnectAsync(OmniSorSeSessionGrant grant, CancellationToken cancellationToken = default) =>
+            ConnectFromHandoffAsync(grant.Endpoint, cancellationToken);
+
+        public Task<bool> RetryAsync(CancellationToken cancellationToken = default) =>
+            ConnectFromHandoffAsync("retry", cancellationToken);
+
+        public void UseStandalone()
+        {
+            State = OmniSorSeConnectionState.Standalone;
+            StateChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void ReportDisconnected(Exception exception)
+        {
+            State = OmniSorSeConnectionState.Disconnected;
+            StateChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private sealed class FakeConnectedClient : IExplorerProtocolClient
+    {
+        private static readonly Protocol.ExplorerProtocolLimits Limits = new(
+            65_536, 1_048_576, 500, 256, 512, 100, 100, 2, 320, 32, 32, 256, 4, 15);
+
+        public Protocol.ExplorerNode Root { get; } = Node(
+            "opaque-root", "Authorized Root", Protocol.ExplorerNodeKind.Source, null, 2);
+
+        private Protocol.ExplorerNode Folder { get; } = Node(
+            "opaque-folder", "Indexed Folder", Protocol.ExplorerNodeKind.Folder, "opaque-root", 0);
+
+        private Protocol.ExplorerNode File { get; } = Node(
+            "opaque-file", "report.txt", Protocol.ExplorerNodeKind.File, "opaque-root", 0);
+
+        public OmniSorSeSessionGrant Grant { get; } = new(
+            "named-pipe", "ose-0123456789abcdef0123456789abcdef", "session", "secret",
+            DateTimeOffset.UtcNow.AddMinutes(2), 1, 0);
+
+        public OmniSorSeConnectionDiagnostics Diagnostics { get; } = new(
+            OmniSorSeConnectionState.Connected, "named-pipe", "1.0", TimeSpan.Zero,
+            0, 0, 0, 0, 0, null);
+
+        public Protocol.ExplorerProtocolInfo Info { get; } = new(
+            1, 0, "OmniSorSe", "2.4.0",
+            Protocol.ExplorerCapability.Structure | Protocol.ExplorerCapability.Search,
+            Limits, true, "Local named pipe");
+
+        public Task<Protocol.ExplorerProtocolInfo> GetProtocolInfoAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(Info);
+
+        public Task<Protocol.ExplorerNodePage> GetAccessibleRootsAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(new Protocol.ExplorerNodePage([Root], 1, false, null));
+
+        public Task<Protocol.ExplorerNodePage> GetChildrenAsync(
+            Protocol.ExplorerChildrenRequest request,
+            CancellationToken cancellationToken) => Task.FromResult(
+                request.ParentNodeId == Root.Id
+                    ? new Protocol.ExplorerNodePage([Folder, File], 2, false, null)
+                    : new Protocol.ExplorerNodePage([], 0, false, null));
+
+        public Task<Protocol.ExplorerNeighborhood> GetNeighborhoodAsync(
+            Protocol.ExplorerNeighborhoodRequest request,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<Protocol.ExplorerSearchResult> SearchAsync(
+            Protocol.ExplorerSearchRequest request,
+            CancellationToken cancellationToken) => Task.FromResult(new Protocol.ExplorerSearchResult(
+                [new Protocol.ExplorerSearchHit(File, 1, 1, "Indexed name match", null, "Name")],
+                false,
+                "Authorized indexed scope",
+                false));
+
+        public Task<Protocol.ExplorerNodeDetails> GetNodeDetailsAsync(
+            Protocol.ExplorerNodeDetailsRequest request,
+            CancellationToken cancellationToken)
+        {
+            var node = request.NodeId == Folder.Id ? Folder : request.NodeId == File.Id ? File : Root;
+            return Task.FromResult(new Protocol.ExplorerNodeDetails(
+                node, null, null,
+                node.Id == Folder.Id ? "Indexed folder details" : "Indexed node details",
+                [], [], null, [], true));
+        }
+
+        public void ReportStaleResponseRejected()
+        {
+        }
+
+        private static Protocol.ExplorerNode Node(
+            string id,
+            string name,
+            Protocol.ExplorerNodeKind kind,
+            string? parentId,
+            int childCount) => new(
+                id, name, kind, parentId, null, null, null,
+                new Dictionary<string, string>(), childCount, 0);
     }
 }

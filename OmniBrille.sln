@@ -7,6 +7,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniBrille.Core", "src\OmniBrille.Core\OmniBrille.Core.csproj", "{1B8921A4-B089-4AC5-BC06-8FCD73CDA6D3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniSorSe.ExplorerProtocol", "src\OmniSorSe.ExplorerProtocol\OmniSorSe.ExplorerProtocol.csproj", "{B753B3D4-789B-4E4D-927F-AB6DB285A1DC}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniBrille.Infrastructure", "src\OmniBrille.Infrastructure\OmniBrille.Infrastructure.csproj", "{A01CBE0E-4C4F-4F00-B200-B051E2EC4F05}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniBrille.Desktop", "src\OmniBrille.Desktop\OmniBrille.Desktop.csproj", "{80623B7D-5C03-43EF-A6D8-4569A5A482E9}"
@@ -25,6 +27,18 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B753B3D4-789B-4E4D-927F-AB6DB285A1DC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B753B3D4-789B-4E4D-927F-AB6DB285A1DC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B753B3D4-789B-4E4D-927F-AB6DB285A1DC}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B753B3D4-789B-4E4D-927F-AB6DB285A1DC}.Debug|x64.Build.0 = Debug|Any CPU
+		{B753B3D4-789B-4E4D-927F-AB6DB285A1DC}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B753B3D4-789B-4E4D-927F-AB6DB285A1DC}.Debug|x86.Build.0 = Debug|Any CPU
+		{B753B3D4-789B-4E4D-927F-AB6DB285A1DC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B753B3D4-789B-4E4D-927F-AB6DB285A1DC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B753B3D4-789B-4E4D-927F-AB6DB285A1DC}.Release|x64.ActiveCfg = Release|Any CPU
+		{B753B3D4-789B-4E4D-927F-AB6DB285A1DC}.Release|x64.Build.0 = Release|Any CPU
+		{B753B3D4-789B-4E4D-927F-AB6DB285A1DC}.Release|x86.ActiveCfg = Release|Any CPU
+		{B753B3D4-789B-4E4D-927F-AB6DB285A1DC}.Release|x86.Build.0 = Release|Any CPU
 		{1B8921A4-B089-4AC5-BC06-8FCD73CDA6D3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{1B8921A4-B089-4AC5-BC06-8FCD73CDA6D3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1B8921A4-B089-4AC5-BC06-8FCD73CDA6D3}.Debug|x64.ActiveCfg = Debug|Any CPU
@@ -90,6 +104,7 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{B753B3D4-789B-4E4D-927F-AB6DB285A1DC} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{1B8921A4-B089-4AC5-BC06-8FCD73CDA6D3} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{A01CBE0E-4C4F-4F00-B200-B051E2EC4F05} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{80623B7D-5C03-43EF-A6D8-4569A5A482E9} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}

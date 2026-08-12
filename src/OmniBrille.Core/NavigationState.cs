@@ -8,13 +8,24 @@ public sealed class NavigationState
 
     public string? CurrentPath { get; private set; }
 
+    public ExplorerProviderMode Mode { get; private set; } = ExplorerProviderMode.Standalone;
+
     public bool CanGoBack => _history.Count > 0;
 
     public IReadOnlyList<string> History => _history;
 
-    public void SetRoot(string path)
+    public void Clear()
     {
-        var normalized = Normalize(path);
+        AccessRoot = null;
+        CurrentPath = null;
+        Mode = ExplorerProviderMode.Standalone;
+        _history.Clear();
+    }
+
+    public void SetRoot(string path, ExplorerProviderMode mode = ExplorerProviderMode.Standalone)
+    {
+        Mode = mode;
+        var normalized = Normalize(path, mode);
         AccessRoot = normalized;
         CurrentPath = normalized;
         _history.Clear();
@@ -23,8 +34,8 @@ public sealed class NavigationState
     public void NavigateTo(string path)
     {
         EnsureInitialized();
-        var normalized = Normalize(path);
-        if (!PathBoundary.IsWithin(AccessRoot!, normalized))
+        var normalized = Normalize(path, Mode);
+        if (Mode == ExplorerProviderMode.Standalone && !PathBoundary.IsWithin(AccessRoot!, normalized))
         {
             throw new InvalidOperationException("Navigation cannot leave the explicitly selected access root.");
         }
@@ -52,8 +63,17 @@ public sealed class NavigationState
         return CurrentPath;
     }
 
-    private static string Normalize(string path) =>
-        Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+    private static string Normalize(string path, ExplorerProviderMode mode)
+    {
+        if (string.IsNullOrWhiteSpace(path) || path.Any(char.IsControl))
+        {
+            throw new ArgumentException("A navigation target is required.", nameof(path));
+        }
+
+        return mode == ExplorerProviderMode.Standalone
+            ? Path.TrimEndingDirectorySeparator(Path.GetFullPath(path))
+            : path;
+    }
 
     private void EnsureInitialized()
     {

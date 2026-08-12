@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\OmniBrille.Core\OmniBrille.Core.csproj" />
+    <ProjectReference Include="..\OmniSorSe.ExplorerProtocol\OmniSorSe.ExplorerProtocol.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

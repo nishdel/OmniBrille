@@ -9,11 +9,14 @@ internal static class Program
 
     internal static string? StartupTheme { get; private set; }
 
+    internal static string? OmniSorSeHandoffEndpoint { get; private set; }
+
     [STAThread]
     public static void Main(string[] args)
     {
         StartupRoot = ReadStartupRoot(args);
         StartupTheme = ReadOption(args, "--theme");
+        OmniSorSeHandoffEndpoint = ReadOption(args, "--omnisorse-handoff");
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 

@@ -1,5 +1,6 @@
 using System.Globalization;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -9,6 +10,8 @@ using Avalonia.Threading;
 using OmniBrille.Core;
 using OmniBrille.Desktop.Presentation;
 using OmniBrille.Infrastructure;
+using OmniBrille.Infrastructure.OmniSorSe;
+using Protocol = OmniSorSe.ExplorerProtocol;
 
 namespace OmniBrille.Desktop;
 
@@ -16,6 +19,8 @@ public sealed partial class MainWindow : Window, IDisposable
 {
     private readonly ExplorerSession _session;
     private readonly IVisualPreferencesStore _preferencesStore;
+    private readonly IOmniSorSeConnectionCoordinator _connection;
+    private readonly string? _handoffEndpoint;
     private readonly DispatcherTimer _diagnosticsTimer;
     private VisualPreferences _preferences;
     private ExplorerNeighborhood? _lastRenderedNeighborhood;
@@ -25,12 +30,18 @@ public sealed partial class MainWindow : Window, IDisposable
     private bool _isDisposed;
 
     public MainWindow()
-        : this(new ExplorerSession(), new JsonVisualPreferencesStore(), null, null)
+        : this(new ExplorerSession(), new JsonVisualPreferencesStore(), null, null, null, null)
     {
     }
 
-    public MainWindow(string? startupRoot, string? startupTheme)
-        : this(new ExplorerSession(), new JsonVisualPreferencesStore(), startupRoot, startupTheme)
+    public MainWindow(string? startupRoot, string? startupTheme, string? handoffEndpoint = null)
+        : this(
+            new ExplorerSession(),
+            new JsonVisualPreferencesStore(),
+            startupRoot,
+            startupTheme,
+            null,
+            handoffEndpoint)
     {
     }
 
@@ -38,10 +49,14 @@ public sealed partial class MainWindow : Window, IDisposable
         ExplorerSession session,
         IVisualPreferencesStore preferencesStore,
         string? startupRoot = null,
-        string? startupTheme = null)
+        string? startupTheme = null,
+        IOmniSorSeConnectionCoordinator? connection = null,
+        string? handoffEndpoint = null)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _preferencesStore = preferencesStore ?? throw new ArgumentNullException(nameof(preferencesStore));
+        _connection = connection ?? new OmniSorSeConnectionCoordinator();
+        _handoffEndpoint = handoffEndpoint;
         _preferences = _preferencesStore.Load().Normalize();
         if (!string.IsNullOrWhiteSpace(startupTheme))
         {
@@ -59,6 +74,8 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         _session.StateChanged += OnSessionStateChanged;
+        _session.ProviderFailed += OnProviderFailed;
+        _connection.StateChanged += OnConnectionStateChanged;
         AccessibleNodesList.AddHandler(
             InputElement.KeyDownEvent,
             OnAccessibleNodesKeyDown,
@@ -78,15 +95,37 @@ public sealed partial class MainWindow : Window, IDisposable
         ApplyPreferencesToControls();
         UpdateView();
 
-        if (!string.IsNullOrWhiteSpace(startupRoot))
-        {
-            Opened += async (_, _) => await OpenRootAsync(startupRoot);
-        }
+        Opened += async (_, _) => await InitializeProviderAsync(startupRoot);
     }
 
     public ExplorerSession Session => _session;
 
     public VisualPreferences Preferences => _preferences;
+
+    public IOmniSorSeConnectionCoordinator Connection => _connection;
+
+    private async Task InitializeProviderAsync(string? startupRoot)
+    {
+        if (!string.IsNullOrWhiteSpace(_handoffEndpoint))
+        {
+            var connected = await _connection.ConnectFromHandoffAsync(_handoffEndpoint);
+            if (connected)
+            {
+                PopulateConnectedRoots();
+                await OpenConnectedRootAsync(_connection.AccessibleRoots[0]);
+                return;
+            }
+
+            ConnectionPanel.IsVisible = true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(startupRoot))
+        {
+            await OpenRootAsync(startupRoot);
+        }
+
+        UpdateConnectionView();
+    }
 
     private async void OnChooseFolderClick(object? sender, RoutedEventArgs e)
     {
@@ -115,7 +154,91 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
+        _connection.UseStandalone();
+        ConnectionPanel.IsVisible = false;
         await OpenRootAsync(path);
+    }
+
+    private void OnConnectionClick(object? sender, RoutedEventArgs e)
+    {
+        ConnectionPanel.IsVisible = !ConnectionPanel.IsVisible;
+        if (ConnectionPanel.IsVisible)
+        {
+            SettingsPanel.IsVisible = false;
+            AccessibleListPanel.IsVisible = false;
+            PopulateConnectedRoots();
+            UpdateConnectionView();
+        }
+        else
+        {
+            GraphScene.Focus();
+        }
+    }
+
+    private async void OnReconnectClick(object? sender, RoutedEventArgs e)
+    {
+        var connected = await _connection.RetryAsync();
+        if (connected)
+        {
+            PopulateConnectedRoots();
+            await OpenConnectedRootAsync(_connection.AccessibleRoots[0]);
+        }
+
+        UpdateConnectionView();
+    }
+
+    private void OnUseStandaloneClick(object? sender, RoutedEventArgs e)
+    {
+        _connection.UseStandalone();
+        _session.Reset();
+        ConnectedRootPicker.ItemsSource = null;
+        ConnectionPanel.IsVisible = false;
+        ChooseFolderButton.Focus();
+        UpdateConnectionView();
+    }
+
+    private async void OnOpenConnectedRootClick(object? sender, RoutedEventArgs e)
+    {
+        if (ConnectedRootPicker.SelectedItem is not ConnectedRootItem item)
+        {
+            SetTransientStatus("Select an OmniSorSe-authorized root first.");
+            return;
+        }
+
+        await OpenConnectedRootAsync(item.Node);
+    }
+
+    private async Task OpenConnectedRootAsync(Protocol.ExplorerNode root)
+    {
+        if (_connection.Client is null || _connection.ProtocolInfo is null)
+        {
+            SetTransientStatus("OmniSorSe is not connected.");
+            return;
+        }
+
+        try
+        {
+            var provider = new OmniSorSeConnectedProvider(_connection.Client, _connection.ProtocolInfo, root);
+            await _session.OpenRootAsync(provider, provider);
+            GraphScene.ResetView();
+            ConnectionPanel.IsVisible = false;
+        }
+        catch (OperationCanceledException)
+        {
+            SetTransientStatus("Connected loading cancelled.");
+        }
+        catch (Exception exception) when (IsConnectionFailure(exception))
+        {
+            _connection.ReportDisconnected(exception);
+            SetTransientStatus("OmniSorSe disconnected. The application remains available in standalone mode.");
+        }
+    }
+
+    private void PopulateConnectedRoots()
+    {
+        var items = _connection.AccessibleRoots.Select(node => new ConnectedRootItem(node)).ToArray();
+        ConnectedRootPicker.ItemsSource = items;
+        ConnectedRootPicker.SelectedIndex = items.Length > 0 ? 0 : -1;
     }
 
     private async void OnBackClick(object? sender, RoutedEventArgs e) => await GoBackAsync();
@@ -258,6 +381,7 @@ public sealed partial class MainWindow : Window, IDisposable
         SettingsPanel.IsVisible = !SettingsPanel.IsVisible;
         if (SettingsPanel.IsVisible)
         {
+            ConnectionPanel.IsVisible = false;
             AccessibleListPanel.IsVisible = false;
             _detailsDismissed = true;
             DetailsPanel.IsVisible = false;
@@ -295,6 +419,7 @@ public sealed partial class MainWindow : Window, IDisposable
         AccessibleListPanel.IsVisible = !AccessibleListPanel.IsVisible;
         if (AccessibleListPanel.IsVisible)
         {
+            ConnectionPanel.IsVisible = false;
             SettingsPanel.IsVisible = false;
             SearchResultsPanel.IsVisible = false;
             SynchronizeAccessibleList();
@@ -390,7 +515,7 @@ public sealed partial class MainWindow : Window, IDisposable
         {
             try
             {
-                await _session.NavigateAsync(node.Path);
+                await _session.NavigateAsync(node.Target);
             }
             catch (OperationCanceledException)
             {
@@ -427,6 +552,19 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private void OnSessionStateChanged(object? sender, EventArgs e) => UpdateView();
 
+    private void OnConnectionStateChanged(object? sender, EventArgs e) =>
+        Dispatcher.UIThread.Post(UpdateConnectionView);
+
+    private void OnProviderFailed(Exception exception) => Dispatcher.UIThread.Post(() =>
+    {
+        if (_session.ProviderMode == ExplorerProviderMode.Connected)
+        {
+            _connection.ReportDisconnected(exception);
+        }
+
+        UpdateConnectionView();
+    });
+
     private void UpdateView()
     {
         var neighborhood = _session.Neighborhood;
@@ -444,12 +582,19 @@ public sealed partial class MainWindow : Window, IDisposable
         DataRain.SetActive(initialLoading);
         ProgressHud.IsVisible = (neighborhood is not null && _session.IsLoading) || _session.IsSearching;
         ProgressText.Text = _session.IsSearching
-            ? "Searching selected root…"
+            ? _session.ProviderMode == ExplorerProviderMode.Connected
+                ? "Searching OmniSorSe…"
+                : "Searching selected root…"
             : _session.LoadState == ExplorerLoadState.PartiallyLoaded
                 ? $"Graph interactive · {_session.LoadedItemCount:N0} items streamed"
-                : "Reading structural items…";
+                : _session.ProviderMode == ExplorerProviderMode.Connected
+                    ? "Reading indexed structure…"
+                    : "Reading structural items…";
 
-        DetailsPanel.IsVisible = selected is not null && !_detailsDismissed && !SettingsPanel.IsVisible;
+        DetailsPanel.IsVisible = selected is not null &&
+            !_detailsDismissed &&
+            !SettingsPanel.IsVisible &&
+            !ConnectionPanel.IsVisible;
         if (selected is not null)
         {
             UpdateDetails(selected, neighborhood);
@@ -480,10 +625,40 @@ public sealed partial class MainWindow : Window, IDisposable
         SynchronizeAccessibleList();
         DiagnosticsPanel.IsVisible = _preferences.DiagnosticsVisible;
         UpdateDiagnostics();
+        UpdateConnectionView();
+    }
+
+    private void UpdateConnectionView()
+    {
+        ConnectionButton.Content = _connection.UserStatus;
+        AutomationProperties.SetName(ConnectionButton, $"Provider status: {_connection.UserStatus}");
+        ConnectionStatusText.Text = _connection.UserStatus;
+        var connected = _connection.State == OmniSorSeConnectionState.Connected;
+        ConnectedRootPicker.IsVisible = connected && _connection.AccessibleRoots.Count > 0;
+        OpenConnectedRootButton.IsVisible = connected && _connection.AccessibleRoots.Count > 0;
+        ReconnectButton.IsVisible = _connection.State is
+            OmniSorSeConnectionState.Disconnected or
+            OmniSorSeConnectionState.Unavailable or
+            OmniSorSeConnectionState.Error or
+            OmniSorSeConnectionState.Incompatible;
+        ConnectionDescriptionText.Text = _connection.State switch
+        {
+            OmniSorSeConnectionState.Connected =>
+                $"Explorer Protocol {_connection.ProtocolInfo?.ProtocolMajor}.{_connection.ProtocolInfo?.ProtocolMinor} · {_connection.AccessibleRoots.Count:N0} authorized indexed root(s) · read-only.",
+            OmniSorSeConnectionState.Incompatible =>
+                "The supplied session uses an incompatible Explorer Protocol major version. Standalone mode remains available.",
+            OmniSorSeConnectionState.Disconnected =>
+                "The previous graph is retained as stale context. Retry while the short-lived session is still valid, or switch to standalone.",
+            OmniSorSeConnectionState.Standalone =>
+                "Choose a folder for explicit standalone access. Connected mode begins only from an authorized OmniSorSe launch handoff.",
+            _ =>
+                "OmniSorSe v2.4 does not publish a discovery endpoint. A one-time authorized launch handoff is required; standalone remains available.",
+        };
     }
 
     private void UpdateDetails(ExplorerNode selected, ExplorerNeighborhood? neighborhood)
     {
+        var connectedDetails = _session.SelectedNodeDetails;
         DetailsNameText.Text = selected.Name;
         DetailsTypeText.Text = selected.Kind switch
         {
@@ -498,7 +673,8 @@ public sealed partial class MainWindow : Window, IDisposable
             : selected.Id == neighborhood?.FocusNodeId
                 ? $"{neighborhood.TotalChildCount:N0} children"
                 : FormatSize(selected.SizeBytes);
-        DetailsModifiedText.Text = selected.LastModified?.ToLocalTime().ToString("g", CultureInfo.CurrentCulture) ?? "—";
+        DetailsModifiedText.Text = (connectedDetails?.ModifiedAt ?? selected.LastModified)
+            ?.ToLocalTime().ToString("g", CultureInfo.CurrentCulture) ?? "—";
         DetailsAccessText.Text = selected.IsNavigable
             ? "Navigable"
             : selected.Kind == ExplorerNodeKind.File
@@ -507,7 +683,13 @@ public sealed partial class MainWindow : Window, IDisposable
         DetailsPathText.Text = selected.Path;
         DetailsHintText.Text = selected.Kind == ExplorerNodeKind.Aggregate
             ? selected.AggregateAction?.Description ?? "Enumeration was bounded before this aggregate could be refined."
-            : "Double-click a folder to move it into focus. Reparse-point folders are shown but never traversed.";
+            : _session.ProviderMode == ExplorerProviderMode.Connected
+                ? "Read-only indexed data supplied by OmniSorSe Explorer Protocol v1."
+                : "Double-click a folder to move it into focus. Reparse-point folders are shown but never traversed.";
+        DetailsIndexText.Text = connectedDetails is null
+            ? _session.ProviderMode == ExplorerProviderMode.Connected ? "Loading…" : "Not applicable"
+            : connectedDetails.IsFullyIndexed ? "Complete" : "Incomplete";
+        DetailsSummaryText.Text = connectedDetails?.Summary ?? string.Empty;
     }
 
     private void ApplyPreferencesToControls()
@@ -555,11 +737,14 @@ public sealed partial class MainWindow : Window, IDisposable
 
         var diagnostics = GraphScene.Diagnostics;
         var rainDiagnostics = DataRain.Diagnostics;
+        var connectionDiagnostics = _connection.Diagnostics;
         DiagnosticsText.Text = string.Create(
             CultureInfo.InvariantCulture,
+            $"provider {_session.ProviderDisplayName}  connection {connectionDiagnostics.State}  protocol {connectionDiagnostics.ProtocolVersion}  transport {connectionDiagnostics.Transport}\n" +
             $"nodes {diagnostics.Nodes}/{_session.SceneBudget}  edges {diagnostics.Edges}  labels {diagnostics.Labels}  zoom {diagnostics.Zoom:0.00}\n" +
             $"layout {diagnostics.LayoutDuration.TotalMilliseconds:0.00} ms  prep {diagnostics.ScenePreparationDuration.TotalMilliseconds:0.00} ms  render {diagnostics.LastRenderDuration.TotalMilliseconds:0.00} ms  load {_session.LastLoadDuration.TotalMilliseconds:0.0} ms\n" +
             $"bg {diagnostics.BackgroundDuration.TotalMilliseconds:0.00}  edge {diagnostics.EdgeDuration.TotalMilliseconds:0.00}  glyph {diagnostics.GlyphDuration.TotalMilliseconds:0.00}  label {diagnostics.LabelPreparationDuration.TotalMilliseconds + diagnostics.LabelDrawDuration.TotalMilliseconds:0.00} ms\n" +
+            $"ipc {connectionDiagnostics.LastRequestDuration.TotalMilliseconds:0.0} ms  response {connectionDiagnostics.LastResponseNodeCount} nodes  search {connectionDiagnostics.LastSearchResultCount}  timeouts {connectionDiagnostics.TimeoutCount}  reconnects {connectionDiagnostics.ReconnectCount}  stale {connectionDiagnostics.StaleResponseRejectionCount}\n" +
             $"alloc {diagnostics.RenderAllocatedBytes / 1024d:0.0} KiB  caches text {diagnostics.TextCacheEntries}/256 resources {diagnostics.ResourceCacheEntries}/576  rain {rainDiagnostics.RenderedTokens} @ {rainDiagnostics.LastRenderDuration.TotalMilliseconds:0.00} ms");
     }
 
@@ -627,6 +812,7 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         SettingsPanel.IsVisible = false;
+        ConnectionPanel.IsVisible = false;
         AccessibleListPanel.IsVisible = false;
         _detailsDismissed = true;
         DetailsPanel.IsVisible = false;
@@ -648,6 +834,8 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         _diagnosticsTimer.Stop();
+        _connection.StateChanged -= OnConnectionStateChanged;
+        _session.ProviderFailed -= OnProviderFailed;
         _session.Dispose();
         _isDisposed = true;
     }
@@ -669,6 +857,18 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         return $"{value:0.#} {units[unit]}";
+    }
+
+    private static bool IsConnectionFailure(Exception exception) => exception is
+        IOException or
+        UnauthorizedAccessException or
+        TimeoutException or
+        ExplorerProtocolException or
+        ExplorerProtocolMalformedResponseException;
+
+    private sealed record ConnectedRootItem(Protocol.ExplorerNode Node)
+    {
+        public override string ToString() => Node.AuthorizedPath ?? Node.Name;
     }
 
     private sealed record AccessibleNodeItem(

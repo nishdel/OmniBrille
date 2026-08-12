@@ -168,6 +168,34 @@ public sealed class ExplorerSessionTests
     }
 
     [Fact]
+    public async Task ConnectedNavigation_RejectsLateOpaqueResponseAndReportsDiagnostic()
+    {
+        const string root = "opaque-root";
+        const string folderA = "opaque-a";
+        const string folderB = "opaque-b";
+        var provider = new ControllableProvider(root, Snapshot(root,
+            Entry(folderA, ExplorerNodeKind.Folder),
+            Entry(folderB, ExplorerNodeKind.Folder)))
+        {
+            Mode = ExplorerProviderMode.Connected,
+        };
+        using var session = new ExplorerSession();
+        await session.OpenRootAsync(provider, provider);
+
+        var navigateA = session.NavigateAsync(folderA);
+        await provider.WaitForRequestAsync(folderA);
+        var navigateB = session.NavigateAsync(folderB);
+        await provider.WaitForRequestAsync(folderB);
+        provider.Complete(folderB, Snapshot(folderB, Entry("current", ExplorerNodeKind.File)));
+        Assert.True(await navigateB);
+        provider.Complete(folderA, Snapshot(folderA, Entry("stale", ExplorerNodeKind.File)));
+        Assert.False(await navigateA);
+
+        Assert.Equal(folderB, session.Neighborhood!.FocusNodeId);
+        Assert.Equal(1, provider.StaleResponseRejections);
+    }
+
+    [Fact]
     public async Task ClearSearch_CancelsAndResetsPresentationState()
     {
         var root = Normalize("clear-search");
@@ -279,7 +307,10 @@ public sealed class ExplorerSessionTests
         }
     }
 
-    private sealed class ControllableProvider : IExplorerProvider, IExplorerSearchProvider
+    private sealed class ControllableProvider :
+        IExplorerProvider,
+        IExplorerSearchProvider,
+        IExplorerProviderDiagnostics
     {
         private readonly ExplorerDirectorySnapshot _rootSnapshot;
         private readonly Dictionary<string, TaskCompletionSource<ExplorerDirectorySnapshot>> _requests =
@@ -292,6 +323,10 @@ public sealed class ExplorerSessionTests
         }
 
         public string AccessRoot { get; }
+
+        public ExplorerProviderMode Mode { get; init; }
+
+        public int StaleResponseRejections { get; private set; }
 
         public Task<ExplorerDirectorySnapshot> GetDirectoryAsync(string path, CancellationToken cancellationToken)
         {
@@ -333,6 +368,8 @@ public sealed class ExplorerSessionTests
                 _requests[path].TrySetResult(snapshot);
             }
         }
+
+        public void ReportStaleResponseRejected() => StaleResponseRejections++;
     }
 
     private static async Task WaitUntilAsync(Func<bool> condition)
