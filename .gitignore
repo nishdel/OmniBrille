@@ -1,0 +1,16 @@
+bin/
+obj/
+.vs/
+.idea/
+.vscode/
+TestResults/
+coverage/
+*.user
+*.suo
+*.nupkg
+*.snupkg
+artifacts/
+.DS_Store
+Thumbs.db
+.codex-remote-attachments/
+.smoke-root/
