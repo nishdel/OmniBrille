@@ -580,12 +580,13 @@ public sealed partial class MainWindow : Window, IDisposable
             var isFocus = ExplorerIdentity.Equals(node.Id, neighborhood.FocusNodeId);
             var isSelected = ExplorerIdentity.Equals(node.Id, selectedId);
             var isMatch = highlights.Contains(node.Id);
-            var state = string.Join(" · ", new[]
+            var stateParts = new[]
             {
                 isFocus ? "FOCUS" : null,
                 isMatch ? "MATCH" : null,
                 isSelected ? "SELECTED" : null,
-            }.Where(value => value is not null));
+            }.Where(value => value is not null).ToArray();
+            var state = string.Join(" · ", stateParts);
             var kind = node.Kind switch
             {
                 ExplorerNodeKind.Context => "Previous folder",
@@ -594,7 +595,9 @@ public sealed partial class MainWindow : Window, IDisposable
                 ExplorerNodeKind.File => "File",
                 _ => "Node",
             };
-            var accessibleState = state.Length == 0 ? string.Empty : $", {state.ToLowerInvariant()}";
+            var accessibleState = state.Length == 0
+                ? string.Empty
+                : $", {string.Join(", ", stateParts).ToLowerInvariant()}";
             return new AccessibleNodeItem(
                 node.Id,
                 node.Name,
@@ -673,5 +676,8 @@ public sealed partial class MainWindow : Window, IDisposable
         string Name,
         string Description,
         string StateText,
-        string AccessibleName);
+        string AccessibleName)
+    {
+        public override string ToString() => AccessibleName;
+    }
 }

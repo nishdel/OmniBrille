@@ -199,6 +199,9 @@ public sealed class MainWindowHeadlessTests
         var list = window.FindControl<ListBox>("AccessibleNodesList")!;
         Assert.True(panel.IsVisible);
         Assert.Equal(2, list.ItemCount);
+        var accessibleNames = list.ItemsSource!.Cast<object>().Select(item => item.ToString()).ToArray();
+        Assert.Contains($"{Path.GetFileName(root)}, Folder, focus, selected", accessibleNames);
+        Assert.Contains("match-child, Folder", accessibleNames);
 
         list.SelectedIndex = 1;
         Assert.Equal(child.Id, session.SelectedNode!.Id);
