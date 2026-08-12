@@ -43,6 +43,14 @@ public sealed class OmniSorSeConnectedProvider :
 
     public void ReportStaleResponseRejected() => _client.ReportStaleResponseRejected();
 
+    public bool IsProviderFailure(Exception exception) => exception is
+        IOException or
+        UnauthorizedAccessException or
+        InvalidDataException or
+        TimeoutException or
+        ExplorerProtocolException or
+        ExplorerProtocolMalformedResponseException;
+
     public async Task<ExplorerDirectorySnapshot> GetDirectoryAsync(
         string path,
         CancellationToken cancellationToken)
@@ -92,6 +100,7 @@ public sealed class OmniSorSeConnectedProvider :
 
         var pageSize = Math.Min(Math.Min(batchSize, MaximumPageSize), _protocolInfo.Limits.MaximumNodes);
         string? continuation = null;
+        var observedContinuations = new HashSet<string>(StringComparer.Ordinal);
         var observed = 0;
         do
         {
@@ -99,10 +108,23 @@ public sealed class OmniSorSeConnectedProvider :
             var page = await _client.GetChildrenAsync(
                 new Protocol.ExplorerChildrenRequest(path, pageSize, continuation),
                 cancellationToken).ConfigureAwait(false);
+            if (page.Nodes.Any(node => !string.Equals(node.ParentId, path, StringComparison.Ordinal)))
+            {
+                throw new ExplorerProtocolMalformedResponseException(
+                    "OmniSorSe returned a child outside the requested structural parent.");
+            }
+
             var remaining = MaximumAdaptedChildren - observed;
             var accepted = page.Nodes.Take(Math.Max(0, remaining)).Select(MapNode).ToArray();
             observed += accepted.Length;
             continuation = page.ContinuationToken;
+            if (continuation is not null &&
+                (page.Nodes.Count == 0 || !observedContinuations.Add(continuation)))
+            {
+                throw new ExplorerProtocolMalformedResponseException(
+                    "OmniSorSe returned a non-progressing structural continuation.");
+            }
+
             var clientBoundReached = observed >= MaximumAdaptedChildren && continuation is not null;
             var complete = continuation is null || clientBoundReached;
             var warning = clientBoundReached

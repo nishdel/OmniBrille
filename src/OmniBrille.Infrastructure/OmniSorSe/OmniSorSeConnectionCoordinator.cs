@@ -110,6 +110,14 @@ public sealed class OmniSorSeConnectionCoordinator : IOmniSorSeConnectionCoordin
                 return false;
             }
 
+            if (roots.Nodes.Any(node =>
+                    node.Kind != ExplorerNodeKind.Source ||
+                    node.ParentId is not null))
+            {
+                throw new ExplorerProtocolMalformedResponseException(
+                    "OmniSorSe returned an invalid accessible-root projection.");
+            }
+
             Client = client;
             ProtocolInfo = info;
             AccessibleRoots = roots.Nodes.ToArray();

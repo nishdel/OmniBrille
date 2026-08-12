@@ -2,7 +2,9 @@
 
 ## Status
 
-This is a renderer-facing readiness contract, not an OmniSorSe transport, data contract, or implemented Context mode. Synthetic relationships used by tests never appear in the production UI. OmniSorSe remains authoritative for every future contextual node, relationship, score, reason, and provenance record; OmniBrille must not infer semantic relationships or read OmniSorSe storage directly.
+This is a renderer-facing readiness contract, not an implemented Context mode. Synthetic relationships used by tests never appear in the production UI. OmniSorSe remains authoritative for every future contextual node, relationship, score, reason, and provenance record; OmniBrille must not infer semantic relationships or read OmniSorSe storage directly.
+
+Stage 4 confirmed that OmniSorSe Explorer Protocol v1 already supplies bounded contextual neighborhoods and Related Files through `GetNeighborhood`/`GetRelated`, with edge kind, strength, reason, evidence class, and provenance. OmniBrille deliberately does not render those relationships yet. The shipped `ExplorerEdge` does **not** contain a stable relationship ID, so deterministic selection/update/removal needs either a client scene key for immutable snapshots or a minimal additive protocol field before product Context mode is enabled.
 
 ## Hard visible budgets
 
@@ -29,7 +31,7 @@ Future relationship selection is deterministic:
 3. descending provider-supplied importance;
 4. stable relationship ID.
 
-`ContextRenderBudgetPolicy` applies the global and per-node caps after this ordering. Importance is presentation input, not a semantic calculation by OmniBrille. Duplicate/self relationships must be rejected or normalized before rendering. Stable node and relationship IDs are case-sensitive opaque strings.
+`ContextRenderBudgetPolicy` applies the global and per-node caps after this ordering. Importance is presentation input, not a semantic calculation by OmniBrille. Duplicate/self relationships must be rejected or normalized before rendering. Stable node IDs are case-sensitive opaque strings. Stable relationship identity remains a Protocol v1 gap and must be resolved before incremental relationship updates are enabled.
 
 Progressive disclosure is focus-local. A user may select a contextual aggregate/cluster or request a deeper neighborhood, but every replacement scene is independently bounded and reversible. Context clustering is distinct from the deterministic structural aggregate paging already used for large folders.
 
@@ -55,7 +57,7 @@ Reason/provenance appears only on demand through the compact details surface, a 
 
 Every Context request needs a request ID, focus/scope identity, node/edge limits, cancellation token, and negotiated capability/version. A response is applied only when its request ID and focus/scope still match the authoritative session. Late pages from Folder A can never overwrite Folder B.
 
-Preferred update semantics are a bounded initial snapshot followed by bounded incremental pages or explicitly versioned replacements. Each update declares completion, truncation, and failure state. Removing/replacing a relationship must use its stable relationship ID. Partial data is interactive once internally consistent; progress is coarse/indeterminate unless the provider knows an honest total.
+Protocol v1 currently supplies bounded snapshots/pages rather than pushed incremental updates. Stage 5 may apply only an internally consistent bounded replacement whose request generation and focus still match. Future incremental update semantics should carry completion, truncation, revision, and stable relationship identity. Partial data is interactive once internally consistent; progress is coarse/indeterminate unless the provider knows an honest total.
 
 Cancellation, unavailable provenance, permission changes, disconnected OmniSorSe, incompatible protocol versions, and malformed metadata are normal failure states. The prior valid scene remains usable where safe. Context data never expands the standalone access root or grants filesystem authority.
 

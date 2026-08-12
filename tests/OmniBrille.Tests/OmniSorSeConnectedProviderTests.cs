@@ -1,7 +1,7 @@
+using System.Globalization;
 using OmniBrille.Core;
 using OmniBrille.Desktop.Presentation;
 using OmniBrille.Infrastructure.OmniSorSe;
-using System.Globalization;
 using Protocol = OmniSorSe.ExplorerProtocol;
 
 namespace OmniBrille.Tests;
@@ -112,6 +112,32 @@ public sealed class OmniSorSeConnectedProviderTests
         Assert.True(client.CancellationObserved);
     }
 
+    [Fact]
+    public async Task StructuralPaging_RejectsNonProgressingContinuation()
+    {
+        var root = Node("root", "Root", Protocol.ExplorerNodeKind.Source, null);
+        var child = Node("child", "Child", Protocol.ExplorerNodeKind.File, root.Id);
+        var client = new FakeProtocolClient(root, [child]) { RepeatContinuation = true };
+        var provider = new OmniSorSeConnectedProvider(client, Info(), root);
+
+        await Assert.ThrowsAsync<ExplorerProtocolMalformedResponseException>(() =>
+            provider.GetDirectoryAsync(root.Id, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task StructuralPaging_RejectsNodeFromDifferentParent()
+    {
+        var root = Node("root", "Root", Protocol.ExplorerNodeKind.Source, null);
+        var child = Node("child", "Child", Protocol.ExplorerNodeKind.File, "different-parent");
+        var provider = new OmniSorSeConnectedProvider(
+            new FakeProtocolClient(root, [child]) { ReturnUnscopedChildren = true },
+            Info(),
+            root);
+
+        await Assert.ThrowsAsync<ExplorerProtocolMalformedResponseException>(() =>
+            provider.GetDirectoryAsync(root.Id, CancellationToken.None));
+    }
+
     private static Protocol.ExplorerProtocolInfo Info() => new(
         1,
         0,
@@ -157,6 +183,8 @@ public sealed class OmniSorSeConnectedProviderTests
         public Protocol.ExplorerSearchResult SearchResult { get; init; } = new([], false, "Authorized indexed scope", false);
         public Protocol.ExplorerNodeDetails Details { get; init; }
         public bool BlockChildren { get; init; }
+        public bool RepeatContinuation { get; init; }
+        public bool ReturnUnscopedChildren { get; init; }
         public TaskCompletionSource ChildrenStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public bool CancellationObserved { get; private set; }
 
@@ -184,10 +212,15 @@ public sealed class OmniSorSeConnectedProviderTests
 
             var offset = request.ContinuationToken is null ? 0 : int.Parse(request.ContinuationToken[2..], System.Globalization.CultureInfo.InvariantCulture);
             var count = request.MaximumResults ?? 64;
-            var page = _children.Where(node => node.ParentId == request.ParentNodeId).Skip(offset).Take(count).ToArray();
-            var total = _children.Count(node => node.ParentId == request.ParentNodeId);
-            var next = offset + page.Length < total ? $"o:{offset + page.Length}" : null;
-            return new Protocol.ExplorerNodePage(page, total, next is not null, next);
+            IReadOnlyList<Protocol.ExplorerNode> matching = ReturnUnscopedChildren
+                ? _children
+                : _children.Where(node => node.ParentId == request.ParentNodeId).ToArray();
+            var page = matching.Skip(offset).Take(count).ToArray();
+            var total = matching.Count;
+            var next = RepeatContinuation
+                ? "o:0"
+                : offset + page.Length < total ? $"o:{offset + page.Length}" : null;
+            return new Protocol.ExplorerNodePage(page, Math.Max(total, page.Length), next is not null, next);
         }
 
         public Task<Protocol.ExplorerNeighborhood> GetNeighborhoodAsync(Protocol.ExplorerNeighborhoodRequest request, CancellationToken cancellationToken) =>

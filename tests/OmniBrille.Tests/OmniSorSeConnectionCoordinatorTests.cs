@@ -69,6 +69,22 @@ public sealed class OmniSorSeConnectionCoordinatorTests
         Assert.Equal(OmniSorSeConnectionState.Error, coordinator.State);
     }
 
+    [Fact]
+    public async Task InvalidAccessibleRootProjection_FailsClosed()
+    {
+        var client = new FakeClient
+        {
+            Roots = new ExplorerNodePage([Node("not-a-root", ExplorerNodeKind.File)], 1, false, null),
+        };
+        var coordinator = new OmniSorSeConnectionCoordinator(new FixedFactory(client), new FixedReceiver(client.Grant));
+
+        var connected = await coordinator.ConnectAsync(client.Grant);
+
+        Assert.False(connected);
+        Assert.Empty(coordinator.AccessibleRoots);
+        Assert.Equal(OmniSorSeConnectionState.Disconnected, coordinator.State);
+    }
+
     private static ExplorerNode Node(string id, ExplorerNodeKind kind) =>
         new(id, id, kind, null, null, null, null, new Dictionary<string, string>(), 0, 0);
 

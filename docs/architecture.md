@@ -2,7 +2,7 @@
 
 ## Status and goals
 
-This document describes the Stage 3 standalone Structure explorer and its performance/accessibility hardening. The architecture keeps visual rendering independent from acquisition so a future OmniSorSe adapter can provide the same explorer graph without exposing database or indexing internals.
+This document describes the Stage 4 standalone and connected Structure explorer. Stage 4 consumes OmniSorSe 2.4.0 Explorer Protocol v1 without exposing database or indexing internals; the renderer and accessibility surfaces remain provider-independent.
 
 OmniSorSe owns scanning, indexing, Search, Content Intelligence, Media Intelligence, OCR, transcripts, Related Files, organization, safe file operations, and persistent intelligence/index state. OmniBrille owns standalone spatial navigation, Structure presentation, and future OmniSorSe-backed Context and voice experiences. In short, OmniSorSe is the brain; OmniBrille is the visual lens and spatial navigation interface.
 
@@ -14,7 +14,9 @@ flowchart LR
     Renderer --> Core
     FS[Progressive standalone filesystem adapter] --> Core
     Session --> FS
-    Future[Future OmniSorSe protocol adapter] -. same interfaces .-> Core
+    Connected[OmniSorSe connected provider] --> Core
+    Client[Strict Protocol v1 named-pipe client] --> Connected
+    Host[External OmniSorSe 2.4 host] -. authorized read-only IPC .-> Client
 ```
 
 The dependency rule is inward: `Infrastructure` and `Desktop` depend on `Core`; `Core` depends only on the .NET base class library. The renderer never calls `System.IO`. The filesystem adapter never chooses positions, labels, colors, or animation. Search returns domain hits and is not owned by the canvas.
@@ -58,10 +60,14 @@ Structural search is breadth-first, starts only on user action, and is capped at
 
 `JsonVisualPreferencesStore` keeps only visual preferences in the user's local application-data directory. A malformed file safely falls back to defaults; save uses a temporary file followed by replacement.
 
+`OmniSorSeConnectedProvider` is the second acquisition adapter. It maps session-bound opaque protocol IDs to application-local navigation targets, pages structural children in batches, retains at most 512 children for the existing deterministic aggregate policy, delegates Search to OmniSorSe, and maps only protocol-supplied details. It never calls `System.IO` to fill a connected-data gap. Its root is one node explicitly authorized in the session grant; an authorized path is presentation only and is never used as authority.
+
+`NamedPipeExplorerProtocolClient` implements the shipped v1 length-prefixed JSON framing over a current-user-only .NET named pipe. Every request opens one connection, carries the issued session ID/token and request ID, and has bounded connect/request timeouts. Strict JSON, string enums, response identity/version checks, collection/string/ID bounds, and stable error mapping reject malformed or incompatible responses before adaptation. `OmniSorSeConnectionCoordinator` owns the user-facing state machine and keeps a short-lived grant only in memory for conservative retry.
+
 ### `OmniBrille.Desktop`
 
 - `ExplorerSession` coordinates provider/search requests, progressive states, cancellation, monotonically increasing request identities, navigation commit/rollback, aggregation, selection, and status.
-- `MainWindow` is an Avalonia interaction adapter for folder access, search/result navigation, HUD controls, details, the synchronized accessible list, persisted effects, diagnostics, keyboard shortcuts, and automation metadata.
+- `MainWindow` is an Avalonia interaction adapter for folder access, provider switching/status, authorized connected roots, search/result navigation, HUD controls, details, the synchronized accessible list, persisted effects, diagnostics, keyboard shortcuts, and automation metadata.
 - `GraphSceneControl` owns only scene/input state: zoom, pan, hit targets, transition interpolation, hover, draw preparation, bounded drawing caches, per-phase local diagnostics, and the current visible-node automation projection.
 - `DataRainControl` renders a fixed, deterministic number of sparse blue token streams, caches its small token set, becomes static/sparse for reduced motion, and stops when hidden.
 - `ScenePalette` and application resources centralize the Dark/Light visual tokens.
@@ -71,6 +77,22 @@ Structural search is breadth-first, starts only on user action, and is capped at
 Opening a directory immediately applies a focus shell. Each provider batch rebuilds a bounded interactive neighborhood and reports an honest state: `Loading`, `PartiallyLoaded`, `Ready`, `Cancelled`, or `Failed`. Exact percentage is deliberately absent because filesystem enumeration does not know the final count in advance.
 
 Every load and search receives a monotonically increasing request identity as well as a replaceable cancellation token. A result is applied only if its identity is still current. This identity check is required even when a filesystem/provider implementation cannot stop promptly after cancellation. Navigation history is committed only after the new location yields usable data; a failed drill-down restores the prior scene.
+
+The same rule applies to protocol work. Cancelling a named-pipe read closes/cancels the client connection, which OmniSorSe v1 observes as provider cancellation; v1 has no separate cancel-operation message. A late response is still rejected by the session generation if cancellation loses a race. Protocol client diagnostics count rejected stale responses. Disconnect cancels/fails in-flight work and retains the last valid graph as visibly stale context; it cannot overwrite a newer standalone or reconnected scene.
+
+## Explorer Protocol v1 integration boundary
+
+`src/OmniSorSe.ExplorerProtocol` mirrors only the public dependency-free DTO/enum contract from OmniSorSe tag `v2.4.0` (commit `40552b9b2b18637313354713d66593d04cf0d92f`). OmniBrille does not reference `OpenSorSe.Application`, OmniSorSe binaries, SQLite, indexing, Search implementations, or storage. The shipped server is authoritative when the earlier conceptual design differs.
+
+Provider modes are separate authorities:
+
+- standalone receives an explicitly selected path and applies native lexical root confinement;
+- connected receives only an OmniSorSe-issued grant and authorized opaque roots; paths, when separately projected, are labels rather than access tokens;
+- switching modes resets scene, selection, Back history, aggregate/search/details state, and provider-specific IDs while retaining safe visual preferences.
+
+The connection state machine is `Standalone`, `Discovering`, `Connecting`, `Connected`, `Disconnected`, `Unavailable`, `Incompatible`, `Error`, and `Reconnecting`. The normal HUD uses plain-language status and exposes it as an accessible polite-live value. Developer diagnostics add transport/protocol, last request duration/count, Search count, timeout/reconnect count, and stale-response rejection count without logging secrets, queries, snippets, content, or normal-level full paths.
+
+OmniSorSe 2.4.0 deliberately ships no discovery listener, companion launch action, or finalized handoff message. OmniBrille therefore does not scan process lists, files, ports, or pipe namespaces. It accepts a one-time current-user-only handoff pipe name from an authorized future launcher; its bounded grant frame was used for Stage 4 validation, but the launcher side remains a cross-repository product gap. The bearer secret is never a CLI value or persisted setting. See [the Protocol v1 integration record](explorer-protocol.md).
 
 ## Aggregation and graph bounds
 
@@ -110,6 +132,8 @@ Profiling isolated the Stage 2 search-highlight regression to repeated `Formatte
 - Cancellation stops obsolete filesystem/search work where possible; request identity prevents late data from being applied regardless.
 - Navigation outside the selected root is rejected in both navigation state and filesystem adapter.
 - The renderer receives only a `ExplorerNeighborhood` already constrained to its budget.
+- Invalid/mismatched Protocol v1 versions, response IDs, enums, fields, IDs, payload shapes, and negotiated bounds fail closed while standalone remains usable.
+- A disconnected connected graph remains visible but is not presented as live; retry requires an unexpired in-memory grant, and a restarted server requires a new grant because node IDs are session-bound.
 
 ## Accessibility foundations
 
@@ -120,6 +144,8 @@ The graph automation peer exposes one `TreeItem` peer for each node in the curre
 Headless UI tests exercise this shared state, node automation actions, keyboard graph navigation, themes, loading, search, reduced motion/effects, and simulated 100/125/150/200% text scale. Standard UI text pairs are checked against a 4.5:1 floor (primary text is substantially higher); decorative network lines are explicitly not treated as text. Practical screen-reader behavior remains platform/backend dependent and is not presented as certification.
 
 Known accessibility gaps remain: contextual edge/reason navigation is not defined until Context data exists; the graph peers expose selected state through item status rather than a multi-select pattern; no formal assistive-technology certification has been performed; and macOS automation runtime behavior is untested.
+
+Connected UI tests additionally verify accessible live connection status, opaque-ID navigation, shared graph/list selection, real-field Search/details, disconnect announcement, and clearing provider identity on standalone switch.
 
 ## Performance baseline and budget decision
 
@@ -135,8 +161,8 @@ No automatic hardware fingerprint or adaptive node-count system was introduced. 
 
 Avalonia platform detection, storage providers, rendering, input, and automation abstractions remain in Desktop. Core and Infrastructure use `Path`/`Environment.SpecialFolder` rather than Windows literals. Root-boundary comparison follows native semantics: case-insensitive on Windows and case-sensitive on Linux/macOS. Explorer/protocol IDs are opaque case-sensitive strings on every platform, preventing Linux `A`/`a` collisions and avoiding assumptions about future OmniSorSe IDs. Folder reparse/symbolic-link children remain non-navigable and are not recursively followed.
 
-GitHub Actions restores, verifies format, builds Release with analyzers-as-errors, and runs all tests on Windows and Ubuntu. Windows runtime is the primary interactive validation platform. Linux is build/test validated; no Linux GUI runtime or macOS runtime claim is made in this stage.
+GitHub Actions restores, verifies format, builds Release with analyzers-as-errors, and runs all tests on Windows and Ubuntu, including transport-independent fake-client and local named-pipe framing tests. Windows runtime is the primary interactive validation platform. The real production-host two-process test ran on Windows; Linux remains build/test validated, and no Linux connected runtime or macOS runtime claim is made.
 
-## Stage 3 non-goals
+## Stage 4 non-goals
 
-No OmniSorSe IPC, protocol transport, Context mode, semantic relationships, Related Files, voice, OCR/transcription, content/media intelligence, indexing database, cloud service, telemetry, destructive file operation, installer, or updater is implemented.
+No Context-mode UI, `GetRelated` presentation, semantic relationship rendering, voice, indexing/database implementation, cloud service, telemetry, destructive file operation, installer, updater, or OmniSorSe source change is implemented. The connected provider may display bounded summary/topic/entity fields returned by node details, but it neither computes intelligence nor creates Context relationships.

@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using OmniBrille.Core;
-using OmniBrille.Infrastructure.OmniSorSe;
 
 namespace OmniBrille.Desktop.Presentation;
 
@@ -632,13 +631,12 @@ public sealed class ExplorerSession : IDisposable
         }
     }
 
-    private static bool IsProviderFailure(Exception exception) => exception is
+    private bool IsProviderFailure(Exception exception) => exception is
         IOException or
         UnauthorizedAccessException or
         InvalidDataException or
-        TimeoutException or
-        ExplorerProtocolException or
-        ExplorerProtocolMalformedResponseException;
+        TimeoutException ||
+        (_provider as IExplorerProviderDiagnostics)?.IsProviderFailure(exception) is true;
 
     private void NotifyChanged() => StateChanged?.Invoke(this, EventArgs.Empty);
 

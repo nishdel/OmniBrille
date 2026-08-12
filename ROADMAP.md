@@ -30,24 +30,27 @@ Status language is intentionally conservative: checked items exist in the applic
 - [x] Native path-case semantics, opaque case-sensitive IDs, and Windows/Ubuntu CI.
 - [x] Profile-backed Context renderer limits, relationship priority, provenance seam, and synthetic density tests.
 
-## Stage 4 — OmniSorSe protocol foundation (recommended next)
+## Stage 4 — Real OmniSorSe Explorer Protocol v1 integration (complete with launcher gap documented)
 
-- [ ] Write the transport/security ADR and implement only the versioned explorer contract plus handshake/capability negotiation.
-- [ ] Add a connected provider behind existing explorer/search abstractions with cancellation, request IDs, scope enforcement, and clear offline/incompatible states.
-- [ ] Keep standalone mode fully independent and never read OmniSorSe SQLite or reference OmniSorSe internals.
-- [ ] Validate bounded Structure neighborhoods and search through the adapter before exposing any Context UI.
+- [x] Consume the actual v1 strict framed named-pipe contract and validate version, capabilities, identity, authorization, limits, and errors.
+- [x] Add a connected provider behind existing explorer/search/details abstractions with cancellation, request generations, opaque IDs, scope enforcement, and clear offline/incompatible states.
+- [x] Preserve standalone independence and avoid OmniSorSe SQLite/application/indexing dependencies.
+- [x] Validate authorized roots, bounded Structure navigation, Search, details, disconnect, and fresh-session restart against the production OmniSorSe 2.4.0 host in two processes.
+- [x] Document that released OmniSorSe 2.4.0 has no companion launcher/discovery or finalized grant-handoff contract; ordinary user connection awaits a coordinated OmniSorSe change.
 
-## Stage 5 — Connected Structure and Search maturation
+## Stage 5 — Companion launch completion and real Context mode
 
-- [ ] Accessible roots/current scope, neighborhoods, search, and node details.
-- [ ] Filter chips, structural metadata/ranking, and clearer very-large-root progress.
-- [ ] Persisted opt-in recent roots/session restoration without widening access silently.
-- [ ] Optional non-recursive structural filters for aggregate refinement.
+- [ ] In OmniSorSe, add the smallest reviewed companion launch/action and standardized current-user-only one-time grant handoff; do not add a discovery listener or token persistence.
+- [ ] In OmniBrille, consume real `GetNeighborhood(IncludeContext: true)` and `GetRelated` data within the existing 48-node/36-context-edge rendering contract.
+- [ ] Distinguish Structure and Context edges and expose provider-authored reason/evidence/provenance on selection and in the accessible alternative.
+- [ ] Resolve Protocol v1's lack of stable relationship IDs before incremental relationship update/removal behavior is exposed.
+- [ ] Revalidate cancellation, stale replacement, density, performance, text scaling, automation, and disconnect/reconnect with real Context payloads.
 
-## Stage 6 — Context mode
+## Stage 6 — Context presentation maturation
 
-- [ ] OmniSorSe-supplied Related Files, topics/entities, and cross-media relationships.
-- [ ] Explanations and provenance. No fabricated semantic edges.
+- [ ] Context aggregates/clusters, focus-local relationship filtering, and relationship search emphasis.
+- [ ] Richer details/provenance inspection without permanently labeling every edge.
+- [ ] Provider capability/version compatibility matrix and large Context-neighborhood performance hardening.
 
 ## Stage 7 — Voice
 

@@ -185,6 +185,8 @@ public interface IExplorerNodeDetailsProvider
 public interface IExplorerProviderDiagnostics
 {
     public void ReportStaleResponseRejected();
+
+    public bool IsProviderFailure(Exception exception) => false;
 }
 
 public interface IExplorerSearchProvider
