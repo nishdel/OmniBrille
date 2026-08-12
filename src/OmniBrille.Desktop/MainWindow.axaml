@@ -1,9 +1,9 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:rendering="using:OmniExplorer.Desktop.Rendering"
-        x:Class="OmniExplorer.Desktop.MainWindow"
+        xmlns:rendering="using:OmniBrille.Desktop.Rendering"
+        x:Class="OmniBrille.Desktop.MainWindow"
         x:CompileBindings="False"
-        Title="OmniExplorer — Structure"
+        Title="OmniBrille — Structure"
         Width="1180"
         Height="700"
         MinWidth="860"
@@ -196,7 +196,7 @@
               BorderThickness="1"
               CornerRadius="6">
         <StackPanel HorizontalAlignment="Center" Spacing="12">
-          <TextBlock Text="OMNIEXPLORER"
+          <TextBlock Text="OMNIBRILLE"
                      FontSize="28"
                      FontWeight="Light"
                      LetterSpacing="5"

@@ -1,8 +1,10 @@
-# OmniExplorer
+# OmniBrille
 
-OmniExplorer is a futuristic spatial interface for exploring files and, later, the relationships supplied by OmniSorSe. This repository is an independent application: OmniExplorer is optional, and OmniSorSe incurs no renderer, asset, package-size, runtime, or startup dependency from it.
+OmniBrille is an optional, standalone-capable spatial navigation application for graph-based filesystem exploration. It presents Structure now and is designed to present OmniSorSe-backed Context later. This repository is an independent application: users who never install OmniBrille incur no renderer, asset, package-size, runtime, dependency, or startup cost in OmniSorSe.
 
-This first engineering pass delivers a runnable standalone **Structure** explorer. It is not the finished product and it does not implement semantic **Context** intelligence.
+Conceptually, OmniSorSe is the brain. OmniBrille is the visual lens and spatial navigation interface.
+
+This initial engineering pass delivers a runnable standalone Structure explorer. It is not the finished product and does not fabricate or implement semantic Context intelligence.
 
 ## What works now
 
@@ -25,32 +27,38 @@ Standalone mode can inspect only the root the user explicitly chooses. It does n
 Prerequisites: .NET 8 SDK and a Windows, macOS, or Linux desktop supported by Avalonia. Windows is the validated platform for this pass.
 
 ```powershell
-dotnet restore .\OmniExplorer.sln
-dotnet build .\OmniExplorer.sln --configuration Release --no-restore
-dotnet test .\OmniExplorer.sln --configuration Release --no-build --no-restore
-dotnet run --project .\src\OmniExplorer.Desktop\OmniExplorer.Desktop.csproj
+cd "D:\Own Projects\OmniBrille"
+dotnet restore .\OmniBrille.sln
+dotnet build .\OmniBrille.sln --configuration Release --no-restore
+dotnet test .\OmniBrille.sln --configuration Release --no-build --no-restore
+dotnet run --project .\src\OmniBrille.Desktop\OmniBrille.Desktop.csproj
 ```
 
-The application initially shows no filesystem content. Choose a folder to establish the access root.
-For an explicit command-line launch (useful for local smoke testing), append `-- --root "C:\path\you\chose" --theme Light`. The theme value may be `Light` or `Dark`.
+The application initially shows no filesystem content. Choose a folder to establish the access root. For an explicit command-line launch (useful for local smoke testing), append `-- --root "C:\path\you\chose" --theme Light`. The theme value may be `Light` or `Dark`.
 
 ## Repository structure
 
 ```text
 src/
-  OmniExplorer.Core/            explorer contracts, graph model/budget, layout, navigation
-  OmniExplorer.Infrastructure/  bounded standalone filesystem and structural search adapter
-  OmniExplorer.Desktop/         Avalonia shell, presentation session, custom graph renderer, themes
+  OmniBrille.Core/            explorer contracts, graph model/budget, layout, navigation
+  OmniBrille.Infrastructure/  bounded standalone filesystem and structural search adapter
+  OmniBrille.Desktop/         Avalonia shell, presentation session, custom graph renderer, themes
 tests/
-  OmniExplorer.Tests/           non-rendering behavior and filesystem integration tests
+  OmniBrille.Tests/           non-rendering behavior and filesystem integration tests
 docs/
-  architecture.md               system boundaries and rendering decision
-  explorer-protocol.md          future OmniSorSe local-contract direction
-ROADMAP.md                      staged implementation plan
+  architecture.md             system boundaries and rendering decision
+  explorer-protocol.md        future OmniSorSe local-contract direction
+ROADMAP.md                    staged implementation plan
 ```
 
 ## OmniSorSe relationship
 
-OmniSorSe is the intended future intelligence/file-management companion (historically/currently named OpenSorSe during its transition). OmniExplorer will consume a narrow, versioned local protocol. It will never read OmniSorSe's SQLite schema or reuse internal indexing/domain types. The protocol and connected adapter are intentionally design-only in this pass.
+OmniSorSe is the primary local-first file intelligence application. It is responsible for scanning, indexing, Search, Content Intelligence, Media Intelligence, OCR, transcripts, Related Files, organization, safe file operations, and persistent intelligence/index state.
+
+OmniBrille is the optional spatial navigation companion. It is responsible for graph-based filesystem navigation, Structure mode, spatial Search presentation, visual navigation, and future voice navigation/search. Future Context mode will display relationships supplied by OmniSorSe rather than duplicating its intelligence.
+
+OmniBrille will consume a narrow, versioned local protocol and will never read OmniSorSe's SQLite schema or reuse internal indexing/domain types. The protocol and connected adapter are intentionally design-only in this pass.
+
+The intended future GitHub repository is `nishdel/OmniBrille`; it has not been created or configured as a remote yet.
 
 See [the architecture](docs/architecture.md), [the future protocol boundary](docs/explorer-protocol.md), and [the roadmap](ROADMAP.md).

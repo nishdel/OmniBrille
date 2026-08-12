@@ -1,6 +1,6 @@
-using OmniExplorer.Core;
+using OmniBrille.Core;
 
-namespace OmniExplorer.Tests;
+namespace OmniBrille.Tests;
 
 public sealed class NavigationStateTests
 {

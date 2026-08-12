@@ -1,7 +1,7 @@
-using OmniExplorer.Core;
-using OmniExplorer.Desktop.Presentation;
+using OmniBrille.Core;
+using OmniBrille.Desktop.Presentation;
 
-namespace OmniExplorer.Tests;
+namespace OmniBrille.Tests;
 
 public sealed class ExplorerSessionTests
 {
@@ -92,7 +92,7 @@ public sealed class ExplorerSessionTests
     }
 
     private static string Normalize(string name) =>
-        Path.Combine(Path.GetTempPath(), $"OmniExplorerSessionTests-{name}");
+        Path.Combine(Path.GetTempPath(), $"OmniBrilleSessionTests-{name}");
 
     private static ExplorerEntry Entry(string path, ExplorerNodeKind kind) =>
         new(path, Path.GetFileName(path), path, kind);

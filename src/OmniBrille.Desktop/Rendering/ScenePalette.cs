@@ -1,6 +1,6 @@
 using Avalonia.Media;
 
-namespace OmniExplorer.Desktop.Rendering;
+namespace OmniBrille.Desktop.Rendering;
 
 internal sealed record ScenePalette(
     Color Background,

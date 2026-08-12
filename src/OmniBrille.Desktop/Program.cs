@@ -1,7 +1,7 @@
 using Avalonia;
 using Avalonia.Fonts.Inter;
 
-namespace OmniExplorer.Desktop;
+namespace OmniBrille.Desktop;
 
 internal static class Program
 {

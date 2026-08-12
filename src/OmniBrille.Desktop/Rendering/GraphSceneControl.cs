@@ -6,9 +6,9 @@ using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
-using OmniExplorer.Core;
+using OmniBrille.Core;
 
-namespace OmniExplorer.Desktop.Rendering;
+namespace OmniBrille.Desktop.Rendering;
 
 public sealed class GraphSceneControl : Control
 {

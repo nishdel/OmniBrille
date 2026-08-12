@@ -1,8 +1,8 @@
 using System.Globalization;
-using OmniExplorer.Core;
-using OmniExplorer.Infrastructure;
+using OmniBrille.Core;
+using OmniBrille.Infrastructure;
 
-namespace OmniExplorer.Tests;
+namespace OmniBrille.Tests;
 
 public sealed class FileSystemExplorerProviderTests
 {
@@ -122,7 +122,7 @@ public sealed class FileSystemExplorerProviderTests
     {
         public TemporaryDirectory()
         {
-            Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"OmniExplorerTests-{Guid.NewGuid():N}");
+            Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"OmniBrilleTests-{Guid.NewGuid():N}");
             Directory.CreateDirectory(Path);
         }
 

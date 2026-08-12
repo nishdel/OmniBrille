@@ -5,13 +5,13 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniExplorer.Core", "src\OmniExplorer.Core\OmniExplorer.Core.csproj", "{1B8921A4-B089-4AC5-BC06-8FCD73CDA6D3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniBrille.Core", "src\OmniBrille.Core\OmniBrille.Core.csproj", "{1B8921A4-B089-4AC5-BC06-8FCD73CDA6D3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniExplorer.Infrastructure", "src\OmniExplorer.Infrastructure\OmniExplorer.Infrastructure.csproj", "{A01CBE0E-4C4F-4F00-B200-B051E2EC4F05}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniBrille.Infrastructure", "src\OmniBrille.Infrastructure\OmniBrille.Infrastructure.csproj", "{A01CBE0E-4C4F-4F00-B200-B051E2EC4F05}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniExplorer.Desktop", "src\OmniExplorer.Desktop\OmniExplorer.Desktop.csproj", "{80623B7D-5C03-43EF-A6D8-4569A5A482E9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniBrille.Desktop", "src\OmniBrille.Desktop\OmniBrille.Desktop.csproj", "{80623B7D-5C03-43EF-A6D8-4569A5A482E9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniExplorer.Tests", "tests\OmniExplorer.Tests\OmniExplorer.Tests.csproj", "{CA30F9AE-4AFA-4C73-8526-6C61F2CD5049}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniBrille.Tests", "tests\OmniBrille.Tests\OmniBrille.Tests.csproj", "{CA30F9AE-4AFA-4C73-8526-6C61F2CD5049}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

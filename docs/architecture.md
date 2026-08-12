@@ -4,6 +4,8 @@
 
 This document describes the initial standalone Structure-mode vertical slice. The architecture keeps visual rendering independent from acquisition so a future OmniSorSe adapter can provide the same explorer graph without exposing database or indexing internals.
 
+OmniSorSe is the primary local-first file intelligence application: it owns scanning, indexing, Search, Content Intelligence, Media Intelligence, OCR, transcripts, Related Files, organization, safe file operations, and persistent intelligence/index state. OmniBrille is the optional spatial navigation application: it owns graph-based filesystem navigation, Structure mode, spatial Search presentation, visual navigation, and future OmniSorSe-backed Context and voice experiences. In short, OmniSorSe is the brain; OmniBrille is the visual lens and spatial navigation interface.
+
 ```mermaid
 flowchart LR
     Shell[Avalonia shell and presentation session] --> Core[Explorer graph contracts and navigation]
@@ -20,7 +22,7 @@ The dependency rule is inward: `Infrastructure` and `Desktop` depend on `Core`; 
 
 Selected stack: .NET 8, C#, Avalonia 12.1, and an Avalonia custom `Control` using its `DrawingContext`.
 
-The transitive Avalonia build-telemetry service is explicitly excluded. OmniExplorer itself has no runtime telemetry, and normal repository builds do not emit Avalonia build telemetry.
+The transitive Avalonia build-telemetry service is explicitly excluded. OmniBrille itself has no runtime telemetry, and normal repository builds do not emit Avalonia build telemetry.
 
 | Option | Strengths | Initial tradeoff | Decision |
 |---|---|---|---|
@@ -29,11 +31,11 @@ The transitive Avalonia build-telemetry service is explicitly excluded. OmniExpl
 | WebView/WebGL renderer | Strong graph/WebGL ecosystem and animation tooling | Browser runtime/package cost, native integration complexity, two-platform debugging surface | Deferred; reconsider only if measured scene needs exceed Avalonia |
 | Direct Skia/Win2D engine | Maximum draw-loop control | More text, input, accessibility, and application-shell infrastructure to own | Deferred until profiling demonstrates need |
 
-Avalonia is not selected merely because the companion app uses it. Repository separation prevents any Avalonia or renderer dependency from entering OmniSorSe, while the custom scene gives OmniExplorer enough control for the reference direction. The initial renderer uses deterministic radial coordinates rather than continuous force physics, multi-pass low-cost line glow, simple outlined icons, label level-of-detail, and a hard scene budget. This protects spatial orientation and keeps frame cost predictable.
+Avalonia is not selected merely because the companion ecosystem already uses .NET desktop technologies. Repository separation prevents any Avalonia or renderer dependency from entering OmniSorSe, while the custom scene gives OmniBrille enough control for the reference direction. The initial renderer uses deterministic radial coordinates rather than continuous force physics, multi-pass low-cost line glow, simple outlined icons, label level-of-detail, and a hard scene budget. This protects spatial orientation and keeps frame cost predictable.
 
 ## Components
 
-### `OmniExplorer.Core`
+### `OmniBrille.Core`
 
 - `ExplorerEntry`, `ExplorerNode`, `ExplorerEdge`, and `ExplorerNeighborhood` are visual-agnostic structural contracts.
 - `IExplorerProvider` acquires one bounded directory snapshot.
@@ -44,13 +46,13 @@ Avalonia is not selected merely because the companion app uses it. Repository se
 
 These are application-local contracts, not the future wire protocol.
 
-### `OmniExplorer.Infrastructure`
+### `OmniBrille.Infrastructure`
 
 `FileSystemExplorerProvider` is the standalone adapter. It performs filesystem work away from the UI thread, observes cancellation between entries, caps a single-directory read at 5,000 metadata-bearing entries, does not traverse reparse-point directories, and turns common enumeration errors into warnings/failure states. Search is breadth-first, begins only on user action, and is capped at 80 results and 500 visited directories by default.
 
 The provider intentionally does not recursively materialize a drive or maintain a duplicate index.
 
-### `OmniExplorer.Desktop`
+### `OmniBrille.Desktop`
 
 - `ExplorerSession` coordinates provider requests, cancellation, navigation, search, scene construction, selection, and presentation status.
 - `MainWindow` is a thin Avalonia interaction adapter: folder picker, buttons, result/list accessibility surface, themes, and details.

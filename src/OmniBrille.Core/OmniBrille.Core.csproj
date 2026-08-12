@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>OmniBrille.Core</AssemblyName>
+    <RootNamespace>OmniBrille.Core</RootNamespace>
+    <Product>OmniBrille</Product>
+    <Description>Visual-agnostic graph and navigation domain for OmniBrille.</Description>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

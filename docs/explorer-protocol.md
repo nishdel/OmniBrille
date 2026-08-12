@@ -2,7 +2,13 @@
 
 This is a design seam, not an implemented server or published package.
 
-The future local integration should be a tiny, versioned contract—conceptually `OmniSorSe.ExplorerProtocol`—shared as source or a deliberately versioned package only when both applications need it. OmniExplorer will add a connected provider adapter behind the same explorer/search abstractions used by standalone mode.
+The future local integration should be a tiny, versioned contract—conceptually `OmniSorSe.ExplorerProtocol`—shared as source or a deliberately versioned package only when both applications need it. OmniBrille will add a connected provider adapter behind the same explorer/search abstractions used by standalone mode.
+
+## Naming decision
+
+`OmniSorSe.ExplorerProtocol` remains the preferred conceptual package name. It describes the stable role of the contract rather than the current name of a particular client, so future product renames do not force protocol churn. `OmniSorSe.NavProtocol` and `OmniSorSe.OmniBrilleProtocol` were considered but would either be less precise or couple the contract to one application. Domain DTO names such as `ExplorerNode`, `ExplorerEdge`, and `ExplorerNeighborhood` remain semantically strong for the same reason.
+
+No protocol project, transport, package, or server is created by this rename.
 
 ## Responsibilities
 

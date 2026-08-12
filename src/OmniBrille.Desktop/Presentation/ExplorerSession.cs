@@ -1,6 +1,6 @@
-using OmniExplorer.Core;
+using OmniBrille.Core;
 
-namespace OmniExplorer.Desktop.Presentation;
+namespace OmniBrille.Desktop.Presentation;
 
 public sealed class ExplorerSession : IDisposable
 {

@@ -1,4 +1,4 @@
-namespace OmniExplorer.Core;
+namespace OmniBrille.Core;
 
 public enum ExplorerNodeKind
 {

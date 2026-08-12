@@ -5,11 +5,11 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
-using OmniExplorer.Core;
-using OmniExplorer.Desktop.Presentation;
-using OmniExplorer.Infrastructure;
+using OmniBrille.Core;
+using OmniBrille.Desktop.Presentation;
+using OmniBrille.Infrastructure;
 
-namespace OmniExplorer.Desktop;
+namespace OmniBrille.Desktop;
 
 public sealed partial class MainWindow : Window, IDisposable
 {
@@ -54,7 +54,7 @@ public sealed partial class MainWindow : Window, IDisposable
 
         var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "Choose an OmniExplorer access root",
+            Title = "Choose an OmniBrille access root",
             AllowMultiple = false,
         });
         var selected = folders.Count > 0 ? folders[0] : null;

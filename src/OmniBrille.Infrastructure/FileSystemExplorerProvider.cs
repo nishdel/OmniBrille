@@ -1,6 +1,6 @@
-using OmniExplorer.Core;
+using OmniBrille.Core;
 
-namespace OmniExplorer.Infrastructure;
+namespace OmniBrille.Infrastructure;
 
 public sealed class FileSystemExplorerProvider : IExplorerProvider, IExplorerSearchProvider
 {

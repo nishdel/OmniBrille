@@ -1,4 +1,4 @@
-# OmniExplorer roadmap
+# OmniBrille roadmap
 
 Status language is intentionally conservative: only checked items are present in the current vertical slice.
 

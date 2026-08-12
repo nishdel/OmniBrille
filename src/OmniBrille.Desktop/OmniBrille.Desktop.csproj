@@ -2,19 +2,24 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>OmniBrille.Desktop</AssemblyName>
+    <RootNamespace>OmniBrille.Desktop</RootNamespace>
+    <Product>OmniBrille</Product>
+    <Title>OmniBrille</Title>
+    <Description>Optional spatial navigation companion for OmniSorSe.</Description>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\OmniExplorer.Core\OmniExplorer.Core.csproj" />
-    <ProjectReference Include="..\OmniExplorer.Infrastructure\OmniExplorer.Infrastructure.csproj" />
+    <ProjectReference Include="..\OmniBrille.Core\OmniBrille.Core.csproj" />
+    <ProjectReference Include="..\OmniBrille.Infrastructure\OmniBrille.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.1.0" />
-    <!-- BuildServices is telemetry-only for the open-source Avalonia packages; OmniExplorer opts out in-project. -->
+    <!-- BuildServices is telemetry-only for the open-source Avalonia packages; OmniBrille opts out in-project. -->
     <PackageReference Include="Avalonia.BuildServices" Version="11.3.2" ExcludeAssets="all" PrivateAssets="all" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.0" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.0" />

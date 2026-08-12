@@ -2,7 +2,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 
-namespace OmniExplorer.Desktop;
+namespace OmniBrille.Desktop;
 
 public sealed partial class App : Application
 {
