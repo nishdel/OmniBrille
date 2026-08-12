@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniBrille.Desktop", "src\O
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniBrille.Tests", "tests\OmniBrille.Tests\OmniBrille.Tests.csproj", "{CA30F9AE-4AFA-4C73-8526-6C61F2CD5049}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniBrille.HeadlessTests", "tests\OmniBrille.HeadlessTests\OmniBrille.HeadlessTests.csproj", "{6FDF73CB-BD0E-453B-A35C-BCAB4B8AFD18}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -71,6 +73,18 @@ Global
 		{CA30F9AE-4AFA-4C73-8526-6C61F2CD5049}.Release|x64.Build.0 = Release|Any CPU
 		{CA30F9AE-4AFA-4C73-8526-6C61F2CD5049}.Release|x86.ActiveCfg = Release|Any CPU
 		{CA30F9AE-4AFA-4C73-8526-6C61F2CD5049}.Release|x86.Build.0 = Release|Any CPU
+		{6FDF73CB-BD0E-453B-A35C-BCAB4B8AFD18}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6FDF73CB-BD0E-453B-A35C-BCAB4B8AFD18}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6FDF73CB-BD0E-453B-A35C-BCAB4B8AFD18}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{6FDF73CB-BD0E-453B-A35C-BCAB4B8AFD18}.Debug|x64.Build.0 = Debug|Any CPU
+		{6FDF73CB-BD0E-453B-A35C-BCAB4B8AFD18}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{6FDF73CB-BD0E-453B-A35C-BCAB4B8AFD18}.Debug|x86.Build.0 = Debug|Any CPU
+		{6FDF73CB-BD0E-453B-A35C-BCAB4B8AFD18}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6FDF73CB-BD0E-453B-A35C-BCAB4B8AFD18}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6FDF73CB-BD0E-453B-A35C-BCAB4B8AFD18}.Release|x64.ActiveCfg = Release|Any CPU
+		{6FDF73CB-BD0E-453B-A35C-BCAB4B8AFD18}.Release|x64.Build.0 = Release|Any CPU
+		{6FDF73CB-BD0E-453B-A35C-BCAB4B8AFD18}.Release|x86.ActiveCfg = Release|Any CPU
+		{6FDF73CB-BD0E-453B-A35C-BCAB4B8AFD18}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -80,5 +94,6 @@ Global
 		{A01CBE0E-4C4F-4F00-B200-B051E2EC4F05} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{80623B7D-5C03-43EF-A6D8-4569A5A482E9} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{CA30F9AE-4AFA-4C73-8526-6C61F2CD5049} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{6FDF73CB-BD0E-453B-A35C-BCAB4B8AFD18} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

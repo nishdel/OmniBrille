@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Globalization;
 using Avalonia;
+using Avalonia.Automation;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
@@ -10,8 +12,20 @@ using OmniBrille.Core;
 
 namespace OmniBrille.Desktop.Rendering;
 
+public sealed record SceneDiagnostics(
+    int Nodes,
+    int Edges,
+    int Labels,
+    int Budget,
+    double Zoom,
+    TimeSpan LayoutDuration,
+    TimeSpan ScenePreparationDuration,
+    TimeSpan LastRenderDuration);
+
 public sealed class GraphSceneControl : Control
 {
+    private const double AnimationDurationMilliseconds = 440;
+
     private readonly RadialGraphLayout _layoutEngine = new();
     private readonly DispatcherTimer _animationTimer;
     private readonly Stopwatch _animationClock = new();
@@ -22,10 +36,15 @@ public sealed class GraphSceneControl : Control
     private Dictionary<string, GraphLayoutNode> _animationFrom = new();
     private IReadOnlySet<string> _highlights = new HashSet<string>();
     private string? _selectedNodeId;
+    private string? _hoveredNodeId;
     private Vector _pan;
     private Point _lastPointer;
     private bool _isPanning;
     private double _zoom = 1;
+    private TimeSpan _layoutDuration;
+    private TimeSpan _scenePreparationDuration;
+    private TimeSpan _lastRenderDuration;
+    private int _renderedLabelCount;
 
     public GraphSceneControl()
     {
@@ -34,7 +53,7 @@ public sealed class GraphSceneControl : Control
         _animationTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
         _animationTimer.Tick += (_, _) =>
         {
-            if (_animationClock.ElapsedMilliseconds >= 280)
+            if (_animationClock.Elapsed.TotalMilliseconds >= AnimationDurationMilliseconds)
             {
                 _animationTimer.Stop();
                 _animationClock.Stop();
@@ -50,27 +69,56 @@ public sealed class GraphSceneControl : Control
 
     public event EventHandler? BackRequested;
 
+    public event EventHandler? DismissRequested;
+
+    public bool ReducedMotion { get; set; }
+
+    public bool ReducedEffects { get; set; }
+
+    public bool SearchActive { get; set; }
+
+    public SceneDiagnostics Diagnostics => new(
+        _neighborhood?.Nodes.Count ?? 0,
+        _neighborhood?.Edges.Count ?? 0,
+        _renderedLabelCount,
+        GraphNeighborhoodBuilder.DefaultNodeBudget,
+        _zoom,
+        _layoutDuration,
+        _scenePreparationDuration,
+        _lastRenderDuration);
+
     public void SetScene(
         ExplorerNeighborhood? neighborhood,
         string? selectedNodeId,
         IReadOnlySet<string>? highlights,
         bool animate = true)
     {
+        var preparationClock = Stopwatch.StartNew();
         var previousLayout = CurrentLayout();
         _neighborhood = neighborhood;
         _selectedNodeId = selectedNodeId;
         _highlights = highlights ?? new HashSet<string>();
+
+        var layoutClock = Stopwatch.StartNew();
         _targetLayout = neighborhood is null
             ? new Dictionary<string, GraphLayoutNode>()
-            : _layoutEngine.Layout(neighborhood);
+            : _layoutEngine.Layout(neighborhood, previousLayout);
+        layoutClock.Stop();
+        _layoutDuration = layoutClock.Elapsed;
 
         _animationFrom = _targetLayout.ToDictionary(
             pair => pair.Key,
             pair => previousLayout.TryGetValue(pair.Key, out var previous)
                 ? previous
-                : pair.Value with { X = 0, Y = 0, Scale = 0.25, Opacity = 0 });
+                : pair.Value with
+                {
+                    X = 0,
+                    Y = 0,
+                    Scale = Math.Min(0.28, pair.Value.Scale),
+                    Opacity = 0,
+                });
 
-        if (animate && neighborhood is not null)
+        if (animate && !ReducedMotion && neighborhood is not null)
         {
             _animationClock.Restart();
             _animationTimer.Start();
@@ -81,6 +129,9 @@ public sealed class GraphSceneControl : Control
             _animationTimer.Stop();
         }
 
+        UpdateAutomationDescription();
+        preparationClock.Stop();
+        _scenePreparationDuration = preparationClock.Elapsed;
         InvalidateVisual();
     }
 
@@ -97,6 +148,7 @@ public sealed class GraphSceneControl : Control
 
     public override void Render(DrawingContext context)
     {
+        var renderClock = Stopwatch.StartNew();
         base.Render(context);
         var palette = ActualThemeVariant == ThemeVariant.Light ? ScenePalette.Light : ScenePalette.Dark;
         context.DrawRectangle(new SolidColorBrush(palette.Background), null, Bounds);
@@ -104,23 +156,60 @@ public sealed class GraphSceneControl : Control
 
         if (_neighborhood is null)
         {
+            _renderedLabelCount = 0;
+            renderClock.Stop();
+            _lastRenderDuration = renderClock.Elapsed;
             return;
         }
 
         var layout = CurrentLayout();
-        _hitTargets.Clear();
-        DrawEdges(context, palette, layout);
+        var presentationContext = new GraphPresentationContext(
+            _zoom,
+            _neighborhood.Nodes.Count,
+            _neighborhood.FocusNodeId,
+            _selectedNodeId,
+            _hoveredNodeId,
+            _highlights,
+            SearchActive,
+            ReducedEffects);
+        var presentations = _neighborhood.Nodes.ToDictionary(
+            node => node.Id,
+            node => GraphPresentationPolicy.Evaluate(node, layout[node.Id], presentationContext),
+            StringComparer.OrdinalIgnoreCase);
 
+        _hitTargets.Clear();
+        DrawEdges(context, palette, layout, presentations);
+
+        var labels = new List<PreparedLabel>();
         foreach (var node in _neighborhood.Nodes
-                     .OrderBy(node => node.Id == _neighborhood.FocusNodeId ? 1 : 0))
+                     .OrderBy(node => layout[node.Id].Depth)
+                     .ThenBy(node => node.Id == _neighborhood.FocusNodeId ? 1 : 0))
         {
             if (!layout.TryGetValue(node.Id, out var position))
             {
                 continue;
             }
 
-            DrawNode(context, palette, node, position);
+            var preparedLabel = DrawNodeGlyph(context, palette, node, position, presentations[node.Id]);
+            if (preparedLabel is not null)
+            {
+                labels.Add(preparedLabel);
+            }
         }
+
+        var labelBudget = GraphPresentationPolicy.RecommendedLabelBudget(_zoom, _neighborhood.Nodes.Count);
+        var visibleLabels = GraphPresentationPolicy.ResolveLabels(
+            labels.Select(label => label.Candidate),
+            labelBudget,
+            padding: ReducedEffects ? 3 : 5);
+        foreach (var label in labels.Where(item => visibleLabels.Contains(item.Candidate.NodeId)))
+        {
+            context.DrawText(label.Text, label.Origin);
+        }
+
+        _renderedLabelCount = visibleLabels.Count;
+        renderClock.Stop();
+        _lastRenderDuration = renderClock.Elapsed;
     }
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
@@ -138,6 +227,7 @@ public sealed class GraphSceneControl : Control
                 NodeActivated?.Invoke(this, nodeId);
             }
 
+            UpdateAutomationDescription();
             InvalidateVisual();
             e.Handled = true;
             return;
@@ -152,19 +242,37 @@ public sealed class GraphSceneControl : Control
         }
     }
 
+    protected override AutomationPeer OnCreateAutomationPeer() => new ControlAutomationPeer(this);
+
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);
-        if (!_isPanning)
+        var point = e.GetPosition(this);
+        if (_isPanning)
         {
+            _pan += point - _lastPointer;
+            _lastPointer = point;
+            InvalidateVisual();
+            e.Handled = true;
             return;
         }
 
-        var point = e.GetPosition(this);
-        _pan += point - _lastPointer;
-        _lastPointer = point;
-        InvalidateVisual();
-        e.Handled = true;
+        var hovered = HitTest(point);
+        if (!StringComparer.OrdinalIgnoreCase.Equals(_hoveredNodeId, hovered))
+        {
+            _hoveredNodeId = hovered;
+            InvalidateVisual();
+        }
+    }
+
+    protected override void OnPointerExited(PointerEventArgs e)
+    {
+        base.OnPointerExited(e);
+        if (_hoveredNodeId is not null)
+        {
+            _hoveredNodeId = null;
+            InvalidateVisual();
+        }
     }
 
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
@@ -188,6 +296,34 @@ public sealed class GraphSceneControl : Control
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
+        if (e.Key == Key.Escape)
+        {
+            DismissRequested?.Invoke(this, EventArgs.Empty);
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.OemPlus || e.Key == Key.Add)
+        {
+            ZoomIn();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.OemMinus || e.Key == Key.Subtract)
+        {
+            ZoomOut();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.D0 || e.Key == Key.NumPad0)
+        {
+            ResetView();
+            e.Handled = true;
+            return;
+        }
+
         if (_neighborhood is null)
         {
             return;
@@ -209,13 +345,14 @@ public sealed class GraphSceneControl : Control
 
         if (e.Key is Key.Left or Key.Right or Key.Up or Key.Down)
         {
-            var nodes = _neighborhood.Nodes.Where(node => node.Kind != ExplorerNodeKind.Aggregate).ToArray();
+            var nodes = _neighborhood.Nodes.Where(node => node.IsNavigable || node.Kind != ExplorerNodeKind.Aggregate).ToArray();
             var selectedIndex = Array.FindIndex(nodes, node =>
                 StringComparer.OrdinalIgnoreCase.Equals(node.Id, _selectedNodeId));
             var direction = e.Key is Key.Left or Key.Up ? -1 : 1;
             selectedIndex = (selectedIndex + direction + nodes.Length) % nodes.Length;
             _selectedNodeId = nodes[selectedIndex].Id;
             NodeSelected?.Invoke(this, _selectedNodeId);
+            UpdateAutomationDescription();
             InvalidateVisual();
             e.Handled = true;
         }
@@ -223,19 +360,31 @@ public sealed class GraphSceneControl : Control
 
     private void DrawBackgroundNetwork(DrawingContext context, ScenePalette palette)
     {
-        var pointBrush = new SolidColorBrush(WithAlpha(palette.BackgroundPoint, 34));
-        var linePen = new Pen(new SolidColorBrush(WithAlpha(palette.BackgroundPoint, 18)), 0.7);
-        var points = new Point[34];
+        var density = ReducedEffects ? 16 : 42;
+        var pointBrush = new SolidColorBrush(WithAlpha(palette.BackgroundPoint, ReducedEffects ? (byte)18 : (byte)38));
+        var linePen = new Pen(
+            new SolidColorBrush(WithAlpha(palette.BackgroundPoint, ReducedEffects ? (byte)8 : (byte)20)),
+            0.65);
+        var trianglePen = new Pen(
+            new SolidColorBrush(WithAlpha(palette.BackgroundPoint, ReducedEffects ? (byte)5 : (byte)12)),
+            0.55);
+        var points = new Point[density];
 
         for (var index = 0; index < points.Length; index++)
         {
             var x = ((index * 127) % 997) / 997d * Bounds.Width;
             var y = ((index * 283 + 71) % 991) / 991d * Bounds.Height;
             points[index] = new Point(x, y);
-            context.DrawEllipse(pointBrush, null, points[index], 1.2, 1.2);
+            context.DrawEllipse(pointBrush, null, points[index], index % 7 == 0 ? 1.8 : 1.05, index % 7 == 0 ? 1.8 : 1.05);
             if (index > 2 && index % 2 == 0)
             {
                 context.DrawLine(linePen, points[index - 2], points[index]);
+            }
+
+            if (!ReducedEffects && index > 4 && index % 5 == 0)
+            {
+                context.DrawLine(trianglePen, points[index - 5], points[index - 2]);
+                context.DrawLine(trianglePen, points[index - 2], points[index]);
             }
         }
     }
@@ -243,7 +392,8 @@ public sealed class GraphSceneControl : Control
     private void DrawEdges(
         DrawingContext context,
         ScenePalette palette,
-        IReadOnlyDictionary<string, GraphLayoutNode> layout)
+        IReadOnlyDictionary<string, GraphLayoutNode> layout,
+        Dictionary<string, GraphNodePresentation> presentations)
     {
         foreach (var edge in _neighborhood!.Edges)
         {
@@ -255,53 +405,80 @@ public sealed class GraphSceneControl : Control
 
             var start = ToCanvas(source);
             var end = ToCanvas(target);
-            var opacity = Math.Min(source.Opacity, target.Opacity);
+            var presentation = presentations[edge.TargetId];
+            var opacity = Math.Min(source.Opacity, target.Opacity) * presentation.OpacityMultiplier;
+            if (!ReducedEffects)
+            {
+                context.DrawLine(
+                    new Pen(
+                        new SolidColorBrush(WithAlpha(palette.EdgeGlow, ToByte(28 * opacity * presentation.GlowMultiplier))),
+                        4.5),
+                    start,
+                    end);
+            }
+
             context.DrawLine(
-                new Pen(new SolidColorBrush(WithAlpha(palette.EdgeGlow, (byte)(32 * opacity))), 5),
-                start,
-                end);
-            context.DrawLine(
-                new Pen(new SolidColorBrush(WithAlpha(palette.Edge, (byte)(180 * opacity))), 1.15),
+                new Pen(
+                    new SolidColorBrush(WithAlpha(palette.Edge, ToByte(190 * opacity * presentation.EdgeMultiplier))),
+                    target.Depth == 1 ? 1.25 : 0.82),
                 start,
                 end);
             context.DrawEllipse(
-                new SolidColorBrush(WithAlpha(palette.EdgeGlow, (byte)(210 * opacity))),
+                new SolidColorBrush(WithAlpha(palette.EdgeGlow, ToByte(220 * opacity))),
                 null,
                 end,
-                2.2,
-                2.2);
+                target.Depth == 1 ? 2.1 : 1.25,
+                target.Depth == 1 ? 2.1 : 1.25);
         }
     }
 
-    private void DrawNode(
+    private PreparedLabel? DrawNodeGlyph(
         DrawingContext context,
         ScenePalette palette,
         ExplorerNode node,
-        GraphLayoutNode layout)
+        GraphLayoutNode layout,
+        GraphNodePresentation presentation)
     {
         var center = ToCanvas(layout);
-        var scale = layout.Scale * Math.Clamp(_zoom, 0.72, 1.6);
+        var scale = layout.Scale * Math.Clamp(_zoom, 0.68, 1.65);
         var isFocus = node.Id == _neighborhood!.FocusNodeId;
         var isSelected = StringComparer.OrdinalIgnoreCase.Equals(node.Id, _selectedNodeId);
+        var isHovered = StringComparer.OrdinalIgnoreCase.Equals(node.Id, _hoveredNodeId);
         var isHighlighted = _highlights.Contains(node.Id);
-        var opacity = Math.Clamp(layout.Opacity, 0, 1);
+        var opacity = Math.Clamp(layout.Opacity * presentation.OpacityMultiplier, 0, 1);
         var color = isHighlighted
             ? palette.Search
             : isFocus
                 ? palette.Focus
-                : palette.Node;
-        var stroke = new Pen(new SolidColorBrush(WithAlpha(color, (byte)(245 * opacity))), isFocus ? 1.8 : 1.2);
+                : node.Kind == ExplorerNodeKind.Context
+                    ? palette.Context
+                    : palette.Node;
+
+        if (presentation.LevelOfDetail == GraphLevelOfDetail.Point)
+        {
+            context.DrawEllipse(new SolidColorBrush(WithAlpha(color, ToByte(220 * opacity))), null, center, 2.2, 2.2);
+            _hitTargets[node.Id] = new Rect(center.X - 8, center.Y - 8, 16, 16);
+            return null;
+        }
+
+        var stroke = new Pen(
+            new SolidColorBrush(WithAlpha(color, ToByte(250 * opacity))),
+            isFocus ? 2.05 : layout.Depth == 1 ? 1.25 : 0.95);
         var halfWidth = 25 * scale;
         var halfHeight = 19 * scale;
-        var hitRect = new Rect(center.X - halfWidth - 10, center.Y - halfHeight - 9, (halfWidth + 10) * 2, (halfHeight + 26) * 2);
-        _hitTargets[node.Id] = hitRect;
+        _hitTargets[node.Id] = new Rect(
+            center.X - halfWidth - 10,
+            center.Y - halfHeight - 9,
+            (halfWidth + 10) * 2,
+            (halfHeight + 26) * 2);
 
-        if (isFocus || isSelected || isHighlighted)
+        if (isFocus || isSelected || isHighlighted || isHovered)
         {
             var halo = isHighlighted ? palette.Search : palette.Selection;
+            var haloAlpha = ReducedEffects ? 38 : isFocus ? 82 : 58;
             context.DrawEllipse(
                 null,
-                new Pen(new SolidColorBrush(WithAlpha(halo, (byte)(65 * opacity))), isFocus ? 10 : 6),
+                new Pen(new SolidColorBrush(WithAlpha(halo, ToByte(haloAlpha * opacity))), ReducedEffects ? 4 : isFocus ? 11 : 7),
                 center,
                 halfWidth + 12,
                 halfHeight + 12);
@@ -317,35 +494,36 @@ public sealed class GraphSceneControl : Control
                 DrawFile(context, center, halfWidth * 0.72, halfHeight, stroke);
                 break;
             case ExplorerNodeKind.Aggregate:
-                context.DrawEllipse(null, stroke, center, halfHeight, halfHeight);
-                context.DrawEllipse(new SolidColorBrush(WithAlpha(color, 170)), null, center, 2.5, 2.5);
+                DrawAggregate(context, center, halfHeight, stroke, color, node.IsNavigable);
                 break;
         }
 
-        var shouldDrawLabel = isFocus ||
-            isSelected ||
-            isHighlighted ||
-            node.Kind == ExplorerNodeKind.Aggregate ||
-            layout.Scale * _zoom >= 0.7;
-        if (!shouldDrawLabel)
+        if (presentation.LevelOfDetail < GraphLevelOfDetail.Labeled)
         {
-            return;
+            return null;
         }
 
-        var labelBrush = new SolidColorBrush(WithAlpha(isFocus ? palette.Text : color, (byte)(255 * opacity)));
+        var fontSize = isFocus ? 14.5 : Math.Clamp(11.6 * scale, 9.5, 12.5);
+        var maxWidth = isFocus ? 230 : layout.Depth == 1 ? 155 : 125;
+        var labelBrush = new SolidColorBrush(WithAlpha(isFocus ? palette.Text : color, ToByte(255 * opacity)));
         var text = new FormattedText(
             node.Name,
             CultureInfo.CurrentCulture,
             FlowDirection.LeftToRight,
-            new Typeface("Inter"),
-            isFocus ? 14 : Math.Max(10, 11.5 * scale),
+            new Typeface("Inter", isFocus || isSelected ? FontStyle.Normal : FontStyle.Normal, isFocus ? FontWeight.SemiBold : FontWeight.Normal),
+            fontSize,
             labelBrush)
         {
-            MaxTextWidth = isFocus ? 210 : 150,
+            MaxTextWidth = maxWidth,
             TextAlignment = TextAlignment.Center,
             Trimming = TextTrimming.CharacterEllipsis,
         };
-        context.DrawText(text, new Point(center.X - (text.MaxTextWidth / 2), center.Y + halfHeight + 7));
+        var origin = new Point(center.X - (maxWidth / 2), center.Y + halfHeight + 7);
+        var bounds = new LabelBox(origin.X, origin.Y, maxWidth, Math.Max(fontSize + 5, text.Height));
+        return new PreparedLabel(
+            new LabelCandidate(node.Id, bounds, presentation.LabelPriority, presentation.LabelIsRequired),
+            text,
+            origin);
     }
 
     private static void DrawFolder(
@@ -355,16 +533,8 @@ public sealed class GraphSceneControl : Control
         double halfHeight,
         Pen stroke)
     {
-        var body = new Rect(
-            center.X - halfWidth,
-            center.Y - halfHeight + 4,
-            halfWidth * 2,
-            (halfHeight * 2) - 4);
-        var tab = new Rect(
-            center.X - halfWidth + 3,
-            center.Y - halfHeight - 2,
-            halfWidth * 0.78,
-            8);
+        var body = new Rect(center.X - halfWidth, center.Y - halfHeight + 4, halfWidth * 2, (halfHeight * 2) - 4);
+        var tab = new Rect(center.X - halfWidth + 3, center.Y - halfHeight - 2, halfWidth * 0.78, 8);
         context.DrawRectangle(null, stroke, body, 3, 3);
         context.DrawRectangle(null, stroke, tab, 2, 2);
     }
@@ -378,45 +548,58 @@ public sealed class GraphSceneControl : Control
     {
         var body = new Rect(center.X - halfWidth, center.Y - halfHeight, halfWidth * 2, halfHeight * 2);
         context.DrawRectangle(null, stroke, body, 2, 2);
-        context.DrawLine(
-            stroke,
-            new Point(center.X - (halfWidth * 0.55), center.Y),
-            new Point(center.X + (halfWidth * 0.55), center.Y));
+        context.DrawLine(stroke, new Point(center.X - (halfWidth * 0.55), center.Y), new Point(center.X + (halfWidth * 0.55), center.Y));
+    }
+
+    private static void DrawAggregate(
+        DrawingContext context,
+        Point center,
+        double radius,
+        Pen stroke,
+        Color color,
+        bool isNavigable)
+    {
+        context.DrawEllipse(null, stroke, center, radius, radius);
+        context.DrawEllipse(new SolidColorBrush(WithAlpha(color, 185)), null, center, 2.5, 2.5);
+        if (isNavigable)
+        {
+            context.DrawLine(stroke, new Point(center.X - 5, center.Y), new Point(center.X + 5, center.Y));
+            context.DrawLine(stroke, new Point(center.X + 2, center.Y - 3), new Point(center.X + 5, center.Y));
+            context.DrawLine(stroke, new Point(center.X + 2, center.Y + 3), new Point(center.X + 5, center.Y));
+        }
     }
 
     private IReadOnlyDictionary<string, GraphLayoutNode> CurrentLayout()
     {
-        if (!_animationClock.IsRunning || _animationClock.ElapsedMilliseconds >= 280)
+        if (!_animationClock.IsRunning || _animationClock.Elapsed.TotalMilliseconds >= AnimationDurationMilliseconds)
         {
             return _targetLayout;
         }
 
-        var raw = Math.Clamp(_animationClock.Elapsed.TotalMilliseconds / 280d, 0, 1);
+        var raw = Math.Clamp(_animationClock.Elapsed.TotalMilliseconds / AnimationDurationMilliseconds, 0, 1);
         var amount = 1 - Math.Pow(1 - raw, 3);
         return _targetLayout.ToDictionary(
             pair => pair.Key,
             pair =>
             {
-                var from = _animationFrom.TryGetValue(pair.Key, out var source)
-                    ? source
-                    : pair.Value;
+                var from = _animationFrom.TryGetValue(pair.Key, out var source) ? source : pair.Value;
                 var target = pair.Value;
                 return new GraphLayoutNode(
                     pair.Key,
                     Lerp(from.X, target.X, amount),
                     Lerp(from.Y, target.Y, amount),
                     Lerp(from.Scale, target.Scale, amount),
-                    Lerp(from.Opacity, target.Opacity, amount));
-            });
+                    Lerp(from.Opacity, target.Opacity, amount),
+                    target.Depth);
+            },
+            StringComparer.OrdinalIgnoreCase);
     }
 
     private Point ToCanvas(GraphLayoutNode node)
     {
-        var width = Math.Max(1, Bounds.Width * 0.92) * _zoom;
-        var height = Math.Max(1, Bounds.Height * 0.9) * _zoom;
-        return new Point(
-            (Bounds.Width / 2) + _pan.X + (node.X * width),
-            (Bounds.Height / 2) + _pan.Y + (node.Y * height));
+        var width = Math.Max(1, Bounds.Width * 0.66) * _zoom;
+        var height = Math.Max(1, Bounds.Height * 0.68) * _zoom;
+        return new Point((Bounds.Width / 2) + _pan.X + (node.X * width), (Bounds.Height / 2) + _pan.Y + (node.Y * height));
     }
 
     private string? HitTest(Point point) => _hitTargets
@@ -431,9 +614,21 @@ public sealed class GraphSceneControl : Control
         InvalidateVisual();
     }
 
-    private static double Lerp(double from, double to, double amount) =>
-        from + ((to - from) * amount);
+    private void UpdateAutomationDescription()
+    {
+        var selected = _neighborhood?.Nodes.FirstOrDefault(node =>
+            StringComparer.OrdinalIgnoreCase.Equals(node.Id, _selectedNodeId));
+        var description = selected is null
+            ? "Spatial folder graph. Use arrows to select nodes and Enter to activate."
+            : $"Selected {selected.Kind}: {selected.Name}. Use Enter to activate.";
+        SetValue(AutomationProperties.HelpTextProperty, description);
+    }
 
-    private static Color WithAlpha(Color color, byte alpha) =>
-        Color.FromArgb(alpha, color.R, color.G, color.B);
+    private static double Lerp(double from, double to, double amount) => from + ((to - from) * amount);
+
+    private static byte ToByte(double value) => (byte)Math.Clamp(value, 0, 255);
+
+    private static Color WithAlpha(Color color, byte alpha) => Color.FromArgb(alpha, color.R, color.G, color.B);
+
+    private sealed record PreparedLabel(LabelCandidate Candidate, FormattedText Text, Point Origin);
 }

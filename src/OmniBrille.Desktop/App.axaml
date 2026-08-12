@@ -27,6 +27,11 @@
     <Style Selector="Button.hud:focus">
       <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
     </Style>
+    <Style Selector="Button.compact">
+      <Setter Property="Padding" Value="7,3" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
     <Style Selector="TextBox.hud">
       <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
@@ -43,6 +48,9 @@
     <Style Selector="ComboBox.hud:focus">
       <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
     </Style>
+    <Style Selector="CheckBox">
+      <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+    </Style>
   </Application.Styles>
 
   <Application.Resources>
@@ -58,6 +66,8 @@
           <SolidColorBrush x:Key="PrimaryTextBrush" Color="#EAF7FF" />
           <SolidColorBrush x:Key="SecondaryTextBrush" Color="#82A6C8" />
           <SolidColorBrush x:Key="DangerBrush" Color="#FF9EAB" />
+          <SolidColorBrush x:Key="LoadingOverlayBrush" Color="#F2030B1A" />
+          <SolidColorBrush x:Key="LoadingTextBrush" Color="#B9EAFF" />
         </ResourceDictionary>
         <ResourceDictionary x:Key="Light">
           <SolidColorBrush x:Key="AppBackgroundBrush" Color="#EAF5FF" />
@@ -69,6 +79,8 @@
           <SolidColorBrush x:Key="PrimaryTextBrush" Color="#082B4C" />
           <SolidColorBrush x:Key="SecondaryTextBrush" Color="#426A8E" />
           <SolidColorBrush x:Key="DangerBrush" Color="#A82445" />
+          <SolidColorBrush x:Key="LoadingOverlayBrush" Color="#F2EAF5FF" />
+          <SolidColorBrush x:Key="LoadingTextBrush" Color="#075C9D" />
         </ResourceDictionary>
       </ResourceDictionary.ThemeDictionaries>
     </ResourceDictionary>
