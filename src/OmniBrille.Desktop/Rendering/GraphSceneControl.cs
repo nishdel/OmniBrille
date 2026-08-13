@@ -37,7 +37,8 @@ public sealed class GraphSceneControl : Control
 {
     private const double AnimationDurationMilliseconds = 440;
 
-    private readonly RadialGraphLayout _layoutEngine = new();
+    private readonly RadialGraphLayout _structureLayoutEngine = new();
+    private readonly ContextGraphLayout _contextLayoutEngine = new();
     private readonly DispatcherTimer _animationTimer;
     private readonly Stopwatch _animationClock = new();
     private readonly Dictionary<string, Rect> _hitTargets = new(ExplorerIdentity.Comparer);
@@ -154,7 +155,9 @@ public sealed class GraphSceneControl : Control
         var layoutClock = Stopwatch.StartNew();
         _targetLayout = neighborhood is null
             ? new Dictionary<string, GraphLayoutNode>()
-            : _layoutEngine.Layout(neighborhood, previousLayout);
+            : (neighborhood.ViewMode == ExplorerViewMode.Context
+                ? _contextLayoutEngine.Layout(neighborhood, previousLayout)
+                : _structureLayoutEngine.Layout(neighborhood, previousLayout));
         layoutClock.Stop();
         _layoutDuration = layoutClock.Elapsed;
 
@@ -442,6 +445,15 @@ public sealed class GraphSceneControl : Control
     internal ExplorerNode? GetAutomationNode(string nodeId) => _neighborhood?.Nodes.FirstOrDefault(node =>
         ExplorerIdentity.Equals(node.Id, nodeId));
 
+    internal ExplorerRelationship? GetAutomationRelationship(string nodeId) => _neighborhood?.Edges
+        .Where(edge => edge.Kind == ExplorerGraphEdgeKind.Contextual && edge.Relationship is not null)
+        .Where(edge =>
+            (ExplorerIdentity.Equals(edge.SourceId, _neighborhood.FocusNodeId) && ExplorerIdentity.Equals(edge.TargetId, nodeId)) ||
+            (ExplorerIdentity.Equals(edge.TargetId, _neighborhood.FocusNodeId) && ExplorerIdentity.Equals(edge.SourceId, nodeId)))
+        .OrderByDescending(edge => edge.Relationship!.Strength)
+        .Select(edge => edge.Relationship)
+        .FirstOrDefault();
+
     internal bool IsAutomationNodeSelected(string nodeId) =>
         ExplorerIdentity.Equals(nodeId, _selectedNodeId);
 
@@ -517,6 +529,39 @@ public sealed class GraphSceneControl : Control
             var end = ToCanvas(target);
             var presentation = presentations[edge.TargetId];
             var opacity = Math.Min(source.Opacity, target.Opacity) * presentation.OpacityMultiplier;
+            if (edge.Kind == ExplorerGraphEdgeKind.Contextual)
+            {
+                var selected = _selectedNodeId is not null &&
+                    (ExplorerIdentity.Equals(edge.SourceId, _selectedNodeId) ||
+                     ExplorerIdentity.Equals(edge.TargetId, _selectedNodeId));
+                var strength = Math.Clamp((edge.Relationship?.Strength ?? 50) / 100d, 0.35, 1);
+                if (!ReducedEffects && selected)
+                {
+                    context.DrawLine(
+                        Pen(palette.ContextEdgeGlow, ToByte(58 * opacity), 5),
+                        start,
+                        end);
+                }
+
+                DrawDashedLine(
+                    context,
+                    Pen(
+                        palette.ContextEdge,
+                        ToByte((selected ? 235 : 155) * opacity * strength),
+                        selected ? 1.65 : 0.95),
+                    start,
+                    end,
+                    ReducedEffects ? 7 : 6,
+                    ReducedEffects ? 6 : 4);
+                context.DrawEllipse(
+                    Brush(palette.ContextEdgeGlow, ToByte((selected ? 235 : 170) * opacity)),
+                    null,
+                    end,
+                    selected ? 2.4 : 1.55,
+                    selected ? 2.4 : 1.55);
+                continue;
+            }
+
             if (!ReducedEffects)
             {
                 context.DrawLine(
@@ -541,6 +586,29 @@ public sealed class GraphSceneControl : Control
         }
     }
 
+    private static void DrawDashedLine(
+        DrawingContext context,
+        Pen pen,
+        Point start,
+        Point end,
+        double dashLength,
+        double gapLength)
+    {
+        var vector = new Vector(end.X - start.X, end.Y - start.Y);
+        var length = vector.Length;
+        if (length <= 0.001)
+        {
+            return;
+        }
+
+        var direction = vector / length;
+        for (var offset = 0d; offset < length; offset += dashLength + gapLength)
+        {
+            var segmentEnd = Math.Min(length, offset + dashLength);
+            context.DrawLine(pen, start + (direction * offset), start + (direction * segmentEnd));
+        }
+    }
+
     private PreparedLabel? DrawNodeGlyph(
         DrawingContext context,
         ScenePalette palette,
@@ -559,6 +627,8 @@ public sealed class GraphSceneControl : Control
             ? palette.Search
             : isFocus
                 ? palette.Focus
+                : _neighborhood.ViewMode == ExplorerViewMode.Context
+                    ? palette.ContextEdge
                 : node.Kind == ExplorerNodeKind.Context
                     ? palette.Context
                     : palette.Node;
@@ -741,7 +811,9 @@ public sealed class GraphSceneControl : Control
         var selected = _neighborhood?.Nodes.FirstOrDefault(node =>
             ExplorerIdentity.Equals(node.Id, _selectedNodeId));
         var description = selected is null
-            ? "Spatial folder graph. Use arrows to select nodes and Enter to activate."
+            ? _neighborhood?.ViewMode == ExplorerViewMode.Context
+                ? "Spatial Context graph. Use arrows to select related nodes and Enter to refocus."
+                : "Spatial folder graph. Use arrows to select nodes and Enter to activate."
             : $"Selected {selected.Kind}: {selected.Name}. Use Enter to activate.";
         SetValue(AutomationProperties.HelpTextProperty, description);
     }

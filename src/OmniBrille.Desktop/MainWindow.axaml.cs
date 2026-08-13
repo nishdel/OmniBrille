@@ -208,6 +208,45 @@ public sealed partial class MainWindow : Window, IDisposable
         await OpenConnectedRootAsync(item.Node);
     }
 
+    private async void OnStructureModeClick(object? sender, RoutedEventArgs e)
+    {
+        if (_isApplyingPreferences || string.IsNullOrEmpty(_session.AccessRoot))
+        {
+            return;
+        }
+
+        try
+        {
+            await _session.SwitchToStructureAsync();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async void OnContextModeClick(object? sender, RoutedEventArgs e)
+    {
+        if (_isApplyingPreferences)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(_session.AccessRoot))
+        {
+            SetTransientStatus("Connect to OmniSorSe and open an authorized root before exploring Context.");
+            UpdateView();
+            return;
+        }
+
+        try
+        {
+            await _session.SwitchToContextAsync();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
     private async Task OpenConnectedRootAsync(Protocol.ExplorerNode root)
     {
         if (_connection.Client is null || _connection.ProtocolInfo is null)
@@ -511,6 +550,20 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
+        if (_session.ViewMode == ExplorerViewMode.Context &&
+            !ExplorerIdentity.Equals(node.Id, _session.Neighborhood?.FocusNodeId))
+        {
+            try
+            {
+                await _session.FocusContextNodeAsync(node.Target);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+
+            return;
+        }
+
         if (node.Kind is ExplorerNodeKind.Folder or ExplorerNodeKind.Context && node.IsNavigable)
         {
             try
@@ -543,6 +596,16 @@ public sealed partial class MainWindow : Window, IDisposable
             OnAccessibleListClick(AccessibleListButton, new RoutedEventArgs());
             e.Handled = true;
         }
+        else if (e.Key == Key.D1 && e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        {
+            OnStructureModeClick(StructureModeButton, new RoutedEventArgs());
+            e.Handled = true;
+        }
+        else if (e.Key == Key.D2 && e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        {
+            OnContextModeClick(ContextModeButton, new RoutedEventArgs());
+            e.Handled = true;
+        }
         else if (e.Key == Key.Escape)
         {
             DismissTransientSurfaces();
@@ -573,6 +636,27 @@ public sealed partial class MainWindow : Window, IDisposable
             ? "No folder selected"
             : _session.CurrentPath;
         StatusText.Text = _session.Status;
+        Title = $"OmniBrille — {_session.ViewMode}";
+        _isApplyingPreferences = true;
+        try
+        {
+            StructureModeButton.IsChecked = _session.ViewMode == ExplorerViewMode.Structure;
+            ContextModeButton.IsChecked = _session.ViewMode == ExplorerViewMode.Context;
+        }
+        finally
+        {
+            _isApplyingPreferences = false;
+        }
+
+        SearchBox.PlaceholderText = _session.ProviderMode == ExplorerProviderMode.Connected
+            ? "Search authorized indexed scope"
+            : "Search selected root";
+        AutomationProperties.SetName(
+            SearchBox,
+            _session.ViewMode == ExplorerViewMode.Context ? "Context search" : "Structural search");
+        AutomationProperties.SetName(
+            GraphScene,
+            _session.ViewMode == ExplorerViewMode.Context ? "Spatial Context graph" : "Spatial Structure graph");
         BackButton.IsEnabled = _session.CanGoBack && !_session.IsLoading;
         WelcomePanel.IsVisible = neighborhood is null && !_session.IsLoading;
 
@@ -585,6 +669,8 @@ public sealed partial class MainWindow : Window, IDisposable
             ? _session.ProviderMode == ExplorerProviderMode.Connected
                 ? "Searching OmniSorSe…"
                 : "Searching selected root…"
+            : _session.ViewMode == ExplorerViewMode.Context
+                ? "Reading authoritative Context…"
             : _session.LoadState == ExplorerLoadState.PartiallyLoaded
                 ? $"Graph interactive · {_session.LoadedItemCount:N0} items streamed"
                 : _session.ProviderMode == ExplorerProviderMode.Connected
@@ -652,7 +738,7 @@ public sealed partial class MainWindow : Window, IDisposable
             OmniSorSeConnectionState.Standalone =>
                 "Choose a folder for explicit standalone access. Connected mode begins only from an authorized OmniSorSe launch handoff.",
             _ =>
-                "OmniSorSe v2.4 does not publish a discovery endpoint. A one-time authorized launch handoff is required; standalone remains available.",
+                "OmniSorSe v2.5 RC launches OmniBrille through a one-time authorized local handoff; standalone remains available after any failure.",
         };
     }
 
@@ -690,6 +776,17 @@ public sealed partial class MainWindow : Window, IDisposable
             ? _session.ProviderMode == ExplorerProviderMode.Connected ? "Loading…" : "Not applicable"
             : connectedDetails.IsFullyIndexed ? "Complete" : "Incomplete";
         DetailsSummaryText.Text = connectedDetails?.Summary ?? string.Empty;
+        var relationship = _session.SelectedRelationship;
+        RelationshipDetailsSection.IsVisible = relationship is not null;
+        if (relationship is not null)
+        {
+            DetailsRelationshipText.Text = string.IsNullOrWhiteSpace(relationship.Reason)
+                ? $"{relationship.Kind} · strength {relationship.Strength}/100"
+                : $"{relationship.Kind} · strength {relationship.Strength}/100\n{relationship.Reason}";
+            DetailsProvenanceText.Text = string.IsNullOrWhiteSpace(relationship.Provenance)
+                ? $"{relationship.EvidenceClass} evidence · no additional provenance supplied"
+                : $"{relationship.EvidenceClass} evidence · {relationship.Provenance}";
+        }
     }
 
     private void ApplyPreferencesToControls()
@@ -772,6 +869,14 @@ public sealed partial class MainWindow : Window, IDisposable
                 isSelected ? "SELECTED" : null,
             }.Where(value => value is not null).ToArray();
             var state = string.Join(" · ", stateParts);
+            var relationship = neighborhood.Edges
+                .Where(edge => edge.Kind == ExplorerGraphEdgeKind.Contextual && edge.Relationship is not null)
+                .Where(edge =>
+                    (ExplorerIdentity.Equals(edge.SourceId, neighborhood.FocusNodeId) && ExplorerIdentity.Equals(edge.TargetId, node.Id)) ||
+                    (ExplorerIdentity.Equals(edge.TargetId, neighborhood.FocusNodeId) && ExplorerIdentity.Equals(edge.SourceId, node.Id)))
+                .OrderByDescending(edge => edge.Relationship!.Strength)
+                .Select(edge => edge.Relationship)
+                .FirstOrDefault();
             var kind = node.Kind switch
             {
                 ExplorerNodeKind.Context => "Previous folder",
@@ -783,12 +888,17 @@ public sealed partial class MainWindow : Window, IDisposable
             var accessibleState = state.Length == 0
                 ? string.Empty
                 : $", {string.Join(", ", stateParts).ToLowerInvariant()}";
+            var relationDescription = relationship is null
+                ? string.Empty
+                : string.IsNullOrWhiteSpace(relationship.Reason)
+                    ? ", contextually related"
+                    : $", contextually related: {relationship.Reason}";
             return new AccessibleNodeItem(
                 node.Id,
                 node.Name,
                 $"{kind} · {node.Path}",
                 state,
-                $"{node.Name}, {kind}{accessibleState}");
+                $"{node.Name}, {kind}{accessibleState}{relationDescription}");
         }).ToArray() ?? [];
 
         _isSynchronizingAccessibleList = true;

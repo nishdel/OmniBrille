@@ -37,8 +37,8 @@ public sealed class MainWindowHeadlessTests
         Assert.Equal("Structural search", AutomationProperties.GetName(window.FindControl<TextBox>("SearchBox")!));
         Assert.Equal("Theme", AutomationProperties.GetName(window.FindControl<ComboBox>("ThemePicker")!));
         var graph = window.FindControl<Control>("GraphScene")!;
-        Assert.Equal("Spatial folder graph", AutomationProperties.GetName(graph));
-        Assert.Equal("Spatial folder graph", ControlAutomationPeer.CreatePeerForElement(graph).GetName());
+        Assert.Equal("Spatial Structure graph", AutomationProperties.GetName(graph));
+        Assert.Equal("Spatial Structure graph", ControlAutomationPeer.CreatePeerForElement(graph).GetName());
     }
 
     [AvaloniaFact]
@@ -239,9 +239,9 @@ public sealed class MainWindowHeadlessTests
         await WaitUntilAsync(() => session.ProviderMode == ExplorerProviderMode.Connected && !session.IsLoading);
 
         var statusButton = window.FindControl<Button>("ConnectionButton")!;
-        Assert.Equal("Connected Â· OmniSorSe", statusButton.Content);
+        Assert.Equal("Connected · OmniSorSe", statusButton.Content);
         Assert.Equal(
-            "Provider status: Connected Â· OmniSorSe",
+            "Provider status: Connected · OmniSorSe",
             AutomationProperties.GetName(statusButton));
         Assert.Equal("opaque-root", session.AccessRoot);
         Assert.Contains(session.Neighborhood!.Nodes, node => node.Id == "opaque-folder");
@@ -249,7 +249,7 @@ public sealed class MainWindowHeadlessTests
         window.FindControl<Button>("AccessibleListButton")!
             .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         var list = window.FindControl<ListBox>("AccessibleNodesList")!;
-        Assert.Equal(3, list.ItemCount);
+        Assert.Equal(4, list.ItemCount);
         list.SelectedItem = list.ItemsSource!.Cast<object>()
             .Single(item => item.ToString()!.Contains("Indexed Folder", StringComparison.Ordinal));
         Assert.Equal("opaque-folder", session.SelectedNode!.Target);
@@ -269,6 +269,58 @@ public sealed class MainWindowHeadlessTests
         window.FindControl<Button>("AccessibleBackButton")!
             .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         await WaitUntilAsync(() => session.Neighborhood?.Focus.Id == "opaque-root");
+    }
+
+    [AvaloniaFact]
+    public async Task ConnectedContext_UsesAuthoritativeRelationsAcrossGraphListDetailsAndModes()
+    {
+        var session = new ExplorerSession();
+        var connection = new FakeConnectedCoordinator();
+        using var window = new MainWindow(
+            session,
+            new MemoryPreferencesStore(),
+            connection: connection,
+            handoffEndpoint: "one-time-handoff");
+        window.Show();
+        await WaitUntilAsync(() => session.ProviderMode == ExplorerProviderMode.Connected && !session.IsLoading);
+
+        session.SelectNode("opaque-file");
+        window.FindControl<RadioButton>("ContextModeButton")!
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await WaitUntilAsync(() => session.ViewMode == ExplorerViewMode.Context && !session.IsLoading);
+
+        Assert.Equal("OmniBrille — Context", window.Title);
+        Assert.True(window.FindControl<RadioButton>("ContextModeButton")!.IsChecked);
+        var graph = window.FindControl<GraphSceneControl>("GraphScene")!;
+        Assert.Equal("Spatial Context graph", AutomationProperties.GetName(graph));
+        Assert.Equal(2, session.Neighborhood!.Nodes.Count);
+        Assert.Single(session.Neighborhood.Edges, edge => edge.Kind == ExplorerGraphEdgeKind.Contextual);
+
+        var peers = ControlAutomationPeer.CreatePeerForElement(graph).GetChildren();
+        var relatedPeer = Assert.Single(peers, peer => peer.GetName().Contains("related.txt", StringComparison.Ordinal));
+        Assert.Contains("Contextually related", relatedPeer.GetItemStatus());
+        Assert.Contains("Shared indexed topic", relatedPeer.GetHelpText());
+
+        window.FindControl<Button>("AccessibleListButton")!
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        var list = window.FindControl<ListBox>("AccessibleNodesList")!;
+        var relatedItem = Assert.Single(list.ItemsSource!.Cast<object>(), item =>
+            item.ToString()!.Contains("related.txt", StringComparison.Ordinal));
+        list.SelectedItem = relatedItem;
+        await WaitUntilAsync(() => session.SelectedNode?.Id == "opaque-related");
+        Assert.True(window.FindControl<StackPanel>("RelationshipDetailsSection")!.IsVisible);
+        Assert.Contains("Shared indexed topic", window.FindControl<TextBlock>("DetailsRelationshipText")!.Text);
+        Assert.Contains("Content Intelligence 1", window.FindControl<TextBlock>("DetailsProvenanceText")!.Text);
+
+        window.FindControl<Button>("AccessibleOpenButton")!
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await WaitUntilAsync(() => session.Neighborhood?.Focus.Id == "opaque-related");
+        Assert.True(session.CanGoBack);
+
+        window.FindControl<RadioButton>("StructureModeButton")!
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await WaitUntilAsync(() => session.ViewMode == ExplorerViewMode.Structure);
+        Assert.Equal("Spatial Structure graph", AutomationProperties.GetName(graph));
     }
 
     [AvaloniaFact]
@@ -412,11 +464,25 @@ public sealed class MainWindowHeadlessTests
         var synthetic = neighborhood with
         {
             Edges = neighborhood.Edges
-                .Concat(relationships.Select(item => new ExplorerEdge(item.SourceId, item.TargetId)))
+                .Concat(relationships.Select(item => new ExplorerEdge(
+                    item.SourceId,
+                    item.TargetId,
+                    ExplorerGraphEdgeKind.Contextual,
+                    new ExplorerRelationship(
+                        item.Id,
+                        item.SourceId,
+                        item.TargetId,
+                        ExplorerRelationshipKind.Related,
+                        (int)Math.Round(item.Importance * 100),
+                        "Synthetic renderer-pressure fixture",
+                        ExplorerRelationshipEvidenceClass.Deterministic,
+                        "Test fixture"))))
                 .ToArray(),
+            ViewMode = ExplorerViewMode.Context,
         };
         var graph = window.FindControl<GraphSceneControl>("GraphScene")!;
         graph.ReducedMotion = true;
+        graph.ReducedEffects = false;
         graph.SetScene(synthetic, session.SelectedNode?.Id, new HashSet<string>(), animate: false);
         using (window.CaptureRenderedFrame())
         {
@@ -426,18 +492,27 @@ public sealed class MainWindowHeadlessTests
         {
         }
 
-        var diagnostics = graph.Diagnostics;
-        Assert.Equal(48, diagnostics.Nodes);
-        Assert.True(diagnostics.Edges <= ContextRenderBudgetPolicy.Default.MaximumCombinedEdges);
+        var fullEffects = graph.Diagnostics;
+        graph.ReducedEffects = true;
+        graph.InvalidateVisual();
+        using (window.CaptureRenderedFrame())
+        {
+        }
+
+        var reducedEffects = graph.Diagnostics;
+        Assert.Equal(48, fullEffects.Nodes);
+        Assert.True(fullEffects.Edges <= ContextRenderBudgetPolicy.Default.MaximumCombinedEdges);
         Assert.True(relationships.Count <= ContextRenderBudgetPolicy.Default.MaximumContextualEdges);
         _output.WriteLine(
-            $"context-density: nodes={diagnostics.Nodes}, structural={neighborhood.Edges.Count}, " +
-            $"contextual={relationships.Count}, combined={diagnostics.Edges}, " +
-            $"render={diagnostics.LastRenderDuration.TotalMilliseconds:0.000} ms, " +
-            $"edges={diagnostics.EdgeDuration.TotalMilliseconds:0.000} ms, " +
-            $"label-prep={diagnostics.LabelPreparationDuration.TotalMilliseconds:0.000} ms, " +
-            $"label-draw={diagnostics.LabelDrawDuration.TotalMilliseconds:0.000} ms, " +
-            $"alloc={diagnostics.RenderAllocatedBytes:N0} B");
+            $"context-density: nodes={fullEffects.Nodes}, structural={neighborhood.Edges.Count}, " +
+            $"contextual={relationships.Count}, combined={fullEffects.Edges}, " +
+            $"full={fullEffects.LastRenderDuration.TotalMilliseconds:0.000} ms, " +
+            $"reduced={reducedEffects.LastRenderDuration.TotalMilliseconds:0.000} ms, " +
+            $"full-edges={fullEffects.EdgeDuration.TotalMilliseconds:0.000} ms, " +
+            $"reduced-edges={reducedEffects.EdgeDuration.TotalMilliseconds:0.000} ms, " +
+            $"label-prep={fullEffects.LabelPreparationDuration.TotalMilliseconds:0.000} ms, " +
+            $"label-draw={fullEffects.LabelDrawDuration.TotalMilliseconds:0.000} ms, " +
+            $"alloc={fullEffects.RenderAllocatedBytes:N0} B");
     }
 
     [AvaloniaTheory]
@@ -629,7 +704,7 @@ public sealed class MainWindowHeadlessTests
 
         public string UserStatus => State switch
         {
-            OmniSorSeConnectionState.Connected => "Connected Â· OmniSorSe",
+            OmniSorSeConnectionState.Connected => "Connected · OmniSorSe",
             OmniSorSeConnectionState.Disconnected => "OmniSorSe disconnected",
             _ => "Standalone",
         };
@@ -674,13 +749,16 @@ public sealed class MainWindowHeadlessTests
             65_536, 1_048_576, 500, 256, 512, 100, 100, 2, 320, 32, 32, 256, 4, 15);
 
         public Protocol.ExplorerNode Root { get; } = Node(
-            "opaque-root", "Authorized Root", Protocol.ExplorerNodeKind.Source, null, 2);
+            "opaque-root", "Authorized Root", Protocol.ExplorerNodeKind.Source, null, 3);
 
         private Protocol.ExplorerNode Folder { get; } = Node(
             "opaque-folder", "Indexed Folder", Protocol.ExplorerNodeKind.Folder, "opaque-root", 0);
 
         private Protocol.ExplorerNode File { get; } = Node(
             "opaque-file", "report.txt", Protocol.ExplorerNodeKind.File, "opaque-root", 0);
+
+        private Protocol.ExplorerNode RelatedFile { get; } = Node(
+            "opaque-related", "related.txt", Protocol.ExplorerNodeKind.File, "opaque-root", 0);
 
         public OmniSorSeSessionGrant Grant { get; } = new(
             "named-pipe", "ose-0123456789abcdef0123456789abcdef", "session", "secret",
@@ -692,7 +770,10 @@ public sealed class MainWindowHeadlessTests
 
         public Protocol.ExplorerProtocolInfo Info { get; } = new(
             1, 0, "OmniSorSe", "2.4.0",
-            Protocol.ExplorerCapability.Structure | Protocol.ExplorerCapability.Search,
+            Protocol.ExplorerCapability.Structure |
+            Protocol.ExplorerCapability.Search |
+            Protocol.ExplorerCapability.Context |
+            Protocol.ExplorerCapability.RelatedFiles,
             Limits, true, "Local named pipe");
 
         public Task<Protocol.ExplorerProtocolInfo> GetProtocolInfoAsync(CancellationToken cancellationToken) =>
@@ -705,12 +786,33 @@ public sealed class MainWindowHeadlessTests
             Protocol.ExplorerChildrenRequest request,
             CancellationToken cancellationToken) => Task.FromResult(
                 request.ParentNodeId == Root.Id
-                    ? new Protocol.ExplorerNodePage([Folder, File], 2, false, null)
+                    ? new Protocol.ExplorerNodePage([Folder, File, RelatedFile], 3, false, null)
                     : new Protocol.ExplorerNodePage([], 0, false, null));
 
         public Task<Protocol.ExplorerNeighborhood> GetNeighborhoodAsync(
             Protocol.ExplorerNeighborhoodRequest request,
-            CancellationToken cancellationToken) => throw new NotSupportedException();
+            CancellationToken cancellationToken)
+        {
+            var focus = request.NodeId == RelatedFile.Id ? RelatedFile : File;
+            var related = request.NodeId == RelatedFile.Id ? File : RelatedFile;
+            return Task.FromResult(new Protocol.ExplorerNeighborhood(
+                focus.Id,
+                [focus, related],
+                [Relationship(focus.Id, related.Id)],
+                false,
+                null));
+        }
+
+        public Task<Protocol.ExplorerRelatedResult> GetRelatedAsync(
+            Protocol.ExplorerRelatedRequest request,
+            CancellationToken cancellationToken)
+        {
+            var related = request.NodeId == RelatedFile.Id ? File : RelatedFile;
+            return Task.FromResult(new Protocol.ExplorerRelatedResult(
+                [related],
+                [Relationship(request.NodeId, related.Id)],
+                false));
+        }
 
         public Task<Protocol.ExplorerSearchResult> SearchAsync(
             Protocol.ExplorerSearchRequest request,
@@ -724,7 +826,11 @@ public sealed class MainWindowHeadlessTests
             Protocol.ExplorerNodeDetailsRequest request,
             CancellationToken cancellationToken)
         {
-            var node = request.NodeId == Folder.Id ? Folder : request.NodeId == File.Id ? File : Root;
+            var node = request.NodeId == Folder.Id
+                ? Folder
+                : request.NodeId == File.Id
+                    ? File
+                    : request.NodeId == RelatedFile.Id ? RelatedFile : Root;
             return Task.FromResult(new Protocol.ExplorerNodeDetails(
                 node, null, null,
                 node.Id == Folder.Id ? "Indexed folder details" : "Indexed node details",
@@ -734,6 +840,15 @@ public sealed class MainWindowHeadlessTests
         public void ReportStaleResponseRejected()
         {
         }
+
+        private static Protocol.ExplorerEdge Relationship(string sourceId, string targetId) => new(
+            sourceId,
+            targetId,
+            Protocol.ExplorerEdgeKind.Topic,
+            80,
+            "Shared indexed topic",
+            Protocol.ExplorerEvidenceClass.Derived,
+            "Content Intelligence 1");
 
         private static Protocol.ExplorerNode Node(
             string id,

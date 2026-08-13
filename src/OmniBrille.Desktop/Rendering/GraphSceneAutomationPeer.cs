@@ -99,7 +99,14 @@ internal sealed class GraphNodeAutomationPeer : ControlAutomationPeer, IInvokePr
     protected override string? GetNameCore()
     {
         var node = Node;
-        return node is null ? "Unavailable graph node" : $"{node.Name}, {DescribeKind(node.Kind)}";
+        if (node is null)
+        {
+            return "Unavailable graph node";
+        }
+
+        return Relationship is null
+            ? $"{node.Name}, {DescribeKind(node.Kind)}"
+            : $"{node.Name}, contextually related {DescribeKind(node.Kind)}";
     }
 
     protected override string? GetHelpTextCore()
@@ -111,7 +118,9 @@ internal sealed class GraphNodeAutomationPeer : ControlAutomationPeer, IInvokePr
         }
 
         var action = node.IsNavigable ? "Invoke to open." : "Select to inspect details.";
-        return $"{node.Path}. {action}";
+        return string.IsNullOrWhiteSpace(Relationship?.Reason)
+            ? $"{node.Path}. {action}"
+            : $"{node.Path}. Related because {Relationship.Reason}. {action}";
     }
 
     protected override string? GetItemTypeCore() => Node?.Kind.ToString();
@@ -132,6 +141,11 @@ internal sealed class GraphNodeAutomationPeer : ControlAutomationPeer, IInvokePr
         if (Node?.Kind == ExplorerNodeKind.Aggregate)
         {
             states.Add("Aggregate");
+        }
+
+        if (Relationship is not null)
+        {
+            states.Add("Contextually related");
         }
 
         return states.Count == 0 ? "Visible" : string.Join(", ", states);
@@ -158,6 +172,8 @@ internal sealed class GraphNodeAutomationPeer : ControlAutomationPeer, IInvokePr
     protected override void SetFocusCore() => _owner.SelectAutomationNode(_nodeId);
 
     private ExplorerNode? Node => _owner.GetAutomationNode(_nodeId);
+
+    private ExplorerRelationship? Relationship => _owner.GetAutomationRelationship(_nodeId);
 
     private static string DescribeKind(ExplorerNodeKind kind) => kind switch
     {

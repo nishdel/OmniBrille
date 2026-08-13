@@ -17,7 +17,7 @@
             BorderThickness="0,0,0,1"
             Padding="16,12">
       <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-      <Grid ColumnDefinitions="Auto,Auto,8,*,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8">
+      <Grid ColumnDefinitions="Auto,Auto,8,*,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8">
         <Button x:Name="ChooseFolderButton"
                 Grid.Column="0"
                 Classes="hud"
@@ -54,8 +54,26 @@
                   AutomationProperties.Name="Run structural search" />
         </Grid>
 
+        <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="2">
+          <RadioButton x:Name="StructureModeButton"
+                       Classes="hud"
+                       Content="Structure"
+                       GroupName="ExplorerMode"
+                       IsChecked="True"
+                       Click="OnStructureModeClick"
+                       AutomationProperties.Name="Structure mode"
+                       AutomationProperties.HelpText="Shows indexed filesystem containment." />
+          <RadioButton x:Name="ContextModeButton"
+                       Classes="hud"
+                       Content="Context"
+                       GroupName="ExplorerMode"
+                       Click="OnContextModeClick"
+                       AutomationProperties.Name="Context mode"
+                       AutomationProperties.HelpText="Shows bounded relationships authored by OmniSorSe. Requires a connected session." />
+        </StackPanel>
+
         <Button x:Name="ConnectionButton"
-                Grid.Column="4"
+                Grid.Column="5"
                 Classes="hud"
                 Content="Standalone"
                 Click="OnConnectionClick"
@@ -63,14 +81,14 @@
                 AutomationProperties.HelpText="Shows whether navigation is standalone or supplied by OmniSorSe."
                 AutomationProperties.LiveSetting="Polite" />
 
-        <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="4">
+        <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="4">
           <Button Classes="hud" Content="-" Click="OnZoomOutClick" ToolTip.Tip="Zoom out" AutomationProperties.Name="Zoom out" />
           <Button Classes="hud" Content="0" Click="OnResetViewClick" ToolTip.Tip="Reset view" AutomationProperties.Name="Reset graph view" />
           <Button Classes="hud" Content="+" Click="OnZoomInClick" ToolTip.Tip="Zoom in" AutomationProperties.Name="Zoom in" />
         </StackPanel>
 
         <ComboBox x:Name="ThemePicker"
-                  Grid.Column="6"
+                  Grid.Column="7"
                   Classes="hud"
                   Width="104"
                   SelectedIndex="0"
@@ -82,7 +100,7 @@
         </ComboBox>
 
         <Button x:Name="AccessibleListButton"
-                Grid.Column="7"
+                Grid.Column="8"
                 Classes="hud"
                 Content="List"
                 Click="OnAccessibleListClick"
@@ -90,7 +108,7 @@
                 AutomationProperties.HelpText="Opens a keyboard and screen-reader friendly view of the same bounded graph scene." />
 
         <Button x:Name="SettingsButton"
-                Grid.Column="8"
+                Grid.Column="9"
                 Classes="hud"
                 Content="Settings"
                 Click="OnSettingsClick"
@@ -101,7 +119,7 @@
 
     <Grid Grid.Row="1">
       <rendering:GraphSceneControl x:Name="GraphScene"
-                                   AutomationProperties.Name="Spatial folder graph"
+                                   AutomationProperties.Name="Spatial Structure graph"
                                    AutomationProperties.HelpText="Use arrow keys to select nodes, Enter to activate, Backspace to go back, plus or minus to zoom, and drag empty space to pan." />
 
       <Border x:Name="FocusHud"
@@ -171,7 +189,7 @@
                      FontWeight="SemiBold"
                      AutomationProperties.LiveSetting="Polite" />
           <TextBlock x:Name="ConnectionDescriptionText"
-                     Text="Choose a folder for explicit standalone access. OmniSorSe v2.4 supplies connected sessions only through an authorized launch handoff."
+                     Text="Choose a folder for explicit standalone access. OmniSorSe v2.5 RC can launch OmniBrille through an authorized one-time handoff."
                      TextWrapping="Wrap"
                      FontSize="10"
                      Foreground="{DynamicResource SecondaryTextBrush}" />
@@ -302,7 +320,7 @@
               BorderThickness="1"
               CornerRadius="4"
               AutomationProperties.Name="Selected node details">
-        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
           <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
             <TextBlock x:Name="DetailsNameText" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap" />
             <Button Grid.Column="1" Classes="hud compact" Content="×" Click="OnCloseDetailsClick" AutomationProperties.Name="Close node details" />
@@ -341,6 +359,17 @@
                      TextTrimming="CharacterEllipsis"
                      FontSize="10"
                      Foreground="{DynamicResource SecondaryTextBrush}" />
+          <StackPanel x:Name="RelationshipDetailsSection"
+                      Grid.Row="10"
+                      IsVisible="False"
+                      Margin="0,12,0,0"
+                      Spacing="5"
+                      AutomationProperties.Name="Selected relationship details">
+            <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,0,0,5" />
+            <TextBlock Text="RELATIONSHIP" FontSize="9" LetterSpacing="1.4" Foreground="{DynamicResource AccentBrush}" />
+            <TextBlock x:Name="DetailsRelationshipText" TextWrapping="Wrap" />
+            <TextBlock x:Name="DetailsProvenanceText" TextWrapping="Wrap" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
+          </StackPanel>
         </Grid>
       </Border>
 
