@@ -195,6 +195,11 @@ public sealed class OmniSorSeConnectedProviderTests
         Assert.Equal(ExplorerRelationshipEvidenceClass.Derived, relationship.EvidenceClass);
         Assert.Equal(1, client.NeighborhoodCalls);
         Assert.Equal(1, client.RelatedCalls);
+        Assert.Equal(1, client.ProtocolInfoCalls);
+
+        client.FailProtocolInfo = true;
+        await Assert.ThrowsAsync<IOException>(() =>
+            provider.GetContextAsync(focus.Id, CancellationToken.None));
     }
 
     private static Protocol.ExplorerProtocolInfo Info() => new(
@@ -253,8 +258,16 @@ public sealed class OmniSorSeConnectedProviderTests
         public Protocol.ExplorerRelatedResult RelatedResult { get; init; } = new([], [], false);
         public int NeighborhoodCalls { get; private set; }
         public int RelatedCalls { get; private set; }
+        public int ProtocolInfoCalls { get; private set; }
+        public bool FailProtocolInfo { get; set; }
 
-        public Task<Protocol.ExplorerProtocolInfo> GetProtocolInfoAsync(CancellationToken cancellationToken) => Task.FromResult(Info());
+        public Task<Protocol.ExplorerProtocolInfo> GetProtocolInfoAsync(CancellationToken cancellationToken)
+        {
+            ProtocolInfoCalls++;
+            return FailProtocolInfo
+                ? Task.FromException<Protocol.ExplorerProtocolInfo>(new IOException("controlled disconnect"))
+                : Task.FromResult(Info());
+        }
         public Task<Protocol.ExplorerNodePage> GetAccessibleRootsAsync(CancellationToken cancellationToken) =>
             Task.FromResult(new Protocol.ExplorerNodePage([_nodes.Values.First(node => node.Kind == Protocol.ExplorerNodeKind.Source)], 1, false, null));
 

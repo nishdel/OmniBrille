@@ -636,6 +636,7 @@ public sealed partial class MainWindow : Window, IDisposable
             ? "No folder selected"
             : _session.CurrentPath;
         StatusText.Text = _session.Status;
+        ViewModeStatusText.Text = _session.ViewMode == ExplorerViewMode.Context ? "CONTEXT" : "STRUCTURE";
         Title = $"OmniBrille — {_session.ViewMode}";
         _isApplyingPreferences = true;
         try

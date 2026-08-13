@@ -199,12 +199,21 @@ public sealed class OmniSorSeConnectedProvider :
                 "OmniSorSe did not negotiate Context and Related Files capabilities.");
         }
 
+        ExplorerContextSnapshot? cachedSnapshot = null;
         lock (_contextCacheLock)
         {
             if (_contextCache.TryGetValue(nodeId, out var cached))
             {
-                return cached;
+                cachedSnapshot = cached;
             }
+        }
+
+        if (cachedSnapshot is not null)
+        {
+            // Protocol v1 has no server-push disconnect signal. A lightweight authenticated
+            // probe prevents a session-local cache hit from presenting dead-server data as live.
+            _ = await _client.GetProtocolInfoAsync(cancellationToken).ConfigureAwait(false);
+            return cachedSnapshot;
         }
 
         await _contextGate.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
@@ -214,8 +223,15 @@ public sealed class OmniSorSeConnectedProvider :
             {
                 if (_contextCache.TryGetValue(nodeId, out var cached))
                 {
-                    return cached;
+                    cachedSnapshot = cached;
                 }
+            }
+
+
+            if (cachedSnapshot is not null)
+            {
+                _ = await _client.GetProtocolInfoAsync(cancellationToken).ConfigureAwait(false);
+                return cachedSnapshot;
             }
 
             var nodeLimit = Math.Min(ContextRenderBudgetPolicy.Default.MaximumVisibleNodes, _protocolInfo.Limits.MaximumNodes);

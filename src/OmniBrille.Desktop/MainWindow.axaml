@@ -367,8 +367,14 @@
                       AutomationProperties.Name="Selected relationship details">
             <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,0,0,5" />
             <TextBlock Text="RELATIONSHIP" FontSize="9" LetterSpacing="1.4" Foreground="{DynamicResource AccentBrush}" />
-            <TextBlock x:Name="DetailsRelationshipText" TextWrapping="Wrap" />
-            <TextBlock x:Name="DetailsProvenanceText" TextWrapping="Wrap" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
+            <TextBlock x:Name="DetailsRelationshipText"
+                       TextWrapping="Wrap"
+                       AutomationProperties.Name="Relationship reason and strength" />
+            <TextBlock x:Name="DetailsProvenanceText"
+                       TextWrapping="Wrap"
+                       FontSize="10"
+                       Foreground="{DynamicResource SecondaryTextBrush}"
+                       AutomationProperties.Name="Relationship evidence and provenance" />
           </StackPanel>
         </Grid>
       </Border>
@@ -460,7 +466,11 @@
             BorderThickness="0,1,0,0"
             Padding="16,0">
       <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
-        <TextBlock Text="STRUCTURE" FontSize="9" LetterSpacing="1.6" Foreground="{DynamicResource AccentBrush}" />
+        <TextBlock x:Name="ViewModeStatusText"
+                   Text="STRUCTURE"
+                   FontSize="9"
+                   LetterSpacing="1.6"
+                   Foreground="{DynamicResource AccentBrush}" />
         <TextBlock x:Name="StatusText" Grid.Column="1" Margin="18,0" Text="Choose a folder to begin. Only that location will be accessible."
                    TextTrimming="CharacterEllipsis" Foreground="{DynamicResource SecondaryTextBrush}" AutomationProperties.LiveSetting="Polite" />
         <TextBlock Grid.Column="2" Text="Enter open · Backspace back · Ctrl+F search · Ctrl+Shift+L list" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />

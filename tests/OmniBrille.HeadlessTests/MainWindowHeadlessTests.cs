@@ -290,6 +290,7 @@ public sealed class MainWindowHeadlessTests
         await WaitUntilAsync(() => session.ViewMode == ExplorerViewMode.Context && !session.IsLoading);
 
         Assert.Equal("OmniBrille — Context", window.Title);
+        Assert.Equal("CONTEXT", window.FindControl<TextBlock>("ViewModeStatusText")!.Text);
         Assert.True(window.FindControl<RadioButton>("ContextModeButton")!.IsChecked);
         var graph = window.FindControl<GraphSceneControl>("GraphScene")!;
         Assert.Equal("Spatial Context graph", AutomationProperties.GetName(graph));
@@ -321,6 +322,7 @@ public sealed class MainWindowHeadlessTests
             .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         await WaitUntilAsync(() => session.ViewMode == ExplorerViewMode.Structure);
         Assert.Equal("Spatial Structure graph", AutomationProperties.GetName(graph));
+        Assert.Equal("STRUCTURE", window.FindControl<TextBlock>("ViewModeStatusText")!.Text);
     }
 
     [AvaloniaFact]
