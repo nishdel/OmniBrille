@@ -1,10 +1,10 @@
-# Future Context rendering contract
+# Context rendering contract
 
 ## Status
 
-This is a renderer-facing readiness contract, not an implemented Context mode. Synthetic relationships used by tests never appear in the production UI. OmniSorSe remains authoritative for every future contextual node, relationship, score, reason, and provenance record; OmniBrille must not infer semantic relationships or read OmniSorSe storage directly.
+This is the renderer-facing contract implemented by Stage 5. OmniSorSe remains authoritative for every contextual node, relationship, score, reason, and provenance record; OmniBrille does not infer semantic relationships or read OmniSorSe storage directly. Synthetic pressure fixtures remain test-only and never appear in the production UI.
 
-Stage 4 confirmed that OmniSorSe Explorer Protocol v1 already supplies bounded contextual neighborhoods and Related Files through `GetNeighborhood`/`GetRelated`, with edge kind, strength, reason, evidence class, and provenance. OmniBrille deliberately does not render those relationships yet. The shipped `ExplorerEdge` does **not** contain a stable relationship ID, so deterministic selection/update/removal needs either a client scene key for immutable snapshots or a minimal additive protocol field before product Context mode is enabled.
+Stage 5 consumes bounded contextual neighborhoods and Related Files through `GetNeighborhood(IncludeContext: true)` and focus-local `GetRelated`, with edge kind, strength, reason, evidence class, and provenance. The shipped `ExplorerEdge` does **not** contain a stable relationship ID. OmniBrille therefore derives an ephemeral session-local SHA-256 scene key from source, target, kind, reason, and provenance. That key only deduplicates and selects immutable snapshots; it is not persisted or treated as durable across refresh/session restart.
 
 ## Hard visible budgets
 
@@ -12,7 +12,7 @@ Stage 3 profiling keeps one conservative combined scene envelope:
 
 | Item | Default limit | Rationale |
 |---|---:|---|
-| Combined visible nodes | 48 | Existing Structure readability and stable three-depth layout; includes focus, prior context, aggregates, and any future contextual nodes. |
+| Combined visible nodes | 48 | Existing Structure readability and stable three-depth layout; includes focus, prior context, aggregates, and contextual nodes. |
 | Structural edges | 47 | A normal bounded containment tree needs at most `nodes - 1`. |
 | Contextual edges | 36 | 0.75 per node globally; enough for focus-local context without many-to-many saturation. |
 | Combined edge slots | 84 | Conservative envelope; a full structural tree plus the contextual cap normally uses 83. |
@@ -20,27 +20,27 @@ Stage 3 profiling keeps one conservative combined scene envelope:
 
 These are engineering defaults, not wire constants or universal hardware guarantees. Candidate 32/48/64 Structure scenes were profiled; 48 remains the readability default. A synthetic 48-node scene with 72 contextual edges was rejected because its density and cold-frame cost were disproportionate. The accepted 47-structural/36-context fixture produced 83 combined edges and a comfortable warmed local headless sample. Changing a limit requires new representative profiling, label-pressure review, keyboard/list review, and documentation.
 
-Context does not add 48 nodes beside 48 Structure nodes. Structure and Context share the 48-node cap. When necessary, lower-priority distant structural or contextual items become an explicit aggregate/cluster while focus, selection, active search results, and the containment path remain visible.
+Context does not add 48 nodes beside 48 Structure nodes. Structure and Context share the 48-node cap. Stage 5 retains only endpoints of accepted relationships and accepted structural edges; omitted server nodes remain honestly truncated. Semantic clusters/aggregates are deferred rather than invented client-side.
 
 ## Relationship priority
 
-Future relationship selection is deterministic:
+Relationship selection is deterministic:
 
 1. selected relationship;
 2. relationships touching current focus;
 3. descending provider-supplied importance;
-4. stable relationship ID.
+4. ephemeral session-local relationship key.
 
-`ContextRenderBudgetPolicy` applies the global and per-node caps after this ordering. Importance is presentation input, not a semantic calculation by OmniBrille. Duplicate/self relationships must be rejected or normalized before rendering. Stable node IDs are case-sensitive opaque strings. Stable relationship identity remains a Protocol v1 gap and must be resolved before incremental relationship updates are enabled.
+`ContextRenderBudgetPolicy` applies the global and per-node caps after this ordering. Importance is the protocol strength mapped to presentation input, not a semantic calculation by OmniBrille. Duplicate/self relationships are rejected or normalized before rendering. Stable node IDs are case-sensitive opaque strings. Stable relationship identity remains a Protocol v1 gap; incremental relationship updates are not enabled.
 
-Progressive disclosure is focus-local. A user may select a contextual aggregate/cluster or request a deeper neighborhood, but every replacement scene is independently bounded and reversible. Context clustering is distinct from the deterministic structural aggregate paging already used for large folders.
+Progressive disclosure is focus-local. Activating a related node requests a new independently bounded Context snapshot, and Back restores previous Context focuses before returning to Structure. OmniBrille never calls `GetRelated` for every visible node. An eight-entry session-scoped LRU deduplicates repeated focus reads and a one-request gate bounds Context acquisition; reconnect/new grant replaces the provider and its cache. Since v1 cannot push a disconnect notification, every cache hit first performs an authenticated bounded protocol-info probe, so the next Context action cannot silently reuse cached data after host death.
 
 ## Visual edge policy
 
-The future renderer must distinguish five layers without relying on color alone:
+The renderer distinguishes five layers without relying on color alone:
 
 - structural containment: primary solid electric-blue edge and junction;
-- contextual relationship: thinner/lower-opacity line with a distinct dash or equivalent shape treatment, normally without broad glow;
+- contextual relationship: thinner/lower-opacity cyan dashed line, normally without broad glow;
 - selected contextual relationship: stronger width/contrast plus details/provenance state;
 - search emphasis: temporary node/path emphasis, not a new semantic edge type;
 - decorative background: faint, non-interactive atmosphere with no node IDs, automation peers, or filesystem meaning.
@@ -49,15 +49,15 @@ Context edges must sit below focus glyphs and labels, must not permanently label
 
 ## Reason and provenance seam
 
-A relationship may carry a provider-authored short reason and structured provenance references, for example same topic, shared entity, OCR evidence, transcript evidence, temporal proximity, Related Files score, or Media Intelligence evidence. OmniBrille does not generate these claims.
+A relationship may carry the v1 provider-authored kind, reason, evidence class, strength, and provenance string. OmniBrille does not generate, reinterpret, or enrich these claims.
 
-Reason/provenance appears only on demand through the compact details surface, a selected-edge flyout/tooltip, or the accessible alternative. The presentation must include relationship type, human-readable reason, confidence/importance when meaningful, source/provenance summary, and an unavailable/redacted state. Edge-wide permanent text is forbidden because it destroys density and screen-reader clarity.
+Reason/provenance appears only on demand through the compact details surface and concise accessible node description. The presentation includes relationship kind, strength, reason when supplied, evidence class, and provenance when supplied. A missing reason/provenance is reported honestly. Edge-wide permanent text is forbidden because it destroys density and screen-reader clarity.
 
 ## Replacement, streaming, and stale work
 
-Every Context request needs a request ID, focus/scope identity, node/edge limits, cancellation token, and negotiated capability/version. A response is applied only when its request ID and focus/scope still match the authoritative session. Late pages from Folder A can never overwrite Folder B.
+Every Context request has a monotonically increasing session generation, focus identity, node/edge limits, cancellation token, and negotiated capability/version. A response is applied only when its generation still matches the authoritative session. Late Context A can never overwrite Context B.
 
-Protocol v1 currently supplies bounded snapshots/pages rather than pushed incremental updates. Stage 5 may apply only an internally consistent bounded replacement whose request generation and focus still match. Future incremental update semantics should carry completion, truncation, revision, and stable relationship identity. Partial data is interactive once internally consistent; progress is coarse/indeterminate unless the provider knows an honest total.
+Protocol v1 supplies completed bounded snapshots/pages rather than pushed incremental updates. Stage 5 applies only an internally consistent bounded replacement whose request generation and focus still match. It shows an honest indeterminate/coarse loading state and does not fabricate partial relationships. Future incremental semantics would need completion, revision, and stable relationship identity.
 
 Cancellation, unavailable provenance, permission changes, disconnected OmniSorSe, incompatible protocol versions, and malformed metadata are normal failure states. The prior valid scene remains usable where safe. Context data never expands the standalone access root or grants filesystem authority.
 
@@ -69,15 +69,23 @@ The synchronized list/tree remains a view of the one session, not a second provi
 
 ## Performance and test gate
 
-Before product Context mode is enabled, validate at least:
+Stage 5 validation covers:
 
 - 48 combined nodes with 47 structural and 36 contextual edges;
 - focus/selected relationship emphasis;
 - search plus Context label pressure;
-- progressive replacement and stale-update rejection;
+- replacement, cancellation, stale-update rejection, and new-session invalidation;
 - Full and Reduced visual effects;
 - 100/125/150/200% text scale;
 - graph automation and accessible-list parity;
 - GPU-backed Windows runtime plus Windows/Ubuntu build/tests.
 
-If representative sustained render cost exceeds the local 16.7 ms engineering target, reduce contextual/decorative edge work before reducing structural correctness or accessibility. Node counts must never adapt continuously during navigation.
+If representative sustained render cost exceeds the local 16.7 ms engineering target, contextual/decorative effects must be reduced before structural correctness or accessibility. Node counts never adapt continuously during navigation. Normal CI uses fake protocol fixtures; the real installed desktop handoff is a documented Windows integration gate.
+
+## Current limitations
+
+- Protocol v1 relationship identities are ephemeral; no durable edge bookmark, incremental edge removal, or cross-refresh edge selection is claimed.
+- Search and Context authority are session-wide, not selected-root-specific. The UI labels connected Search as the authorized indexed scope.
+- Protocol v1 supplies completed response snapshots rather than push progress.
+- Relationship detail interaction is node-centric; keyboard/mouse users select a related node and inspect its focus relationship.
+- Context is unavailable in standalone mode and no filename/content heuristic is substituted.

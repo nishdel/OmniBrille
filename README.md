@@ -1,12 +1,10 @@
 # OmniBrille
 
-OmniBrille is an optional, standalone-capable spatial navigation application for graph-based filesystem exploration. It presents Structure now and is designed to present OmniSorSe-backed Context later. This repository is an independent application: users who never install OmniBrille incur no renderer, asset, package-size, runtime, dependency, or startup cost in OmniSorSe.
+OmniBrille is an optional, standalone-capable spatial navigation application for graph-based filesystem exploration. It presents standalone Structure and real OmniSorSe-backed Structure and Context. This repository is an independent application: users who never install OmniBrille incur no renderer, asset, package-size, runtime, dependency, or startup cost in OmniSorSe.
 
 Conceptually, OmniSorSe is the brain. OmniBrille is the visual lens and spatial navigation interface.
 
-Stage 4 adds the first real read-only connected provider for OmniSorSe 2.4.0 Explorer Protocol v1 while preserving the standalone application. Context presentation, voice, destructive file operations, and packaging remain intentionally absent.
-
-> **Connection availability:** OmniBrille's Protocol v1 client is implemented and has been validated against OmniSorSe's production v2.4.0 host in a real two-process test. The released OmniSorSe 2.4.0 desktop deliberately has no companion discovery, launch action, or finalized grant-handoff contract, so an ordinary installed user cannot initiate connected mode yet. OmniBrille never scans for hidden endpoints or accepts a bearer token on the command line to work around that product gap.
+Stage 5 consumes the committed OmniSorSe v2.5 release-candidate companion handoff and adds the first bounded real Context mode over unchanged Explorer Protocol v1. Voice, destructive file operations, Hybrid mode, and packaging remain intentionally absent.
 
 ## What works now
 
@@ -28,6 +26,10 @@ Stage 4 adds the first real read-only connected provider for OmniSorSe 2.4.0 Exp
 - Domain/infrastructure tests plus Avalonia headless UI tests, and Windows/Ubuntu GitHub Actions CI.
 - A strict Explorer Protocol v1 named-pipe client, explicit version/capability validation, opaque session-bound node identity, and defensive payload bounds.
 - A connected provider that adapts real OmniSorSe authorized roots, paged Structure children, unified Search, and bounded details into the same graph/session/list model as standalone mode.
+- The real v2.5 release-candidate installed-companion flow: an explicit OmniSorSe action discovers and launches OmniBrille, transfers a short-lived scoped grant through a one-time current-user-only pipe, and authenticates the session without putting a bearer token on the command line.
+- A primary `Structure | Context` switch. Context requests only real `GetNeighborhood(IncludeContext: true)` and focus-local `GetRelated` evidence supplied by OmniSorSe; standalone Context explains that OmniSorSe is required and never fabricates relationships.
+- A deterministic focus-centered Context layout, solid structural edges, distinct cyan dashed Context edges, 48 combined nodes, at most 36 Context edges, and at most three Context edges touching a node.
+- Context refocus and Back, real OmniSorSe Search-to-Context focus, compact reason/evidence/provenance details, Context-aware graph automation peers, and synchronized keyboard/list navigation.
 - Accessible `Standalone`, connecting, connected, unavailable, incompatible, disconnected, and reconnecting states; a disconnected graph remains visible as stale context rather than crashing.
 - Safe provider switching: connected opaque IDs, selection, Search, details, and Back history are cleared before standalone access is established.
 
@@ -39,7 +41,7 @@ Visual preferences are stored below the operating system's local application-dat
 
 ## Build and run
 
-Prerequisites: .NET 8 SDK and a Windows, macOS, or Linux desktop supported by Avalonia. Stage 4 validates Windows build/runtime and two-process Protocol v1 behavior plus Windows/Ubuntu build/tests; macOS remains build-compatible by design but is not runtime-validated yet.
+Prerequisites: .NET 8 SDK and a Windows, macOS, or Linux desktop supported by Avalonia. Stage 5 validates Windows build/runtime and the normal v2.5 RC two-process handoff plus Windows/Ubuntu build/tests; macOS remains build-compatible by design but is not runtime-validated yet.
 
 ```powershell
 cd "D:\Own Projects\OmniBrille"
@@ -51,25 +53,25 @@ dotnet run --project .\src\OmniBrille.Desktop\OmniBrille.Desktop.csproj
 
 The application initially shows no filesystem content. Choose a folder to establish the access root. For an explicit command-line launch (useful for local smoke testing), append `-- --root "C:\path\you\chose" --theme Light`. The theme value may be `Light` or `Dark`.
 
-A future OmniSorSe launcher may start OmniBrille with `--omnisorse-handoff <one-time-pipe-name>`. That pipe transfers the short-lived grant over a current-user-only channel; the secret itself is never a command-line argument or preference. This is an OmniBrille launch seam, not a discovery service, and OmniSorSe 2.4.0 does not yet expose it from its desktop UI.
+The committed OmniSorSe v2.5 release candidate can start OmniBrille with `--omnisorse-handoff <one-time-pipe-name>`. The pipe name has the fixed product prefix and a 128-bit random suffix; the pipe transfers a strict, bounded, short-lived grant over a current-user-only channel. The secret is never a command-line value, file, preference, UI string, or normal diagnostic. OmniBrille performs no background discovery. Direct launch remains standalone.
 
-Open the HUD settings control to select `Reduced motion`, `Reduced visual effects`, or the local diagnostics overlay. Open the accessible list from the `List` HUD control or `Ctrl+Shift+L`. Keyboard essentials are `Ctrl+F` for search, `Backspace` or `Alt+Left` for Back, arrows to change selection, `Enter` to activate, `Escape` to dismiss/cancel, `+`/`-` to zoom, and `0` to reset the graph view.
+Open the HUD settings control to select `Reduced motion`, `Reduced visual effects`, or the local diagnostics overlay. Open the accessible list from the `List` HUD control or `Ctrl+Shift+L`. Keyboard essentials are `Ctrl+1` for Structure, `Ctrl+2` for Context, `Ctrl+F` for Search, `Backspace` or `Alt+Left` for Back, arrows to change selection, `Enter` to activate/refocus, `Escape` to dismiss/cancel, `+`/`-` to zoom, and `0` to reset the graph view.
 
 ## Repository structure
 
 ```text
 src/
-  OmniBrille.Core/            explorer contracts, graph/context budgets, caches, layout, presentation policy
-  OmniBrille.Infrastructure/  standalone adapter, strict Protocol v1 client/connected adapter, preferences
-  OmniBrille.Desktop/         Avalonia shell, session, custom renderer, visual system, themes
-  OmniSorSe.ExplorerProtocol/ exact dependency-free v1 wire contracts mirrored from OmniSorSe v2.4.0
+  OmniBrille.Core/            explorer/Context contracts, bounded builders, layouts, caches, presentation policy
+  OmniBrille.Infrastructure/  standalone adapter, strict Protocol v1 client/connected Context adapter, preferences
+  OmniBrille.Desktop/         Avalonia shell/session, Structure/Context renderer, accessibility, themes
+  OmniSorSe.ExplorerProtocol/ exact dependency-free v1 wire contracts mirrored from OmniSorSe
 tests/
   OmniBrille.Tests/           domain, session, filesystem, failure, and persistence tests
   OmniBrille.HeadlessTests/   non-pixel Avalonia shell/interaction tests
 docs/
-  architecture.md             system boundaries and Stage 4 provider/rendering decisions
-  context-rendering-contract.md renderer limits and semantics for future Context data
-  explorer-protocol.md        actual Explorer Protocol v1 behavior, integration, and shipped gaps
+  architecture.md             system boundaries and Stage 5 provider/rendering decisions
+  context-rendering-contract.md implemented Context limits, semantics, accessibility, and gaps
+  explorer-protocol.md        actual Protocol v1 and v2.5 RC handoff behavior
 ROADMAP.md                    staged implementation plan
 ```
 
@@ -83,10 +85,10 @@ CI is defined in `.github/workflows/ci.yml`. It restores, verifies formatting, b
 
 OmniSorSe is the primary local-first file intelligence application. It is responsible for scanning, indexing, Search, Content Intelligence, Media Intelligence, OCR, transcripts, Related Files, organization, safe file operations, and persistent intelligence/index state.
 
-OmniBrille is the optional spatial navigation companion. It is responsible for graph-based filesystem navigation, Structure mode, spatial Search presentation, visual navigation, and future voice navigation/search. Future Context mode will display relationships supplied by OmniSorSe rather than duplicating its intelligence.
+OmniBrille is the optional spatial navigation companion. It is responsible for graph-based filesystem navigation, Structure mode, spatial Search presentation, visual navigation, real server-authored Context presentation, and future voice navigation/search. Context relationships are supplied exclusively by OmniSorSe; OmniBrille does not duplicate its intelligence.
 
 OmniBrille consumes OmniSorSe Explorer Protocol v1 through a narrow named-pipe client and will never read OmniSorSe's SQLite schema or reuse its application/indexing implementations. Only the small dependency-free wire contract is mirrored locally. Standalone and connected providers remain separate authorities: connected mode uses only roots and opaque nodes authorized by OmniSorSe, with no direct-filesystem fallback.
 
 The private GitHub repository is `nishdel/OmniBrille`.
 
-See [the architecture](docs/architecture.md), [the future Context rendering contract](docs/context-rendering-contract.md), [the actual Protocol v1 integration record](docs/explorer-protocol.md), and [the roadmap](ROADMAP.md).
+See [the architecture](docs/architecture.md), [the Context rendering contract](docs/context-rendering-contract.md), [the Protocol v1 and handoff integration record](docs/explorer-protocol.md), and [the roadmap](ROADMAP.md).

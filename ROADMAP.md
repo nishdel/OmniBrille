@@ -30,27 +30,28 @@ Status language is intentionally conservative: checked items exist in the applic
 - [x] Native path-case semantics, opaque case-sensitive IDs, and Windows/Ubuntu CI.
 - [x] Profile-backed Context renderer limits, relationship priority, provenance seam, and synthetic density tests.
 
-## Stage 4 — Real OmniSorSe Explorer Protocol v1 integration (complete with launcher gap documented)
+## Stage 4 — Real OmniSorSe Explorer Protocol v1 integration (complete)
 
 - [x] Consume the actual v1 strict framed named-pipe contract and validate version, capabilities, identity, authorization, limits, and errors.
 - [x] Add a connected provider behind existing explorer/search/details abstractions with cancellation, request generations, opaque IDs, scope enforcement, and clear offline/incompatible states.
 - [x] Preserve standalone independence and avoid OmniSorSe SQLite/application/indexing dependencies.
 - [x] Validate authorized roots, bounded Structure navigation, Search, details, disconnect, and fresh-session restart against the production OmniSorSe 2.4.0 host in two processes.
-- [x] Document that released OmniSorSe 2.4.0 has no companion launcher/discovery or finalized grant-handoff contract; ordinary user connection awaits a coordinated OmniSorSe change.
+- [x] Document that released OmniSorSe 2.4.0 has no companion launcher; the coordinated v2.5 RC closes this historical gap in Stage 5.
 
-## Stage 5 — Companion launch completion and real Context mode
+## Stage 5 — Companion launch completion and real Context mode (complete)
 
-- [ ] In OmniSorSe, add the smallest reviewed companion launch/action and standardized current-user-only one-time grant handoff; do not add a discovery listener or token persistence.
-- [ ] In OmniBrille, consume real `GetNeighborhood(IncludeContext: true)` and `GetRelated` data within the existing 48-node/36-context-edge rendering contract.
-- [ ] Distinguish Structure and Context edges and expose provider-authored reason/evidence/provenance on selection and in the accessible alternative.
-- [ ] Resolve Protocol v1's lack of stable relationship IDs before incremental relationship update/removal behavior is exposed.
-- [ ] Revalidate cancellation, stale replacement, density, performance, text scaling, automation, and disconnect/reconnect with real Context payloads.
+- [x] Consume the committed OmniSorSe v2.5 RC current-user-only one-time handoff without adding discovery, token persistence, or a second launch contract.
+- [x] Consume real `GetNeighborhood(IncludeContext: true)` and `GetRelated` data within the 48-node/36-context-edge rendering contract.
+- [x] Distinguish Structure and Context edges and expose provider-authored reason/evidence/provenance on selection and in the accessible alternative.
+- [x] Treat Protocol v1's missing relationship ID honestly through session-local immutable-snapshot keys; incremental relationship update/removal remains disabled.
+- [x] Revalidate cancellation, stale replacement, density, performance, themes, reduced effects/motion, automation, disconnect, and fresh-grant behavior.
 
 ## Stage 6 — Context presentation maturation
 
 - [ ] Context aggregates/clusters, focus-local relationship filtering, and relationship search emphasis.
 - [ ] Richer details/provenance inspection without permanently labeling every edge.
 - [ ] Provider capability/version compatibility matrix and large Context-neighborhood performance hardening.
+- [ ] Package/sign the independently installed companion and validate clean install, upgrade, discovery, and uninstall behavior against the v2.5 launch contract.
 
 ## Stage 7 — Voice
 

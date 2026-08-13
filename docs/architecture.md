@@ -2,9 +2,9 @@
 
 ## Status and goals
 
-This document describes the Stage 4 standalone and connected Structure explorer. Stage 4 consumes OmniSorSe 2.4.0 Explorer Protocol v1 without exposing database or indexing internals; the renderer and accessibility surfaces remain provider-independent.
+This document describes the Stage 5 standalone Structure explorer and the connected Structure/Context explorer. Stage 5 consumes the committed OmniSorSe v2.5 release-candidate companion handoff and unchanged Explorer Protocol v1 without exposing database or indexing internals; the renderer and accessibility surfaces remain provider-independent.
 
-OmniSorSe owns scanning, indexing, Search, Content Intelligence, Media Intelligence, OCR, transcripts, Related Files, organization, safe file operations, and persistent intelligence/index state. OmniBrille owns standalone spatial navigation, Structure presentation, and future OmniSorSe-backed Context and voice experiences. In short, OmniSorSe is the brain; OmniBrille is the visual lens and spatial navigation interface.
+OmniSorSe owns scanning, indexing, Search, Content Intelligence, Media Intelligence, OCR, transcripts, Related Files, organization, safe file operations, and persistent intelligence/index state. OmniBrille owns standalone spatial navigation and provider-independent Structure/Context presentation. Voice remains future work. In short, OmniSorSe is the brain; OmniBrille is the visual lens and spatial navigation interface.
 
 ```mermaid
 flowchart LR
@@ -16,7 +16,9 @@ flowchart LR
     Session --> FS
     Connected[OmniSorSe connected provider] --> Core
     Client[Strict Protocol v1 named-pipe client] --> Connected
-    Host[External OmniSorSe 2.4 host] -. authorized read-only IPC .-> Client
+    Handoff[One-time v2.5 RC companion handoff] -. short-lived scoped grant .-> Client
+    Host[External OmniSorSe protocol host] -. authorized read-only IPC .-> Client
+    Handoff --> Host
 ```
 
 The dependency rule is inward: `Infrastructure` and `Desktop` depend on `Core`; `Core` depends only on the .NET base class library. The renderer never calls `System.IO`. The filesystem adapter never chooses positions, labels, colors, or animation. Search returns domain hits and is not owned by the canvas.
@@ -38,14 +40,15 @@ The renderer uses deterministic radial coordinates rather than continuous force 
 
 ### `OmniBrille.Core`
 
-- `ExplorerEntry`, `ExplorerNode`, `ExplorerEdge`, and `ExplorerNeighborhood` are visual-agnostic structural contracts.
+- `ExplorerEntry`, `ExplorerNode`, `ExplorerEdge`, `ExplorerRelationship`, and `ExplorerNeighborhood` are visual-agnostic contracts that distinguish Structure and Context without carrying wire DTOs.
 - `IExplorerProvider` supplies a complete bounded snapshot; `IProgressiveExplorerProvider` optionally streams an empty shell, bounded child batches, and an explicit completion/failure marker.
 - `IExplorerSearchProvider` performs explicit bounded search.
 - `GraphNeighborhoodBuilder` enforces the scene budget, produces reversible aggregate pages, and can pin a selected search result.
 - `RadialGraphLayout` assigns stable normalized positions across three depth rings and preserves coordinates for surviving node IDs.
 - `GraphPresentationPolicy` owns deterministic LOD, label priority, search emphasis, and priority-based label collision rejection without Avalonia dependencies.
 - `BoundedLruCache` supplies the small deterministic cache primitive used by renderer hot paths; cache capacity is always explicit.
-- `ContextRenderBudgetPolicy` defines renderer-facing limits and deterministic edge priority for future contextual relationships. It does not create relationships or enable Context mode.
+- `ContextNeighborhoodBuilder` accepts only provider-authored relationship records and applies `ContextRenderBudgetPolicy`: 48 combined nodes, 36 Context edges, 84 combined edges, and three Context edges per node. It filters malformed/missing endpoints but never infers a relationship.
+- `ContextGraphLayout` keeps focus centered, places strongest relationships in deterministic inner/middle/outer rings, preserves surviving angles, and has no continuous physics.
 - `ContrastMath` makes documented theme text-pair checks reproducible without coupling Core to Avalonia colors.
 - `NavigationState` owns history and enforces the selected-root boundary.
 - `VisualPreferences` and `IVisualPreferencesStore` define the small persisted theme/effects contract.
@@ -60,14 +63,14 @@ Structural search is breadth-first, starts only on user action, and is capped at
 
 `JsonVisualPreferencesStore` keeps only visual preferences in the user's local application-data directory. A malformed file safely falls back to defaults; save uses a temporary file followed by replacement.
 
-`OmniSorSeConnectedProvider` is the second acquisition adapter. It maps session-bound opaque protocol IDs to application-local navigation targets, pages structural children in batches, retains at most 512 children for the existing deterministic aggregate policy, delegates Search to OmniSorSe, and maps only protocol-supplied details. It never calls `System.IO` to fill a connected-data gap. Its root is one node explicitly authorized in the session grant; an authorized path is presentation only and is never used as authority.
+`OmniSorSeConnectedProvider` is the second acquisition adapter. It maps session-bound opaque protocol IDs to application-local navigation targets, pages structural children in batches, retains at most 512 children for deterministic aggregation, delegates Search to OmniSorSe, and maps only protocol-supplied details. For Context it makes one bounded `GetNeighborhood(IncludeContext: true)` request and, for an issued file focus, one bounded focus-local `GetRelated` request. Results share an eight-entry session-scoped LRU and one-request gate. Because v1 has no pushed disconnect event, a cached Context read performs a lightweight authenticated `GetProtocolInfo` probe before presenting cached data as live. The provider merges duplicate wire edges and supplies reason/evidence/provenance unchanged. It never calls `System.IO` to fill a connected-data gap.
 
-`NamedPipeExplorerProtocolClient` implements the shipped v1 length-prefixed JSON framing over a current-user-only .NET named pipe. Every request opens one connection, carries the issued session ID/token and request ID, and has bounded connect/request timeouts. Strict JSON, string enums, response identity/version checks, collection/string/ID bounds, and stable error mapping reject malformed or incompatible responses before adaptation. `OmniSorSeConnectionCoordinator` owns the user-facing state machine and keeps a short-lived grant only in memory for conservative retry.
+`NamedPipeExplorerProtocolClient` implements the shipped v1 length-prefixed JSON framing over a current-user-only .NET named pipe. Every request opens one connection, carries the issued session ID/token and request ID, and has bounded connect/request timeouts. Strict JSON, string enums, response identity/version checks, collection/string/ID/relationship bounds, and stable error mapping reject malformed or incompatible responses before adaptation. `NamedPipeSessionGrantReceiver` consumes only the exact v2.5 one-time handoff name shape and a strict 4 KiB grant within 15 seconds. `OmniSorSeConnectionCoordinator` owns the state machine and keeps a short-lived grant only in memory for conservative retry.
 
 ### `OmniBrille.Desktop`
 
-- `ExplorerSession` coordinates provider/search requests, progressive states, cancellation, monotonically increasing request identities, navigation commit/rollback, aggregation, selection, and status.
-- `MainWindow` is an Avalonia interaction adapter for folder access, provider switching/status, authorized connected roots, search/result navigation, HUD controls, details, the synchronized accessible list, persisted effects, diagnostics, keyboard shortcuts, and automation metadata.
+- `ExplorerSession` is the single authority for provider, Structure/Context mode, search, selection, details, provider-aware Back history, cancellation, and monotonically increasing request identities. Context replacement is committed only if its request generation is still current.
+- `MainWindow` is an Avalonia interaction adapter for folder access, provider/mode switching, authorized roots, search/result navigation, Context relation details, the synchronized accessible list, persisted effects, diagnostics, keyboard shortcuts, and automation metadata.
 - `GraphSceneControl` owns only scene/input state: zoom, pan, hit targets, transition interpolation, hover, draw preparation, bounded drawing caches, per-phase local diagnostics, and the current visible-node automation projection.
 - `DataRainControl` renders a fixed, deterministic number of sparse blue token streams, caches its small token set, becomes static/sparse for reduced motion, and stops when hidden.
 - `ScenePalette` and application resources centralize the Dark/Light visual tokens.
@@ -82,7 +85,7 @@ The same rule applies to protocol work. Cancelling a named-pipe read closes/canc
 
 ## Explorer Protocol v1 integration boundary
 
-`src/OmniSorSe.ExplorerProtocol` mirrors only the public dependency-free DTO/enum contract from OmniSorSe tag `v2.4.0` (commit `40552b9b2b18637313354713d66593d04cf0d92f`). OmniBrille does not reference `OpenSorSe.Application`, OmniSorSe binaries, SQLite, indexing, Search implementations, or storage. The shipped server is authoritative when the earlier conceptual design differs.
+`src/OmniSorSe.ExplorerProtocol` mirrors only the unchanged public dependency-free v1 DTO/enum contract. The companion workflow was inspected at OmniSorSe v2.5 RC commit `59be07c6cebff12072cbf18701fb16cb11801287`; OmniSorSe schema version 5 and protocol major 1 remain unchanged. OmniBrille does not reference `OpenSorSe.Application`, OmniSorSe binaries, SQLite, indexing, Search implementations, or storage.
 
 Provider modes are separate authorities:
 
@@ -92,7 +95,7 @@ Provider modes are separate authorities:
 
 The connection state machine is `Standalone`, `Discovering`, `Connecting`, `Connected`, `Disconnected`, `Unavailable`, `Incompatible`, `Error`, and `Reconnecting`. The normal HUD uses plain-language status and exposes it as an accessible polite-live value. Developer diagnostics add transport/protocol, last request duration/count, Search count, timeout/reconnect count, and stale-response rejection count without logging secrets, queries, snippets, content, or normal-level full paths.
 
-OmniSorSe 2.4.0 deliberately ships no discovery listener, companion launch action, or finalized handoff message. OmniBrille therefore does not scan process lists, files, ports, or pipe namespaces. It accepts a one-time current-user-only handoff pipe name from an authorized future launcher; its bounded grant frame was used for Stage 4 validation, but the launcher side remains a cross-repository product gap. The bearer secret is never a CLI value or persisted setting. See [the Protocol v1 integration record](explorer-protocol.md).
+The v2.5 RC closes the Stage 4 launcher gap without a discovery listener. On explicit user action, OmniSorSe checks one configured path, one environment override, its adjacent directory, bounded conventional install locations, and `PATH`; it then launches a reviewed OmniBrille executable with only `--omnisorse-handoff <random-pipe-name>`. A current-user-only, one-connection pipe sends the strict grant. OmniBrille's first authenticated `GetProtocolInfo` request is the acknowledgement observed by OmniSorSe. Failure, timeout, early exit, or child-process exit revokes the scoped session. The bearer secret is never a CLI value, persisted setting, file, UI value, or normal diagnostic. Multiple launches intentionally create independent processes and grants; fragile single-instance forwarding is not introduced in Stage 5.
 
 ## Aggregation and graph bounds
 
@@ -114,6 +117,10 @@ LOD combines zoom, layout scale, density, depth, and importance:
 Label priority is focus, selected, visible search match, hover, aggregate, immediate folder, immediate file, outer node, then context. Focus/selection/search/hover labels are required; other labels pass through a stable priority sort and bounding-box collision rejection. Zoom-aware budgets are 10 labels when distant, 22 at normal zoom (or all scenes of 24 or fewer), and up to 34 close. At 125%, 150%, and 200% text scale, the normal-density caps reduce deterministically to 18, 14, and 10. Required labels may overlap rather than disappear, preserving state over decoration.
 
 During search, visible matches gain the search accent and unrelated nodes/edges recede. Focusing a result navigates to its folder and pins the match within the 48-node graph budget. The compact result surface remains secondary and dismissible.
+
+Context uses the same scene object with an explicit mode and edge kind. The current node stays at the focal position; up to ten strongest related nodes occupy the inner Context ring, sixteen the middle ring, and the remaining accepted endpoints the subdued outer ring. Stable opaque IDs provide deterministic angular jitter and surviving nodes retain their angle when their depth remains the same. Context edges are thinner cyan dashed strokes; structural edges remain solid blue, and decorative background lines remain faint and non-interactive. Selection strengthens one Context relationship without adding edge labels or rainbow categories.
+
+Switching Structure to Context stores the Structure return target and selection, then replaces the bounded scene after the authoritative request completes. Context refocus pushes only the prior Context focus; Back unwinds Context focuses and then returns to the saved Structure scene. Reduced motion bypasses long migration, while Reduced visual effects removes optional Context glow but preserves the dash/solid distinction. Search in Context still delegates to OmniSorSe; selecting a result requests its real Context rather than treating result co-occurrence as a relationship.
 
 ## Visual settings and diagnostics
 
@@ -143,7 +150,9 @@ The graph automation peer exposes one `TreeItem` peer for each node in the curre
 
 Headless UI tests exercise this shared state, node automation actions, keyboard graph navigation, themes, loading, search, reduced motion/effects, and simulated 100/125/150/200% text scale. Standard UI text pairs are checked against a 4.5:1 floor (primary text is substantially higher); decorative network lines are explicitly not treated as text. Practical screen-reader behavior remains platform/backend dependent and is not presented as certification.
 
-Known accessibility gaps remain: contextual edge/reason navigation is not defined until Context data exists; the graph peers expose selected state through item status rather than a multi-select pattern; no formal assistive-technology certification has been performed; and macOS automation runtime behavior is untested.
+Context graph peers announce a visible node as contextually related and provide one concise server-authored reason when present. The shared accessible list exposes the same Context nodes, selection, search state, refocus action, Back state, and concise reason; full evidence/provenance remains in the keyboard-reachable details surface. `Ctrl+1` and `Ctrl+2` select Structure and Context. The bounded automation tree never exposes omitted protocol nodes or invisible relationships.
+
+Known accessibility gaps remain: direct edge selection is node-centric because Protocol v1 has no durable relationship ID; graph peers expose selected state through item status rather than a multi-select pattern; no formal assistive-technology certification has been performed; and macOS automation runtime behavior is untested.
 
 Connected UI tests additionally verify accessible live connection status, opaque-ID navigation, shared graph/list selection, real-field Search/details, disconnect announcement, and clearing provider identity on standalone switch.
 
@@ -153,7 +162,9 @@ Stage 3 retains 48 rather than raising the budget. Candidate 32/48/64 fixtures w
 
 The untouched Stage 2 search sample was 25.835 ms. With bounded text/resource caching, representative warmed samples place normal 48-node scenes around 1–3 ms and search emphasis around 6 ms in the Avalonia headless renderer. Reduced effects removes edge-glow passes and lowers decorative density; the paired search fixture measured a meaningful reduction. Isolated cold frames may exceed 16.7 ms while fonts are first shaped or a scene arrives; the target is representative interactive rendering below the 60 Hz frame budget, not a claim that every transition frame is universally below it.
 
-A synthetic 48-node/72-context-edge fixture was rejected as too dense and produced a costly cold frame. The readiness policy instead permits at most 36 contextual edges, three per visible node, and 84 combined edge slots (a normal tree plus maximum context uses 83). The warmed 47-structural/36-context synthetic fixture rendered comfortably in the local headless sample. See [the Context rendering contract](context-rendering-contract.md) for semantics and update rules.
+A synthetic 48-node/72-context-edge fixture was rejected as too dense and produced a costly cold frame. Product Context permits at most 36 contextual edges, three per visible node, and 84 combined edge slots. Stage 5's fixture renders actual dashed Context edges and records Full/Reduced effects separately. The Context provider allows one uncached focus request at a time and retains only eight session-local snapshots, preventing request fan-out and durable ID retention. See [the Context rendering contract](context-rendering-contract.md) for semantics and update rules.
+
+The real Stage 5 two-node/one-relationship Context scene measured 0.41 ms render, 0.36 ms preparation, and 11.2 KiB render-path allocation with full effects. The same retained scene measured 0.35 ms render, 0.22 ms preparation, and 8.8 KiB with Reduced visual effects. Its latest protocol request was 22.4 ms and the UI-observed initial Context switch was 244 ms; Context refocus was 142 ms. These values are local samples from the development machine, not universal runtime guarantees, but they keep the representative steady scene comfortably inside the 16.7 ms interactive budget.
 
 No automatic hardware fingerprint or adaptive node-count system was introduced. The default remains deterministic. The two user-facing controls—Reduced motion and Reduced visual effects—are reliable, reversible degradation paths; a future sustained-frame guardrail may reduce decoration only after GPU-backed runtime evidence justifies it.
 
@@ -163,6 +174,6 @@ Avalonia platform detection, storage providers, rendering, input, and automation
 
 GitHub Actions restores, verifies format, builds Release with analyzers-as-errors, and runs all tests on Windows and Ubuntu, including transport-independent fake-client and local named-pipe framing tests. Windows runtime is the primary interactive validation platform. The real production-host two-process test ran on Windows; Linux remains build/test validated, and no Linux connected runtime or macOS runtime claim is made.
 
-## Stage 4 non-goals
+## Stage 5 non-goals
 
-No Context-mode UI, `GetRelated` presentation, semantic relationship rendering, voice, indexing/database implementation, cloud service, telemetry, destructive file operation, installer, updater, or OmniSorSe source change is implemented. The connected provider may display bounded summary/topic/entity fields returned by node details, but it neither computes intelligence nor creates Context relationships.
+No Hybrid mode, voice, indexing/database implementation, cloud service, telemetry, destructive file operation, installer, updater, or OmniSorSe source change is implemented. Context is read-only, focus-local, and entirely server-authored. Incremental edge updates and durable edge selection are intentionally absent because Protocol v1 has no stable relationship ID.

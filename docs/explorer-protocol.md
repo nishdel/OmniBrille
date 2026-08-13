@@ -2,7 +2,7 @@
 
 ## Status and authority
 
-Stage 4 consumes the real read-only protocol shipped in OmniSorSe v2.4.0. The authoritative source inspected for this integration is tag `v2.4.0`, commit `40552b9b2b18637313354713d66593d04cf0d92f`, especially `src/OmniSorSe.ExplorerProtocol` and `docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md`.
+Stage 5 consumes the real read-only protocol introduced in OmniSorSe v2.4.0 and the companion workflow committed in the v2.5 release candidate. The authoritative Stage 5 source inspected is repository `OpenSorSe-recovered-clean`, branch `v2.5-workflow-indexing-quality`, commit `59be07c6cebff12072cbf18701fb16cb11801287`, especially `src/OpenSorSe.Application/Explorer/ExplorerCompanionLaunch.cs`, `ExplorerReadService.cs`, and `docs/OMNIBRILLE_COMPANION_HANDOFF_v2.5.md`. Protocol major remains 1 and schema remains 5.
 
 The earlier OmniBrille document was conceptual. Its core boundary was correct—opaque graph DTOs, bounded reads, capability/version negotiation, cancellation, and no SQLite—but transport and exact fields were undecided. This document records the shipped behavior. OmniSorSe is authoritative when the two differ.
 
@@ -23,11 +23,15 @@ OmniBrille uses a three-second connection timeout and an 18-second client reques
 
 ## Authorization, discovery, and lifecycle
 
-The actual server is dormant until an explicit trusted launcher calls `CreateSessionAsync` with a bounded set of currently configured OmniSorSe source IDs. The resulting grant contains an unpredictable endpoint, random session ID, 256-bit bearer secret, absolute expiry, and protocol version. Default lifetime is five minutes; the accepted range is 15 seconds to 15 minutes. Tokens are not persisted by OmniBrille.
+The server is dormant until the explicit OmniSorSe desktop action creates a session over a bounded set of enabled indexed source IDs. The resulting grant contains an unpredictable endpoint, random session ID, 256-bit bearer secret, absolute expiry, and protocol version. The v2.5 companion session lifetime is 15 minutes. Tokens are retained only in the live connection coordinator and never persisted or logged.
 
 Node IDs are opaque, case-sensitive, HMAC-derived, and session-bound. They are never reconstructed from paths or treated as database keys. A new grant/server session invalidates old IDs, so reconnect with a fresh grant resets scene, selection, Back history, Search, details, and aggregates.
 
-OmniSorSe v2.4.0 intentionally has **no discovery service, public endpoint registry, companion launch action, or finalized grant-handoff message**. Normal startup keeps the protocol host dormant. OmniBrille consequently does not enumerate pipes, processes, ports, drives, or profile files. It exposes an in-memory connection seam and a `--omnisorse-handoff <one-time-pipe-name>` launch option. The bounded current-user-only handoff pipe passes the grant—not the secret on the command line—and was used for the Stage 4 production-host validation. The launcher side of that handoff must be agreed and implemented in a future OmniSorSe release before ordinary installed users can initiate connected mode.
+The v2.5 RC supplies the normal companion workflow without introducing a listener. On explicit user action its bounded locator checks, in order, the configured absolute executable, `OMNISORSE_OMNIBRILLE_PATH`, the OmniSorSe application directory, conventional per-user/machine install directories, and `PATH`. It accepts only reviewed `OmniBrille.exe` or `OmniBrille.Desktop.exe` candidates and performs no recursive search, download, probe, or startup scan.
+
+OmniSorSe creates a current-user-only one-connection pipe named `omnibrille-handoff-` plus 32 lowercase hexadecimal characters, starts OmniBrille with only `--omnisorse-handoff <pipe-name>`, and sends a strict length-prefixed JSON `ExplorerSessionGrant` capped at 4 KiB. OmniBrille requires that exact pipe-name shape, connects within 15 seconds, validates the grant, and immediately performs authenticated `GetProtocolInfo`. OmniSorSe observes that first authenticated compatible request as acknowledgement. A bearer token never appears in the argument list, environment, file, preference, UI, or normal diagnostic.
+
+The grant is one-use because the bootstrap server accepts one connection and closes. It is replay-resistant through the unpredictable pipe, current-user isolation, one-connection lifetime, short-lived scoped session, random bearer secret, and revocation. Handoff timeout, early companion exit, incompatible/unauthenticated acknowledgement, launch failure, cancellation, or observed child-process exit revokes the created session. Repeated desktop actions create independent processes and grants; Stage 5 deliberately does not forward a security-sensitive grant into an existing process.
 
 Connection states are `Standalone`, `Discovering`, `Connecting`, `Connected`, `Disconnected`, `Unavailable`, `Incompatible`, `Error`, and `Reconnecting`. Retry reuses an unexpired in-memory grant conservatively. Server restart requires a new grant because the old host/session and opaque IDs are gone.
 
@@ -38,9 +42,9 @@ Connection states are `Standalone`, `Discovering`, `Connecting`, `Connected`, `D
 | `GetProtocolInfo` | Version, app identity, capabilities, read-only flag, transport, hard limits. | Required negotiation. |
 | `GetAccessibleRoots` | Only configured source IDs authorized in the session. Paths appear only with separate path projection. | Connected root picker. |
 | `GetChildren` | Stable bounded structural children with total/truncation and opaque offset continuation. | Progressive Structure graph. |
-| `GetNeighborhood` | Bounded Structure plus optional retained Context. | Client implemented/validated; production UI deliberately does not request Context yet. |
+| `GetNeighborhood` | Bounded Structure plus optional retained Context. For a file focus, `IncludeContext: true` uses retained Related evidence; folder focuses remain structural. | Connected Structure navigation and bounded Context acquisition. |
 | `Search` | Existing unified deterministic-first Search over the authorized session scope; known indexed IDs only; no AI assistance. | Connected structural Search presentation. |
-| `GetRelated` | Existing bounded medium/strong Related Files evidence. | Deferred to Context mode. |
+| `GetRelated` | Existing bounded medium/strong Related Files evidence with kind, strength, reason, evidence class, and provenance. | One focus-local request per uncached file Context focus. |
 | `GetNodeDetails` | Bounded metadata, timestamps, summaries, topics/entities, safe media fields, relation summaries, indexed state. | Existing compact details panel. |
 
 Protocol v1 capability bits include Structure, Search, Context, Related Files, Media/Content Intelligence, OCR, Transcripts, Topics, Entities, and Summaries. A bit means retained evidence can be projected; it does not promise that each node has the evidence. OmniBrille currently requires Structure and Search and displays only details actually returned.
@@ -49,7 +53,7 @@ Search has no selected-root parameter: it covers every source authorized in the 
 
 ## Adapter and authority rules
 
-`OmniSorSeConnectedProvider` implements the same `IExplorerProvider`, progressive, Search, details, and diagnostics interfaces as standalone acquisition. `ExplorerSession`, graph layout/renderer, list alternative, automation peers, details, Search presentation, and Back do not know transport details.
+`OmniSorSeConnectedProvider` implements the same `IExplorerProvider`, progressive, Search, details, diagnostics, and provider-independent `IExplorerContextProvider` interfaces as standalone acquisition. `ExplorerSession`, graph layout/renderer, list alternative, automation peers, details, Search presentation, and Back do not know transport details.
 
 Standalone authority begins with a user-selected filesystem path. Connected authority begins with the grant and server-returned roots. The modes never merge:
 
@@ -60,6 +64,10 @@ Standalone authority begins with a user-selected filesystem path. Connected auth
 - visual preferences survive because they do not confer data access.
 
 Protocol child pages stream into the existing 32-item interactive batches. OmniBrille retains at most 512 adapted children per focus so deterministic aggregation remains reversible and bounded; the rendered scene remains 48 nodes. If the server reports truncation or no complete total, the UI preserves that uncertainty rather than fabricating unseen counts.
+
+For an uncached Context focus, the provider requests one depth-1 neighborhood with `IncludeContext: true`, at most 48 nodes, and at most 84 combined edges. If the focus is an issued file, it also requests at most 36 `GetRelated` results. It validates and merges duplicate edges, adapts only server-supplied reason/evidence/provenance, then applies the existing global/per-node renderer policy. One session-scoped acquisition gate and an eight-entry LRU prevent fan-out. A new grant constructs a new provider, invalidating all cached opaque IDs and Context snapshots.
+
+Because v1 has no relationship ID, OmniBrille computes an ephemeral scene key from source ID, target ID, kind, reason, and provenance. It is useful only for deterministic deduplication/selection inside the current immutable session snapshot. It is never persisted or presented as a durable protocol identity.
 
 ## Cancellation, errors, and diagnostics
 
@@ -75,23 +83,28 @@ A disposable Windows harness loaded the actual `OpenSorSe.Application, Version=2
 
 Validated sequence: negotiate v1; load an authorized root; render its bounded graph; drill into an indexed folder; Back; run real host Search; focus the result; load real host details; terminate the host; retain the graph and transition to disconnected; start a new production host/session; repeat successfully. Representative second-pass samples on this machine were 761.4 ms for handoff/connect/root/UI readiness, 9.6 ms neighborhood, 44.6 ms Search, 11.9 ms details, and 1.3 ms headless graph render. These are engineering samples, not guarantees.
 
-This proves the actual host/client contract and failure boundary. It does not claim that the released OmniSorSe desktop can launch OmniBrille; the missing launcher is listed below.
+This proved the original host/client contract and failure boundary. The later committed v2.5 RC supplies the launcher described above; the Stage 4 result remains useful historical latency evidence.
+
+## Stage 5 installed-workflow validation
+
+Stage 5 passed the Windows manual integration gate with the committed v2.5 RC desktop implementation—not a fabricated discovery path. A controlled indexed source was added through OmniSorSe's normal UI; its `Open in OmniBrille` action located the reviewed Stage 5 executable, transferred and acknowledged the one-time grant, and produced `Connected · OmniSorSe` without developer harness intervention. The connected application loaded authorized roots, rendered Structure, drilled and returned with Back, performed real Search, loaded real details, switched to Context, displayed a retained server-authored relationship and provenance, refocused, returned with Back, and restored Structure.
+
+Terminating OmniSorSe while Context was visible left OmniBrille alive with the last two-node scene visibly retained. Invoking a cached Context relation performed the authenticated liveness probe, failed closed in about 3.1 seconds, preserved the focus, and changed the accessible provider state to disconnected. Restarting the unchanged RC and using the desktop action again created a fresh independently connected process/grant; no old opaque identity was reused. Representative local UI observations were about 2.9 seconds from desktop action to connected window readiness, 215 ms for connected Structure drill-down, 244 ms for the fresh two-node Context switch, and 142 ms for Context refocus. These include UI scheduling and are engineering samples, not guarantees. Automated CI remains isolated through strict pipe/fake-client fixtures.
 
 ## Protocol v1 gap analysis
 
 ### Required for ordinary connected Structure use
 
-- **Companion discovery/launch and grant handoff:** absent from the released OmniSorSe desktop. The reads themselves work, but there is no user path that creates a session and starts OmniBrille. This is the only principal product-integration blocker found.
+- No blocker remains in the committed v2.5 RC contract. Packaging must place the reviewed executable in a configured/adjacent/conventional/PATH location; the RC is not described here as a released product.
 
 ### Required or important for future Context
 
-- `ExplorerEdge` has no stable relationship ID, although OmniBrille's Context replacement/accessibility contract expects one for deterministic selection/update/removal.
+- `ExplorerEdge` has no stable relationship ID. Stage 5 supports node-centric relationship inspection and immutable bounded replacement with an ephemeral key, but not durable edge bookmarks or incremental edge update/removal.
 - v1 responses are request/response snapshots/pages, not server-pushed incremental updates; future Context streaming would need additive revision/update semantics or bounded replacement requests.
 - Search and Context scope are session-wide rather than selected-root-specific. A client must explain this or request narrower grants; it cannot add a root filter the server does not support.
 
 ### Nice to have
 
-- A standard launcher-owned handoff schema/acknowledgement and immediate revoke-on-client-exit contract.
 - Explicit server/session instance identity to make reconnect invalidation more self-describing (v1 already fails safely because IDs are session-bound).
 - Coarse operation progress for expensive projections; exact progress must remain absent when the server cannot know it.
 
@@ -101,4 +114,4 @@ This proves the actual host/client contract and failure boundary. It does not cl
 
 ## Next boundary
 
-Stage 5 should be coordinated across repositories: first add the smallest reviewed OmniSorSe companion launch/handoff action without changing Protocol v1 read DTOs, then implement OmniBrille Context mode over `GetNeighborhood(IncludeContext: true)` and `GetRelated`. Context must obey the existing 48-node/36-context-edge renderer budget, distinguish structural/context edges, and show server-authored reason/provenance on demand. If stable edge selection/replacement is required, define the minimal additive relationship-ID extension before exposing Context as product functionality.
+The next stage should mature Context presentation and package/install the companion workflow. A minimal future additive protocol revision is justified only if durable relationship selection, incremental updates, selected-root Search/Context scope, or structured provenance becomes a proven UX requirement. Until then, Protocol v1 remains sufficient for bounded node-centric Context and must not be churned speculatively.
