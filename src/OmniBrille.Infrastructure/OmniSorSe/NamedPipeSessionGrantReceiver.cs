@@ -6,22 +6,32 @@ namespace OmniBrille.Infrastructure.OmniSorSe;
 
 public sealed class NamedPipeSessionGrantReceiver : IOmniSorSeSessionGrantReceiver
 {
+    private const string HandoffPrefix = "omnibrille-handoff-";
     private const int MaximumGrantBytes = 4096;
-    private static readonly TimeSpan HandoffTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan DefaultHandoffTimeout = TimeSpan.FromSeconds(15);
     private readonly JsonSerializerOptions _json = ExplorerProtocolSerialization.CreateOptions();
+    private readonly TimeSpan _handoffTimeout;
+
+    public NamedPipeSessionGrantReceiver(TimeSpan? handoffTimeout = null)
+    {
+        _handoffTimeout = handoffTimeout ?? DefaultHandoffTimeout;
+        if (_handoffTimeout <= TimeSpan.Zero || _handoffTimeout > DefaultHandoffTimeout)
+        {
+            throw new ArgumentOutOfRangeException(nameof(handoffTimeout));
+        }
+    }
 
     public async Task<OmniSorSeSessionGrant> ReceiveAsync(
         string handoffEndpoint,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(handoffEndpoint) || handoffEndpoint.Length > 128 ||
-            handoffEndpoint.Any(char.IsControl))
+        if (!IsValidHandoffEndpoint(handoffEndpoint))
         {
             throw new ArgumentException("The OmniSorSe handoff endpoint is invalid.", nameof(handoffEndpoint));
         }
 
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(HandoffTimeout);
+        timeout.CancelAfter(_handoffTimeout);
         using var pipe = new NamedPipeClientStream(
             ".",
             handoffEndpoint,
@@ -49,5 +59,16 @@ public sealed class NamedPipeSessionGrantReceiver : IOmniSorSeSessionGrantReceiv
         {
             throw new ExplorerProtocolTimeoutException("The one-time OmniSorSe session handoff timed out.", exception);
         }
+        catch (JsonException exception)
+        {
+            throw new ExplorerProtocolMalformedResponseException(
+                $"The OmniSorSe handoff did not match the strict bootstrap contract: {exception.Message}");
+        }
     }
+
+    private static bool IsValidHandoffEndpoint(string? handoffEndpoint) =>
+        handoffEndpoint is not null &&
+        handoffEndpoint.Length == HandoffPrefix.Length + 32 &&
+        handoffEndpoint.StartsWith(HandoffPrefix, StringComparison.Ordinal) &&
+        handoffEndpoint[HandoffPrefix.Length..].All(Uri.IsHexDigit);
 }

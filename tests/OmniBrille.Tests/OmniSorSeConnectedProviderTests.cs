@@ -157,12 +157,55 @@ public sealed class OmniSorSeConnectedProviderTests
             provider.GetDirectoryAsync(root.Id, CancellationToken.None));
     }
 
+    [Fact]
+    public async Task Context_AdaptsRealNeighborhoodAndRelatedEvidenceOncePerSessionFocus()
+    {
+        var root = Node("root", "Root", Protocol.ExplorerNodeKind.Source, null);
+        var focus = Node("focus", "Focus.txt", Protocol.ExplorerNodeKind.File, root.Id);
+        var related = Node("related", "Related.txt", Protocol.ExplorerNodeKind.File, root.Id);
+        var edge = new Protocol.ExplorerEdge(
+            focus.Id,
+            related.Id,
+            Protocol.ExplorerEdgeKind.Topic,
+            80,
+            "Shared indexed topic",
+            Protocol.ExplorerEvidenceClass.Derived,
+            "Content Intelligence 1");
+        var client = new FakeProtocolClient(root, [focus, related])
+        {
+            ContextNeighborhood = new Protocol.ExplorerNeighborhood(
+                focus.Id,
+                [focus, related],
+                [edge],
+                false,
+                null),
+            RelatedResult = new Protocol.ExplorerRelatedResult([related], [edge], false),
+        };
+        var provider = new OmniSorSeConnectedProvider(client, Info(), root);
+        _ = await provider.GetDirectoryAsync(root.Id, CancellationToken.None);
+
+        var first = await provider.GetContextAsync(focus.Id, CancellationToken.None);
+        var cached = await provider.GetContextAsync(focus.Id, CancellationToken.None);
+
+        Assert.Same(first, cached);
+        var relationship = Assert.Single(first.Relationships);
+        Assert.Equal(ExplorerRelationshipKind.Topic, relationship.Kind);
+        Assert.Equal("Shared indexed topic", relationship.Reason);
+        Assert.Equal("Content Intelligence 1", relationship.Provenance);
+        Assert.Equal(ExplorerRelationshipEvidenceClass.Derived, relationship.EvidenceClass);
+        Assert.Equal(1, client.NeighborhoodCalls);
+        Assert.Equal(1, client.RelatedCalls);
+    }
+
     private static Protocol.ExplorerProtocolInfo Info() => new(
         1,
         0,
         "OmniSorSe",
         "2.4.0",
-        Protocol.ExplorerCapability.Structure | Protocol.ExplorerCapability.Search,
+        Protocol.ExplorerCapability.Structure |
+        Protocol.ExplorerCapability.Search |
+        Protocol.ExplorerCapability.Context |
+        Protocol.ExplorerCapability.RelatedFiles,
         new Protocol.ExplorerProtocolLimits(65536, 1048576, 500, 256, 512, 100, 100, 2, 320, 32, 32, 256, 4, 15),
         true,
         "Local named pipe");
@@ -206,6 +249,10 @@ public sealed class OmniSorSeConnectedProviderTests
         public bool ReturnUnscopedChildren { get; init; }
         public TaskCompletionSource ChildrenStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public bool CancellationObserved { get; private set; }
+        public Protocol.ExplorerNeighborhood? ContextNeighborhood { get; init; }
+        public Protocol.ExplorerRelatedResult RelatedResult { get; init; } = new([], [], false);
+        public int NeighborhoodCalls { get; private set; }
+        public int RelatedCalls { get; private set; }
 
         public Task<Protocol.ExplorerProtocolInfo> GetProtocolInfoAsync(CancellationToken cancellationToken) => Task.FromResult(Info());
         public Task<Protocol.ExplorerNodePage> GetAccessibleRootsAsync(CancellationToken cancellationToken) =>
@@ -242,8 +289,20 @@ public sealed class OmniSorSeConnectedProviderTests
             return new Protocol.ExplorerNodePage(page, Math.Max(total, page.Length), next is not null, next);
         }
 
-        public Task<Protocol.ExplorerNeighborhood> GetNeighborhoodAsync(Protocol.ExplorerNeighborhoodRequest request, CancellationToken cancellationToken) =>
-            Task.FromResult(new Protocol.ExplorerNeighborhood(request.NodeId, [_nodes[request.NodeId]], [], false, null));
+        public Task<Protocol.ExplorerNeighborhood> GetNeighborhoodAsync(Protocol.ExplorerNeighborhoodRequest request, CancellationToken cancellationToken)
+        {
+            NeighborhoodCalls++;
+            return Task.FromResult(ContextNeighborhood ??
+                new Protocol.ExplorerNeighborhood(request.NodeId, [_nodes[request.NodeId]], [], false, null));
+        }
+
+        public Task<Protocol.ExplorerRelatedResult> GetRelatedAsync(
+            Protocol.ExplorerRelatedRequest request,
+            CancellationToken cancellationToken)
+        {
+            RelatedCalls++;
+            return Task.FromResult(RelatedResult);
+        }
 
         public Task<Protocol.ExplorerSearchResult> SearchAsync(Protocol.ExplorerSearchRequest request, CancellationToken cancellationToken) =>
             Task.FromResult(SearchResult);

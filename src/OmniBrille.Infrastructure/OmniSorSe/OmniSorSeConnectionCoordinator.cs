@@ -93,6 +93,9 @@ public sealed class OmniSorSeConnectionCoordinator : IOmniSorSeConnectionCoordin
         CancellationToken cancellationToken = default)
     {
         _grant = grant;
+        Client = null;
+        ProtocolInfo = null;
+        AccessibleRoots = [];
         SetState(OmniSorSeConnectionState.Connecting);
         try
         {
@@ -163,6 +166,7 @@ public sealed class OmniSorSeConnectionCoordinator : IOmniSorSeConnectionCoordin
 
     public void UseStandalone()
     {
+        _grant = null;
         Client = null;
         ProtocolInfo = null;
         AccessibleRoots = [];

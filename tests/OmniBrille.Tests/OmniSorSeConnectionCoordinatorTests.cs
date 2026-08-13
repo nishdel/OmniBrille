@@ -85,6 +85,25 @@ public sealed class OmniSorSeConnectionCoordinatorTests
         Assert.Equal(OmniSorSeConnectionState.Disconnected, coordinator.State);
     }
 
+    [Fact]
+    public async Task UseStandalone_DropsGrantAndCannotSilentlyReconnect()
+    {
+        var client = new FakeClient
+        {
+            Roots = new ExplorerNodePage([Node("root", ExplorerNodeKind.Source)], 1, false, null),
+        };
+        var coordinator = new OmniSorSeConnectionCoordinator(new FixedFactory(client), new FixedReceiver(client.Grant));
+        Assert.True(await coordinator.ConnectAsync(client.Grant));
+
+        coordinator.UseStandalone();
+        var reconnected = await coordinator.RetryAsync();
+
+        Assert.False(reconnected);
+        Assert.Equal(OmniSorSeConnectionState.Unavailable, coordinator.State);
+        Assert.Null(coordinator.Client);
+        Assert.Empty(coordinator.AccessibleRoots);
+    }
+
     private static ExplorerNode Node(string id, ExplorerNodeKind kind) =>
         new(id, id, kind, null, null, null, null, new Dictionary<string, string>(), 0, 0);
 
@@ -117,6 +136,7 @@ public sealed class OmniSorSeConnectionCoordinatorTests
         public Task<ExplorerNodePage> GetAccessibleRootsAsync(CancellationToken cancellationToken) => Task.FromResult(Roots);
         public Task<ExplorerNodePage> GetChildrenAsync(ExplorerChildrenRequest request, CancellationToken cancellationToken) => throw new NotSupportedException();
         public Task<ExplorerNeighborhood> GetNeighborhoodAsync(ExplorerNeighborhoodRequest request, CancellationToken cancellationToken) => throw new NotSupportedException();
+        public Task<ExplorerRelatedResult> GetRelatedAsync(ExplorerRelatedRequest request, CancellationToken cancellationToken) => throw new NotSupportedException();
         public Task<ExplorerSearchResult> SearchAsync(ExplorerSearchRequest request, CancellationToken cancellationToken) => throw new NotSupportedException();
         public Task<ExplorerNodeDetails> GetNodeDetailsAsync(ExplorerNodeDetailsRequest request, CancellationToken cancellationToken) => throw new NotSupportedException();
         public void ReportStaleResponseRejected()

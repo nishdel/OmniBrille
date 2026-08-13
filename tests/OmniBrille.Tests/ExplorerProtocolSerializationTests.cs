@@ -85,6 +85,25 @@ public sealed class ExplorerProtocolSerializationTests
                 100));
     }
 
+    [Fact]
+    public void ProtocolInfoValidation_RejectsUnsafeRelatedLimit()
+    {
+        var limits = new ExplorerProtocolLimits(
+            65_536, 1_048_576, 500, 256, 512, 100, 101, 2, 320, 32, 32, 256, 4, 15);
+        var info = new ExplorerProtocolInfo(
+            1,
+            0,
+            "OmniSorSe",
+            "2.5.0-rc",
+            ExplorerCapability.Structure | ExplorerCapability.Search,
+            limits,
+            true,
+            "Local named pipe");
+
+        Assert.Throws<ExplorerProtocolMalformedResponseException>(() =>
+            ExplorerProtocolValidation.ValidateProtocolInfo(info));
+    }
+
     private static string NodeJson(string kind) => $$"""
         {"id":"node-1","name":"Readme","kind":{{kind}},"parentId":null,
         "extension":null,"sizeBytes":null,"authorizedPath":null,"metadata":{},

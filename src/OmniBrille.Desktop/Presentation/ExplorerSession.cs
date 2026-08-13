@@ -8,6 +8,7 @@ public sealed class ExplorerSession : IDisposable
     private const int ProgressiveBatchSize = 32;
 
     private readonly GraphNeighborhoodBuilder _neighborhoodBuilder;
+    private readonly ContextNeighborhoodBuilder _contextBuilder;
     private readonly NavigationState _navigation = new();
     private IExplorerProvider? _provider;
     private IExplorerSearchProvider? _searchProvider;
@@ -17,13 +18,19 @@ public sealed class ExplorerSession : IDisposable
     private ExplorerDirectorySnapshot? _currentSnapshot;
     private ExplorerEntry? _previousContext;
     private AggregatePage? _aggregatePage;
+    private readonly List<string> _contextHistory = [];
+    private string? _structureReturnTarget;
+    private string? _structureReturnSelectionId;
     private long _loadRequestVersion;
     private long _searchRequestVersion;
     private long _detailsRequestVersion;
 
-    public ExplorerSession(GraphNeighborhoodBuilder? neighborhoodBuilder = null)
+    public ExplorerSession(
+        GraphNeighborhoodBuilder? neighborhoodBuilder = null,
+        ContextNeighborhoodBuilder? contextBuilder = null)
     {
         _neighborhoodBuilder = neighborhoodBuilder ?? new GraphNeighborhoodBuilder();
+        _contextBuilder = contextBuilder ?? new ContextNeighborhoodBuilder();
     }
 
     public event EventHandler? StateChanged;
@@ -38,6 +45,16 @@ public sealed class ExplorerSession : IDisposable
 
     public ExplorerNodeDetails? SelectedNodeDetails { get; private set; }
 
+    public ExplorerRelationship? SelectedRelationship => Neighborhood?.Edges
+        .Where(edge => edge.Kind == ExplorerGraphEdgeKind.Contextual && edge.Relationship is not null)
+        .Where(edge => SelectedNode is not null &&
+            ((ExplorerIdentity.Equals(edge.SourceId, Neighborhood.FocusNodeId) && ExplorerIdentity.Equals(edge.TargetId, SelectedNode.Id)) ||
+             (ExplorerIdentity.Equals(edge.TargetId, Neighborhood.FocusNodeId) && ExplorerIdentity.Equals(edge.SourceId, SelectedNode.Id))))
+        .OrderByDescending(edge => edge.Relationship!.Strength)
+        .ThenBy(edge => edge.Relationship!.Id, ExplorerIdentity.Comparer)
+        .Select(edge => edge.Relationship)
+        .FirstOrDefault();
+
     public IReadOnlySet<string> HighlightedNodeIds { get; private set; } = new HashSet<string>();
 
     public string CurrentPath => Neighborhood?.Focus.Path ?? _navigation.CurrentPath ?? string.Empty;
@@ -49,6 +66,10 @@ public sealed class ExplorerSession : IDisposable
     public string Status { get; private set; } = "Choose a folder to begin. Only that location will be accessible.";
 
     public ExplorerLoadState LoadState { get; private set; } = ExplorerLoadState.Idle;
+
+    public ExplorerViewMode ViewMode { get; private set; } = ExplorerViewMode.Structure;
+
+    public bool IsContextAvailable => ProviderMode == ExplorerProviderMode.Connected && _provider is IExplorerContextProvider;
 
     public bool IsLoading => LoadState is ExplorerLoadState.Loading or ExplorerLoadState.PartiallyLoaded;
 
@@ -66,7 +87,7 @@ public sealed class ExplorerSession : IDisposable
         ? "Connected · OmniSorSe"
         : "Standalone";
 
-    public bool CanGoBack => _aggregatePage is not null || _navigation.CanGoBack;
+    public bool CanGoBack => ViewMode == ExplorerViewMode.Context || _aggregatePage is not null || _navigation.CanGoBack;
 
     public bool IsAggregateRefined => _aggregatePage is not null;
 
@@ -93,6 +114,10 @@ public sealed class ExplorerSession : IDisposable
         _currentSnapshot = null;
         _previousContext = null;
         _aggregatePage = null;
+        ViewMode = ExplorerViewMode.Structure;
+        _contextHistory.Clear();
+        _structureReturnTarget = null;
+        _structureReturnSelectionId = null;
 
         await LoadDirectoryAsync(
             provider.AccessRoot,
@@ -123,6 +148,24 @@ public sealed class ExplorerSession : IDisposable
     public async Task<bool> GoBackAsync(CancellationToken cancellationToken = default)
     {
         EnsureProvider();
+        if (ViewMode == ExplorerViewMode.Context)
+        {
+            if (_contextHistory.Count > 0)
+            {
+                var index = _contextHistory.Count - 1;
+                var contextTarget = _contextHistory[index];
+                var restored = await LoadContextAsync(contextTarget, pushHistory: false, cancellationToken);
+                if (restored)
+                {
+                    _contextHistory.RemoveAt(index);
+                }
+
+                return restored;
+            }
+
+            return await SwitchToStructureAsync(cancellationToken);
+        }
+
         if (_aggregatePage is not null)
         {
             _aggregatePage = null;
@@ -205,7 +248,10 @@ public sealed class ExplorerSession : IDisposable
         try
         {
             var result = await _searchProvider!.SearchAsync(
-                new SearchRequest(AccessRoot, SearchQuery),
+                new SearchRequest(
+                    AccessRoot,
+                    SearchQuery,
+                    IncludeContext: ViewMode == ExplorerViewMode.Context && ProviderMode == ExplorerProviderMode.Connected),
                 _searchCancellation.Token);
             if (requestVersion != Volatile.Read(ref _searchRequestVersion))
             {
@@ -251,6 +297,11 @@ public sealed class ExplorerSession : IDisposable
     {
         ArgumentNullException.ThrowIfNull(hit);
 
+        if (ViewMode == ExplorerViewMode.Context && ProviderMode == ExplorerProviderMode.Connected)
+        {
+            return await FocusContextNodeAsync(hit.Target, cancellationToken);
+        }
+
         if (hit.Kind == ExplorerNodeKind.Folder)
         {
             return await NavigateAsync(hit.Target, cancellationToken: cancellationToken);
@@ -271,6 +322,75 @@ public sealed class ExplorerSession : IDisposable
         _ = RefreshSelectedNodeDetailsAsync();
         NotifyChanged();
     }
+
+    public async Task<bool> SwitchToContextAsync(
+        string? preferredFocusId = null,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureProvider();
+        if (_provider is not IExplorerContextProvider)
+        {
+            Status = "Context exploration requires OmniSorSe.";
+            NotifyChanged();
+            return false;
+        }
+
+        var target = preferredFocusId ??
+            (SelectedNode?.Kind == ExplorerNodeKind.File ? SelectedNode.Target : Neighborhood?.Focus.Target);
+        if (string.IsNullOrWhiteSpace(target))
+        {
+            Status = "Select an indexed file or folder before opening Context.";
+            NotifyChanged();
+            return false;
+        }
+
+        if (ViewMode == ExplorerViewMode.Structure)
+        {
+            _structureReturnTarget = _navigation.CurrentPath;
+            _structureReturnSelectionId = SelectedNode?.Id;
+            _contextHistory.Clear();
+        }
+
+        return await LoadContextAsync(target, pushHistory: false, cancellationToken);
+    }
+
+    public async Task<bool> SwitchToStructureAsync(CancellationToken cancellationToken = default)
+    {
+        EnsureProvider();
+        if (ViewMode == ExplorerViewMode.Structure)
+        {
+            return true;
+        }
+
+        var target = _structureReturnTarget ?? _navigation.CurrentPath ?? AccessRoot;
+        var selection = _structureReturnSelectionId;
+        var previousMode = ViewMode;
+        ViewMode = ExplorerViewMode.Structure;
+        _contextHistory.Clear();
+        var outcome = await LoadDirectoryAsync(
+            target,
+            previousContext: null,
+            preferredSelectionId: selection,
+            commitNavigation: null,
+            showFailureScene: false,
+            cancellationToken);
+        if (outcome.Applied)
+        {
+            Status = "Structure mode restored.";
+            NotifyChanged();
+        }
+        else
+        {
+            ViewMode = previousMode;
+        }
+
+        return outcome.Applied;
+    }
+
+    public Task<bool> FocusContextNodeAsync(
+        string nodeId,
+        CancellationToken cancellationToken = default) =>
+        LoadContextAsync(nodeId, pushHistory: true, cancellationToken);
 
     public async Task RefreshSelectedNodeDetailsAsync(CancellationToken cancellationToken = default)
     {
@@ -326,6 +446,10 @@ public sealed class ExplorerSession : IDisposable
         _currentSnapshot = null;
         _previousContext = null;
         _aggregatePage = null;
+        _contextHistory.Clear();
+        _structureReturnTarget = null;
+        _structureReturnSelectionId = null;
+        ViewMode = ExplorerViewMode.Structure;
         LoadState = ExplorerLoadState.Idle;
         IsSearching = false;
         LoadedItemCount = 0;
@@ -353,6 +477,100 @@ public sealed class ExplorerSession : IDisposable
         _loadCancellation?.Dispose();
         _searchCancellation?.Dispose();
         _detailsCancellation?.Dispose();
+    }
+
+    private async Task<bool> LoadContextAsync(
+        string nodeId,
+        bool pushHistory,
+        CancellationToken cancellationToken)
+    {
+        if (_provider is not IExplorerContextProvider contextProvider)
+        {
+            Status = "Context exploration requires OmniSorSe.";
+            NotifyChanged();
+            return false;
+        }
+
+        _loadCancellation?.Cancel();
+        _loadCancellation?.Dispose();
+        _loadCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var requestVersion = Interlocked.Increment(ref _loadRequestVersion);
+        var previousMode = ViewMode;
+        var previousFocusId = Neighborhood?.FocusNodeId;
+        var backup = new SceneBackup(Neighborhood, SelectedNode, _currentSnapshot, _previousContext, _aggregatePage);
+        var stopwatch = Stopwatch.StartNew();
+        LoadState = ExplorerLoadState.Loading;
+        LoadedItemCount = 0;
+        Status = "Requesting bounded OmniSorSe Context…";
+        NotifyChanged();
+
+        try
+        {
+            var snapshot = await contextProvider.GetContextAsync(nodeId, _loadCancellation.Token);
+            if (requestVersion != Volatile.Read(ref _loadRequestVersion))
+            {
+                (_provider as IExplorerProviderDiagnostics)?.ReportStaleResponseRejected();
+                return false;
+            }
+
+            var neighborhood = _contextBuilder.Build(snapshot);
+            if (pushHistory &&
+                previousMode == ExplorerViewMode.Context &&
+                previousFocusId is not null &&
+                !ExplorerIdentity.Equals(previousFocusId, neighborhood.FocusNodeId))
+            {
+                _contextHistory.Add(previousFocusId);
+            }
+
+            ViewMode = ExplorerViewMode.Context;
+            Neighborhood = neighborhood;
+            SelectedNode = neighborhood.Focus;
+            SelectedNodeDetails = null;
+            _currentSnapshot = null;
+            _previousContext = null;
+            _aggregatePage = null;
+            LoadedItemCount = Math.Max(0, neighborhood.Nodes.Count - 1);
+            LoadState = ExplorerLoadState.Ready;
+            var relationshipCount = neighborhood.Edges.Count(edge => edge.Kind == ExplorerGraphEdgeKind.Contextual);
+            Status = relationshipCount == 0
+                ? "No retained OmniSorSe relationships are available for this focus."
+                : $"{relationshipCount:N0} authoritative relationships · {neighborhood.Nodes.Count:N0} Context nodes visible";
+            if (!string.IsNullOrWhiteSpace(neighborhood.Warning))
+            {
+                Status += $" · {neighborhood.Warning}";
+            }
+
+            _detailsCancellation?.Cancel();
+            _ = RefreshSelectedNodeDetailsAsync(CancellationToken.None);
+            UpdateHighlights(notify: false);
+            NotifyChanged();
+            return true;
+        }
+        catch (OperationCanceledException) when (requestVersion == Volatile.Read(ref _loadRequestVersion))
+        {
+            LoadState = ExplorerLoadState.Cancelled;
+            Status = "Context loading cancelled.";
+            NotifyChanged();
+            throw;
+        }
+        catch (Exception exception) when (IsProviderFailure(exception))
+        {
+            RestoreScene(backup);
+            ViewMode = previousMode;
+            LoadState = ExplorerLoadState.Failed;
+            Status = "OmniSorSe could not complete the Context request. The previous graph is retained.";
+            ProviderFailed?.Invoke(exception);
+            NotifyChanged();
+            return false;
+        }
+        finally
+        {
+            stopwatch.Stop();
+            if (requestVersion == Volatile.Read(ref _loadRequestVersion))
+            {
+                LastLoadDuration = stopwatch.Elapsed;
+            }
+        }
     }
 
     private async Task<LoadOutcome> LoadDirectoryAsync(

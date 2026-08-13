@@ -11,6 +11,7 @@ public static class ExplorerProtocolValidation
     public const int MaximumNodes = 256;
     public const int MaximumEdges = 512;
     public const int MaximumSearchResults = 100;
+    public const int MaximumRelatedResults = 100;
 
     public static void ValidateGrant(OmniSorSeSessionGrant grant, DateTimeOffset now)
     {
@@ -63,6 +64,7 @@ public static class ExplorerProtocolValidation
             limits.MaximumNodes is <= 0 or > MaximumNodes ||
             limits.MaximumEdges is <= 0 or > MaximumEdges ||
             limits.MaximumSearchResults is <= 0 or > MaximumSearchResults ||
+            limits.MaximumRelatedResults is <= 0 or > MaximumRelatedResults ||
             limits.MaximumQueryCharacters <= 0 ||
             limits.RequestTimeoutSeconds is <= 0 or > 60)
         {
@@ -113,6 +115,36 @@ public static class ExplorerProtocolValidation
         }
 
         ValidateNodes(result.Results.Select(hit => hit.Node));
+    }
+
+    public static void ValidateRelated(
+        ExplorerRelatedResult result,
+        int maximumResults,
+        string focusNodeId)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        ValidateIdentifier(focusNodeId, "Related focus node");
+        if (result.Nodes.Count > maximumResults || result.Edges.Count > maximumResults)
+        {
+            throw new ExplorerProtocolMalformedResponseException("The Explorer Related response exceeds negotiated bounds.");
+        }
+
+        ValidateNodes(result.Nodes);
+        var ids = result.Nodes.Select(node => node.Id).ToHashSet(StringComparer.Ordinal);
+        foreach (var edge in result.Edges)
+        {
+            ValidateIdentifier(edge.SourceId, "relationship source");
+            ValidateIdentifier(edge.TargetId, "relationship target");
+            if (!StringComparer.Ordinal.Equals(edge.SourceId, focusNodeId) ||
+                !ids.Contains(edge.TargetId) ||
+                edge.Kind == ExplorerEdgeKind.Contains ||
+                edge.Strength is < 0 or > 100 ||
+                edge.Reason.Length > 256 ||
+                edge.Provenance.Length > 128)
+            {
+                throw new ExplorerProtocolMalformedResponseException("The Explorer Related response contains an invalid relationship.");
+            }
+        }
     }
 
     public static void ValidateDetails(ExplorerNodeDetails details)

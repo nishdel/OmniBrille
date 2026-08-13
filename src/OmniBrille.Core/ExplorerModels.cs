@@ -21,6 +21,34 @@ public enum ExplorerProviderMode
     Connected,
 }
 
+public enum ExplorerViewMode
+{
+    Structure,
+    Context,
+}
+
+public enum ExplorerGraphEdgeKind
+{
+    Structural,
+    Contextual,
+}
+
+public enum ExplorerRelationshipKind
+{
+    Related,
+    Topic,
+    Entity,
+    Temporal,
+    Ocr,
+    Transcript,
+}
+
+public enum ExplorerRelationshipEvidenceClass
+{
+    Deterministic,
+    Derived,
+}
+
 public enum ExplorerFailureKind
 {
     None,
@@ -63,7 +91,8 @@ public sealed record ExplorerEntry(
     DateTimeOffset? LastModified = null,
     bool IsReparsePoint = false,
     bool IsNavigable = true,
-    string? NavigationTarget = null)
+    string? NavigationTarget = null,
+    string? ParentNavigationTarget = null)
 {
     public string Target => NavigationTarget ?? Path;
 }
@@ -86,7 +115,8 @@ public sealed record ExplorerNode(
     bool IsNavigable,
     int AggregatedItemCount = 0,
     AggregateAction? AggregateAction = null,
-    string? NavigationTarget = null)
+    string? NavigationTarget = null,
+    string? ParentNavigationTarget = null)
 {
     public string Target => NavigationTarget ?? Path;
 
@@ -98,10 +128,25 @@ public sealed record ExplorerNode(
         entry.SizeBytes,
         entry.LastModified,
         entry.IsNavigable,
-        NavigationTarget: entry.NavigationTarget);
+        NavigationTarget: entry.NavigationTarget,
+        ParentNavigationTarget: entry.ParentNavigationTarget);
 }
 
-public sealed record ExplorerEdge(string SourceId, string TargetId);
+public sealed record ExplorerRelationship(
+    string Id,
+    string SourceId,
+    string TargetId,
+    ExplorerRelationshipKind Kind,
+    int Strength,
+    string? Reason,
+    ExplorerRelationshipEvidenceClass EvidenceClass,
+    string? Provenance);
+
+public sealed record ExplorerEdge(
+    string SourceId,
+    string TargetId,
+    ExplorerGraphEdgeKind Kind = ExplorerGraphEdgeKind.Structural,
+    ExplorerRelationship? Relationship = null);
 
 public sealed record ExplorerNeighborhood(
     string FocusNodeId,
@@ -111,10 +156,19 @@ public sealed record ExplorerNeighborhood(
     int HiddenChildCount,
     string? Warning = null,
     bool SourceWasTruncated = false,
-    AggregatePage? AggregatePage = null)
+    AggregatePage? AggregatePage = null,
+    ExplorerViewMode ViewMode = ExplorerViewMode.Structure)
 {
     public ExplorerNode Focus => Nodes.First(node => node.Id == FocusNodeId);
 }
+
+public sealed record ExplorerContextSnapshot(
+    ExplorerEntry Focus,
+    IReadOnlyList<ExplorerEntry> Nodes,
+    IReadOnlyList<ExplorerEdge> StructuralEdges,
+    IReadOnlyList<ExplorerRelationship> Relationships,
+    bool WasTruncated = false,
+    string? Warning = null);
 
 public sealed record ExplorerDirectoryBatch(
     ExplorerEntry Focus,
@@ -130,7 +184,8 @@ public sealed record SearchRequest(
     string RootPath,
     string Query,
     int MaxResults = 80,
-    int MaxDirectories = 500);
+    int MaxDirectories = 500,
+    bool IncludeContext = false);
 
 public sealed record ExplorerSearchHit(
     string Id,
@@ -178,6 +233,13 @@ public sealed record ExplorerNodeDetails(
 public interface IExplorerNodeDetailsProvider
 {
     public Task<ExplorerNodeDetails?> GetNodeDetailsAsync(
+        string nodeId,
+        CancellationToken cancellationToken);
+}
+
+public interface IExplorerContextProvider
+{
+    public Task<ExplorerContextSnapshot> GetContextAsync(
         string nodeId,
         CancellationToken cancellationToken);
 }

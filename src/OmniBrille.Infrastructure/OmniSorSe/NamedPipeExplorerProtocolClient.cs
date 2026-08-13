@@ -100,6 +100,22 @@ public sealed class NamedPipeExplorerProtocolClient : IExplorerProtocolClient
         return result;
     }
 
+    public async Task<ExplorerRelatedResult> GetRelatedAsync(
+        ExplorerRelatedRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await SendAsync<ExplorerRelatedRequest, ExplorerRelatedResult>(
+            ExplorerOperation.GetRelated,
+            request,
+            cancellationToken).ConfigureAwait(false);
+        ExplorerProtocolValidation.ValidateRelated(
+            result,
+            Math.Min(request.MaximumResults ?? 50, ExplorerProtocolValidation.MaximumRelatedResults),
+            request.NodeId);
+        RecordNodes(result.Nodes.Count);
+        return result;
+    }
+
     public async Task<ExplorerSearchResult> SearchAsync(
         ExplorerSearchRequest request,
         CancellationToken cancellationToken)

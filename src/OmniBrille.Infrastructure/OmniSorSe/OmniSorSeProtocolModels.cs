@@ -80,6 +80,10 @@ public interface IExplorerProtocolClient
 
     public Task<ExplorerNeighborhood> GetNeighborhoodAsync(ExplorerNeighborhoodRequest request, CancellationToken cancellationToken);
 
+    public Task<ExplorerRelatedResult> GetRelatedAsync(
+        ExplorerRelatedRequest request,
+        CancellationToken cancellationToken);
+
     public Task<ExplorerSearchResult> SearchAsync(ExplorerSearchRequest request, CancellationToken cancellationToken);
 
     public Task<ExplorerNodeDetails> GetNodeDetailsAsync(ExplorerNodeDetailsRequest request, CancellationToken cancellationToken);
