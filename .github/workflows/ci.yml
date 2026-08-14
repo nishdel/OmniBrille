@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   build-and-test:
-    name: ${{ matrix.os }} / .NET 8
+    name: ${{ matrix.os }} / SDK from global.json
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:
@@ -28,12 +28,12 @@ jobs:
       DOTNET_NOLOGO: 1
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - name: Install .NET 8 SDK
-        uses: actions/setup-dotnet@v4
+      - name: Install pinned .NET SDK
+        uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 8.0.x
+          global-json-file: global.json
           cache: true
           cache-dependency-path: '**/*.csproj'
 
@@ -49,6 +49,10 @@ jobs:
       - name: Test Release
         run: dotnet test OmniBrille.sln --configuration Release --no-build --no-restore --logger "console;verbosity=minimal"
 
+      - name: Audit NuGet vulnerabilities
+        shell: pwsh
+        run: .\build\Test-NuGetVulnerabilities.ps1
+
       - name: Build unsigned Windows installer
         if: runner.os == 'Windows'
         shell: pwsh
@@ -56,9 +60,13 @@ jobs:
 
       - name: Retain private Windows installer artifact
         if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: OmniBrille-windows-installer
-          path: artifacts/packages/OmniBrille-*-win-x64-setup.exe
+          path: |
+            artifacts/packages/OmniBrille-*-win-x64-setup.exe
+            artifacts/packages/OmniBrille-*-win-x64-setup.exe.sha256
+            artifacts/packages/OmniBrille-*-win-x64-setup-manifest.json
+            artifacts/packages/OmniBrille-*-win-x64-setup-dependencies.json
           if-no-files-found: error
           retention-days: 14

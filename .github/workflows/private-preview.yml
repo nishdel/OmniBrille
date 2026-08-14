@@ -1,0 +1,98 @@
+name: Private preview artifact
+
+on:
+  workflow_dispatch:
+    inputs:
+      signing:
+        description: Produce an unsigned validation artifact or require Authenticode signing
+        required: true
+        default: unsigned
+        type: choice
+        options:
+          - unsigned
+          - signed
+
+permissions:
+  contents: read
+
+concurrency:
+  group: private-preview-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate-and-package:
+    name: Windows private preview (${{ inputs.signing }})
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      AVALONIA_TELEMETRY_OPTOUT: 1
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: 1
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install pinned .NET SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/*.csproj'
+
+      - name: Import signing certificate
+        if: inputs.signing == 'signed'
+        id: signing
+        shell: pwsh
+        env:
+          SIGNING_PFX_BASE64: ${{ secrets.OMNIBRILLE_SIGNING_PFX_BASE64 }}
+          SIGNING_PFX_PASSWORD: ${{ secrets.OMNIBRILLE_SIGNING_PFX_PASSWORD }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:SIGNING_PFX_BASE64) -or
+              [string]::IsNullOrWhiteSpace($env:SIGNING_PFX_PASSWORD)) {
+            throw 'Signed preview requested, but signing secrets are unavailable.'
+          }
+          $pfxPath = Join-Path $env:RUNNER_TEMP 'OmniBrille-signing.pfx'
+          [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:SIGNING_PFX_BASE64))
+          try {
+            $password = ConvertTo-SecureString $env:SIGNING_PFX_PASSWORD -AsPlainText -Force
+            $certificate = Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $password
+            if ($null -eq $certificate -or -not $certificate.HasPrivateKey) {
+              throw 'The signing certificate could not be imported with its private key.'
+            }
+            "thumbprint=$($certificate.Thumbprint)" >> $env:GITHUB_OUTPUT
+          }
+          finally {
+            Remove-Item -LiteralPath $pfxPath -Force -ErrorAction SilentlyContinue
+          }
+
+      - name: Verify and build unsigned private preview
+        if: inputs.signing == 'unsigned'
+        shell: pwsh
+        run: .\build\verify-release.ps1
+
+      - name: Verify and build signed private preview
+        if: inputs.signing == 'signed'
+        shell: pwsh
+        env:
+          OMNIBRILLE_SIGNING_CERTIFICATE_THUMBPRINT: ${{ steps.signing.outputs.thumbprint }}
+        run: .\build\verify-release.ps1 -RequireSigning
+
+      - name: Remove imported signing certificate
+        if: always() && inputs.signing == 'signed' && steps.signing.outputs.thumbprint != ''
+        shell: pwsh
+        env:
+          CERTIFICATE_THUMBPRINT: ${{ steps.signing.outputs.thumbprint }}
+        run: Remove-Item -LiteralPath "Cert:\CurrentUser\My\$env:CERTIFICATE_THUMBPRINT" -Force -ErrorAction SilentlyContinue
+
+      - name: Upload private preview artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: OmniBrille-private-preview-${{ inputs.signing }}-${{ github.sha }}
+          path: |
+            artifacts/packages/OmniBrille-*-win-x64-setup.exe
+            artifacts/packages/OmniBrille-*-win-x64-setup.exe.sha256
+            artifacts/packages/OmniBrille-*-win-x64-setup-manifest.json
+            artifacts/packages/OmniBrille-*-win-x64-setup-dependencies.json
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
