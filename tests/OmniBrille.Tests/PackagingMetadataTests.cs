@@ -37,6 +37,8 @@ public sealed class PackagingMetadataTests
         Assert.Contains("PrivilegesRequired=lowest", script, StringComparison.Ordinal);
         Assert.Contains("OmniBrille.exe", script, StringComparison.Ordinal);
         Assert.Contains("{autoprograms}\\OmniBrille", script, StringComparison.Ordinal);
+        Assert.Contains("Excludes: \"*.pdb\"", script, StringComparison.Ordinal);
+        Assert.Contains("Type: files; Name: \"{app}\\*.pdb\"", script, StringComparison.Ordinal);
         Assert.DoesNotContain("OMNISORSE_OMNIBRILLE_PATH", script, StringComparison.Ordinal);
         Assert.DoesNotContain("OmniExplorer", script, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("OmniNav", script, StringComparison.OrdinalIgnoreCase);
@@ -73,4 +75,3 @@ public sealed class PackagingMetadataTests
         throw new DirectoryNotFoundException("Could not locate the OmniBrille repository root.");
     }
 }
-

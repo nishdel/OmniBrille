@@ -46,12 +46,13 @@ Status language is intentionally conservative: checked items exist in the applic
 - [x] Treat Protocol v1's missing relationship ID honestly through session-local immutable-snapshot keys; incremental relationship update/removal remains disabled.
 - [x] Revalidate cancellation, stale replacement, density, performance, themes, reduced effects/motion, automation, disconnect, and fresh-grant behavior.
 
-## Stage 6 — Context presentation maturation
+## Stage 6 — Packaging, discovery, and Context maturation (complete)
 
-- [ ] Context aggregates/clusters, focus-local relationship filtering, and relationship search emphasis.
-- [ ] Richer details/provenance inspection without permanently labeling every edge.
-- [ ] Provider capability/version compatibility matrix and large Context-neighborhood performance hardening.
-- [ ] Package/sign the independently installed companion and validate clean install, upgrade, discovery, and uninstall behavior against the v2.5 launch contract.
+- [x] Add reversible focus-local filtering by actual Protocol v1 relationship kind, ranking strength, and evidence class without client semantic inference.
+- [x] Mature relationship hierarchy/provenance inspection and deterministic strength-aware Context depth without permanently labeling edges.
+- [x] Build a reproducible self-contained per-user Inno Setup package at an existing v2.5 locator path, with upgrade/uninstall and signing readiness.
+- [x] Validate installed standalone use and normal OmniSorSe discovery/handoff without `OMNISORSE_OMNIBRILLE_PATH`.
+- [x] Preserve hard Context budgets, session expiry/new-grant safety, multiple-grant isolation, accessibility, reduced motion/effects, and Windows/Ubuntu CI.
 
 ## Stage 7 — Voice
 
@@ -59,8 +60,8 @@ Status language is intentionally conservative: checked items exist in the applic
 - [ ] Deterministic navigation commands and OmniSorSe-backed search queries.
 - [ ] No always-listening microphone.
 
-## Stage 8 — Packaging and release hardening
+## Stage 8 — Release hardening
 
-- [ ] Packaging/signing/updater decision after runtime behavior stabilizes.
-- [ ] Installer privacy/access review and clean install/upgrade/uninstall validation.
+- [ ] Production Authenticode signing, final icon/branding review, compatibility matrix, and public beta decision.
+- [ ] Optional update mechanism evaluation without a background service.
 - [ ] Public-release documentation, license decision, compatibility matrix, and support diagnostics.

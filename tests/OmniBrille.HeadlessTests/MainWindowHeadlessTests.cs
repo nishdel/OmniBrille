@@ -349,8 +349,10 @@ public sealed class MainWindowHeadlessTests
         Assert.Equal("Context relationship filters", AutomationProperties.GetName(
             window.FindControl<Border>("ContextFilterPanel")!));
 
+        var filterUpdate = System.Diagnostics.Stopwatch.StartNew();
         window.FindControl<ComboBox>("ContextStrengthFilter")!.SelectedIndex = 3;
         await WaitUntilAsync(() => session.ContextFilter.MinimumStrength == 100);
+        filterUpdate.Stop();
         Assert.Single(session.Neighborhood!.Nodes);
         Assert.True(session.ContextFilter.IsActive);
         Assert.Contains("active", filterButton.Content!.ToString(), StringComparison.OrdinalIgnoreCase);
@@ -363,6 +365,7 @@ public sealed class MainWindowHeadlessTests
 
         Assert.Equal(2, session.Neighborhood.Nodes.Count);
         Assert.False(window.FindControl<Border>("ContextEmptyPanel")!.IsVisible);
+        _output.WriteLine($"context-filter-update={filterUpdate.Elapsed.TotalMilliseconds:0.000} ms");
     }
 
     [AvaloniaFact]

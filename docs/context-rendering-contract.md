@@ -2,7 +2,7 @@
 
 ## Status
 
-This is the renderer-facing contract implemented by Stage 5. OmniSorSe remains authoritative for every contextual node, relationship, score, reason, and provenance record; OmniBrille does not infer semantic relationships or read OmniSorSe storage directly. Synthetic pressure fixtures remain test-only and never appear in the production UI.
+This is the renderer-facing contract implemented through Stage 6. OmniSorSe remains authoritative for every contextual node, relationship, score, reason, and provenance record; OmniBrille does not infer semantic relationships or read OmniSorSe storage directly. Synthetic pressure fixtures remain test-only and never appear in the production UI.
 
 Stage 5 consumes bounded contextual neighborhoods and Related Files through `GetNeighborhood(IncludeContext: true)` and focus-local `GetRelated`, with edge kind, strength, reason, evidence class, and provenance. The shipped `ExplorerEdge` does **not** contain a stable relationship ID. OmniBrille therefore derives an ephemeral session-local SHA-256 scene key from source, target, kind, reason, and provenance. That key only deduplicates and selects immutable snapshots; it is not persisted or treated as durable across refresh/session restart.
 
@@ -20,7 +20,7 @@ Stage 3 profiling keeps one conservative combined scene envelope:
 
 These are engineering defaults, not wire constants or universal hardware guarantees. Candidate 32/48/64 Structure scenes were profiled; 48 remains the readability default. A synthetic 48-node scene with 72 contextual edges was rejected because its density and cold-frame cost were disproportionate. The accepted 47-structural/36-context fixture produced 83 combined edges and a comfortable warmed local headless sample. Changing a limit requires new representative profiling, label-pressure review, keyboard/list review, and documentation.
 
-Context does not add 48 nodes beside 48 Structure nodes. Structure and Context share the 48-node cap. Stage 5 retains only endpoints of accepted relationships and accepted structural edges; omitted server nodes remain honestly truncated. Semantic clusters/aggregates are deferred rather than invented client-side.
+Context does not add 48 nodes beside 48 Structure nodes. Structure and Context share the 48-node cap. Stage 6 retains an immutable provider snapshot separately from its filtered/rendered projection, and renders only endpoints of accepted relationships and accepted structural edges; omitted server nodes remain honestly truncated. Client semantic clustering is forbidden. Presentation filtering/summary may group only exact server fields and never creates a relationship.
 
 ## Relationship priority
 
@@ -28,10 +28,13 @@ Relationship selection is deterministic:
 
 1. selected relationship;
 2. relationships touching current focus;
-3. descending provider-supplied importance;
-4. ephemeral session-local relationship key.
+3. descending provider-supplied ranking strength;
+4. deterministic evidence before derived evidence at equal strength;
+5. ephemeral session-local relationship key.
 
 `ContextRenderBudgetPolicy` applies the global and per-node caps after this ordering. Importance is the protocol strength mapped to presentation input, not a semantic calculation by OmniBrille. Duplicate/self relationships are rejected or normalized before rendering. Stable node IDs are case-sensitive opaque strings. Stable relationship identity remains a Protocol v1 gap; incremental relationship updates are not enabled.
+
+Stage 6 presentation filters may constrain relationship kind, minimum numeric ranking strength, and evidence class because those fields are explicitly supplied by Protocol v1. Filters apply only after authorization/acquisition, are reversible against the retained snapshot, reset on provider/session/root replacement, and never modify OmniSorSe Search, index, or intelligence state. Counts distinguish authorized, matching, and visible relationships so a budgeted result is not mistaken for the complete authority set.
 
 Progressive disclosure is focus-local. Activating a related node requests a new independently bounded Context snapshot, and Back restores previous Context focuses before returning to Structure. OmniBrille never calls `GetRelated` for every visible node. An eight-entry session-scoped LRU deduplicates repeated focus reads and a one-request gate bounds Context acquisition; reconnect/new grant replaces the provider and its cache. Since v1 cannot push a disconnect notification, every cache hit first performs an authenticated bounded protocol-info probe, so the next Context action cannot silently reuse cached data after host death.
 
@@ -51,7 +54,7 @@ Context edges must sit below focus glyphs and labels, must not permanently label
 
 A relationship may carry the v1 provider-authored kind, reason, evidence class, strength, and provenance string. OmniBrille does not generate, reinterpret, or enrich these claims.
 
-Reason/provenance appears only on demand through the compact details surface and concise accessible node description. The presentation includes relationship kind, strength, reason when supplied, evidence class, and provenance when supplied. A missing reason/provenance is reported honestly. Edge-wide permanent text is forbidden because it destroys density and screen-reader clarity.
+Reason/provenance appears only on demand through the compact details surface and concise accessible node description. The presentation hierarchy is `Related because`, `Strength`, `Evidence`, and `Source`. Numeric protocol strength is described as a ranking band (Confirmed/Strong/Moderate/Limited), not statistical confidence. Known technical provenance may receive a friendly prefix while retaining the original string; unknown strings remain unchanged. A missing reason/provenance is reported honestly. Edge-wide permanent text is forbidden because it destroys density and screen-reader clarity.
 
 ## Replacement, streaming, and stale work
 
@@ -69,7 +72,7 @@ The synchronized list/tree remains a view of the one session, not a second provi
 
 ## Performance and test gate
 
-Stage 5 validation covers:
+Stage 6 validation covers:
 
 - 48 combined nodes with 47 structural and 36 contextual edges;
 - focus/selected relationship emphasis;
@@ -78,6 +81,7 @@ Stage 5 validation covers:
 - Full and Reduced visual effects;
 - 100/125/150/200% text scale;
 - graph automation and accessible-list parity;
+- filter automation, keyboard opening/reset, and shared graph/list state;
 - GPU-backed Windows runtime plus Windows/Ubuntu build/tests.
 
 If representative sustained render cost exceeds the local 16.7 ms engineering target, contextual/decorative effects must be reduced before structural correctness or accessibility. Node counts never adapt continuously during navigation. Normal CI uses fake protocol fixtures; the real installed desktop handoff is a documented Windows integration gate.
@@ -89,3 +93,4 @@ If representative sustained render cost exceeds the local 16.7 ms engineering ta
 - Protocol v1 supplies completed response snapshots rather than push progress.
 - Relationship detail interaction is node-centric; keyboard/mouse users select a related node and inspect its focus relationship.
 - Context is unavailable in standalone mode and no filename/content heuristic is substituted.
+- Filters do not request additional results. A relationship omitted by the authoritative bounded snapshot cannot be revealed client-side.

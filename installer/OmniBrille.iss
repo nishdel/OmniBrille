@@ -52,8 +52,11 @@ AllowNoIcons=yes
 UsePreviousAppDir=yes
 UsePreviousGroup=yes
 
+[InstallDelete]
+Type: files; Name: "{app}\*.pdb"
+
 [Files]
-Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "*.pdb"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\OmniBrille"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Comment: "Spatial navigation companion for OmniSorSe"

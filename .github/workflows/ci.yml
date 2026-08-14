@@ -48,3 +48,17 @@ jobs:
 
       - name: Test Release
         run: dotnet test OmniBrille.sln --configuration Release --no-build --no-restore --logger "console;verbosity=minimal"
+
+      - name: Build unsigned Windows installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .\build\Package-Windows.ps1 -BootstrapInnoSetup
+
+      - name: Retain private Windows installer artifact
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: OmniBrille-windows-installer
+          path: artifacts/packages/OmniBrille-*-win-x64-setup.exe
+          if-no-files-found: error
+          retention-days: 14

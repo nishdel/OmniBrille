@@ -2,7 +2,7 @@
 
 ## Status and authority
 
-Stage 5 consumes the real read-only protocol introduced in OmniSorSe v2.4.0 and the companion workflow committed in the v2.5 release candidate. The authoritative Stage 5 source inspected is repository `OpenSorSe-recovered-clean`, branch `v2.5-workflow-indexing-quality`, commit `59be07c6cebff12072cbf18701fb16cb11801287`, especially `src/OpenSorSe.Application/Explorer/ExplorerCompanionLaunch.cs`, `ExplorerReadService.cs`, and `docs/OMNIBRILLE_COMPANION_HANDOFF_v2.5.md`. Protocol major remains 1 and schema remains 5.
+Stage 6 consumes the real read-only protocol introduced in OmniSorSe v2.4.0 and the companion workflow committed in the v2.5 release candidate. The authoritative source inspected and run is repository `OpenSorSe-recovered-clean`, commit `59be07c6cebff12072cbf18701fb16cb11801287`, especially `src/OpenSorSe.Application/Explorer/ExplorerCompanionLaunch.cs`, `ExplorerReadService.cs`, and `docs/OMNIBRILLE_COMPANION_HANDOFF_v2.5.md`. Protocol major remains 1 and schema remains 5; OmniSorSe source was not modified.
 
 The earlier OmniBrille document was conceptual. Its core boundary was correct—opaque graph DTOs, bounded reads, capability/version negotiation, cancellation, and no SQLite—but transport and exact fields were undecided. This document records the shipped behavior. OmniSorSe is authoritative when the two differ.
 
@@ -91,6 +91,14 @@ Stage 5 passed the Windows manual integration gate with the committed v2.5 RC de
 
 Terminating OmniSorSe while Context was visible left OmniBrille alive with the last two-node scene visibly retained. Invoking a cached Context relation performed the authenticated liveness probe, failed closed in about 3.1 seconds, preserved the focus, and changed the accessible provider state to disconnected. Restarting the unchanged RC and using the desktop action again created a fresh independently connected process/grant; no old opaque identity was reused. Representative local UI observations were about 2.9 seconds from desktop action to connected window readiness, 215 ms for connected Structure drill-down, 244 ms for the fresh two-node Context switch, and 142 ms for Context refocus. These include UI scheduling and are engineering samples, not guarantees. Automated CI remains isolated through strict pipe/fake-client fixtures.
 
+## Stage 6 packaged-workflow validation
+
+Stage 6 places the self-contained executable at `%LOCALAPPDATA%\Programs\OmniBrille\OmniBrille.exe`, one of the unchanged RC launcher's conventional candidates. With `OMNISORSE_OMNIBRILLE_PATH` absent at process, user, and machine scope, the exact committed RC desktop's normal `Open in OmniBrille` action discovered the installed executable, transferred the one-time grant, acknowledged it through the authenticated protocol request, and reached `Connected · OmniSorSe`. No discovery listener, registry protocol registration, token file, or alternate handoff was added.
+
+A controlled 12-file source was indexed through ordinary OmniSorSe UI. The installed application loaded its authorized root, ran real Search, and produced a real three-node/two-relationship Context scene for deterministic duplicate-content evidence. It displayed the server reason, ranking strength, evidence class, and provenance; local Topic filtering yielded an honest no-match state, reset restored the immutable snapshot, refocus loaded the related node, and Back returned to the original focus. A separate Knowledge Graph projection attempt failed safely inside the unchanged RC at manifest capture, so no broader semantic scene is claimed. Existing deterministic Related Files evidence was sufficient to validate Protocol v1 and OmniBrille's multi-node Context presentation.
+
+The 15-minute grant remains server-owned and is never extended by OmniBrille. `SessionExpired` clears the in-memory grant/client/root state, preserves the last graph only as stale orientation, and requires a new normal OmniSorSe launch for a fresh grant. Independent coordinators/grants are covered without token sharing; Stage 6 continues the deliberate multi-process design.
+
 ## Protocol v1 gap analysis
 
 ### Required for ordinary connected Structure use
@@ -114,4 +122,4 @@ Terminating OmniSorSe while Context was visible left OmniBrille alive with the l
 
 ## Next boundary
 
-The next stage should mature Context presentation and package/install the companion workflow. A minimal future additive protocol revision is justified only if durable relationship selection, incremental updates, selected-root Search/Context scope, or structured provenance becomes a proven UX requirement. Until then, Protocol v1 remains sufficient for bounded node-centric Context and must not be churned speculatively.
+Stage 6 found no connected Structure or bounded Context blocker that justifies protocol churn. Relationship IDs, immutable snapshots, session-wide Search/Context scope, presentation-string provenance, lack of pushed disconnect, and lack of exact progress remain known limitations, but all fail safely or have honest bounded UX. Protocol v1 should remain unchanged until durable edge actions, incremental updates, selected-root server filtering, or structured provenance becomes a demonstrated requirement.
