@@ -60,4 +60,19 @@ public sealed class ContextRenderBudgetPolicyTests
         Assert.True(selected.Count <= ContextRenderBudgetPolicy.Default.MaximumContextualEdges);
         Assert.All(degree.Values, value => Assert.True(value <= ContextRenderBudgetPolicy.Default.MaximumContextualEdgesPerNode));
     }
+
+    [Fact]
+    public void SelectRelationships_PrefersDeterministicEvidenceAtEqualPriorityAndStrength()
+    {
+        var budget = new ContextRenderBudget(8, 7, 1, 8, 3);
+        ContextRelationshipCandidate[] candidates =
+        [
+            new("derived", "a", "b", 0.8, EvidenceClass: ExplorerRelationshipEvidenceClass.Derived),
+            new("deterministic", "c", "d", 0.8, EvidenceClass: ExplorerRelationshipEvidenceClass.Deterministic),
+        ];
+
+        var selected = Assert.Single(ContextRenderBudgetPolicy.SelectRelationships(candidates, 7, budget));
+
+        Assert.Equal("deterministic", selected.Id);
+    }
 }

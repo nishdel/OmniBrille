@@ -9,6 +9,7 @@
         Height="600"
         MinWidth="820"
         MinHeight="520"
+        Icon="/Assets/OmniBrille.ico"
         WindowStartupLocation="CenterScreen">
   <Grid RowDefinitions="Auto,*,Auto">
     <Border Grid.Row="0"
@@ -70,6 +71,13 @@
                        Click="OnContextModeClick"
                        AutomationProperties.Name="Context mode"
                        AutomationProperties.HelpText="Shows bounded relationships authored by OmniSorSe. Requires a connected session." />
+          <Button x:Name="ContextFilterButton"
+                  Classes="hud compact"
+                  IsVisible="False"
+                  Content="Filter"
+                  Click="OnContextFilterClick"
+                  AutomationProperties.Name="Open Context filters"
+                  AutomationProperties.HelpText="Filters the current authorized relationship response by kind, strength, or evidence. Ctrl+Shift+F." />
         </StackPanel>
 
         <Button x:Name="ConnectionButton"
@@ -257,6 +265,80 @@
         </Grid>
       </Border>
 
+      <Border x:Name="ContextFilterPanel"
+              IsVisible="False"
+              Width="310"
+              HorizontalAlignment="Left"
+              VerticalAlignment="Top"
+              Margin="16,82,0,0"
+              Padding="14"
+              Background="{DynamicResource SurfaceStrongBrush}"
+              BorderBrush="{DynamicResource BorderBrush}"
+              BorderThickness="1"
+              CornerRadius="4"
+              AutomationProperties.Name="Context relationship filters">
+        <StackPanel Spacing="9">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="CONTEXT FILTERS" FontSize="10" LetterSpacing="1.5" Foreground="{DynamicResource AccentBrush}" />
+            <Button Grid.Column="1" Classes="hud compact" Content="×" Click="OnContextFilterClick" AutomationProperties.Name="Close Context filters" />
+          </Grid>
+          <TextBlock x:Name="ContextFilterSummaryText"
+                     Text="Authoritative relationships"
+                     TextWrapping="Wrap"
+                     FontSize="10"
+                     Foreground="{DynamicResource SecondaryTextBrush}"
+                     AutomationProperties.LiveSetting="Polite" />
+          <TextBlock Text="Relationship kind" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
+          <ComboBox x:Name="ContextKindFilter"
+                    Classes="hud"
+                    SelectedIndex="0"
+                    SelectionChanged="OnContextFilterChanged"
+                    AutomationProperties.Name="Relationship kind filter">
+            <ComboBoxItem Content="All kinds" />
+            <ComboBoxItem Content="Related" />
+            <ComboBoxItem Content="Topic" />
+            <ComboBoxItem Content="Entity" />
+            <ComboBoxItem Content="Temporal" />
+            <ComboBoxItem Content="OCR" />
+            <ComboBoxItem Content="Transcript" />
+          </ComboBox>
+          <TextBlock Text="Minimum strength" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
+          <ComboBox x:Name="ContextStrengthFilter"
+                    Classes="hud"
+                    SelectedIndex="0"
+                    SelectionChanged="OnContextFilterChanged"
+                    AutomationProperties.Name="Minimum relationship strength filter"
+                    AutomationProperties.HelpText="Strength is OmniSorSe ranking strength, not statistical confidence.">
+            <ComboBoxItem Content="All retained" />
+            <ComboBoxItem Content="Moderate · 60+" />
+            <ComboBoxItem Content="Strong · 80+" />
+            <ComboBoxItem Content="Confirmed · 100" />
+          </ComboBox>
+          <TextBlock Text="Evidence" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
+          <ComboBox x:Name="ContextEvidenceFilter"
+                    Classes="hud"
+                    SelectedIndex="0"
+                    SelectionChanged="OnContextFilterChanged"
+                    AutomationProperties.Name="Relationship evidence filter">
+            <ComboBoxItem Content="All evidence" />
+            <ComboBoxItem Content="Deterministic" />
+            <ComboBoxItem Content="Derived" />
+          </ComboBox>
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="6" Margin="0,4,0,0">
+            <Button x:Name="ClearContextFiltersButton"
+                    Classes="hud"
+                    Content="Reset"
+                    Click="OnClearContextFiltersClick"
+                    AutomationProperties.Name="Reset Context filters" />
+            <Button Grid.Column="1"
+                    Classes="hud"
+                    Content="Close"
+                    Click="OnContextFilterClick"
+                    AutomationProperties.Name="Close Context filters" />
+          </Grid>
+        </StackPanel>
+      </Border>
+
       <Border x:Name="AccessibleListPanel"
               IsVisible="False"
               Width="370"
@@ -269,7 +351,7 @@
               BorderBrush="{DynamicResource BorderBrush}"
               BorderThickness="1"
               CornerRadius="4"
-              AutomationProperties.Name="Accessible structural navigation">
+              AutomationProperties.Name="Accessible graph navigation">
         <Grid RowDefinitions="Auto,Auto,*,Auto">
           <Grid ColumnDefinitions="*,Auto">
             <TextBlock Text="ACCESSIBLE NAVIGATION" FontSize="10" LetterSpacing="1.5" Foreground="{DynamicResource AccentBrush}" />
@@ -285,7 +367,7 @@
                    BorderThickness="0"
                    SelectionChanged="OnAccessibleNodeSelectionChanged"
                    DoubleTapped="OnAccessibleNodeDoubleTapped"
-                   AutomationProperties.Name="Visible structural graph nodes"
+                   AutomationProperties.Name="Visible graph nodes"
                    AutomationProperties.HelpText="Use arrows to select, Enter to open, and Backspace to return.">
             <ListBox.ItemTemplate>
               <DataTemplate>
@@ -301,7 +383,7 @@
           </ListBox>
           <Grid Grid.Row="3" ColumnDefinitions="*,*,Auto" ColumnSpacing="6" Margin="4,8,4,2">
             <Button x:Name="AccessibleBackButton" Classes="hud" Content="Back" Click="OnBackClick" AutomationProperties.Name="Navigate back from accessible list" />
-            <Button x:Name="AccessibleOpenButton" Grid.Column="1" Classes="hud" Content="Open selected" Click="OnOpenAccessibleNodeClick" AutomationProperties.Name="Open selected structural node" />
+            <Button x:Name="AccessibleOpenButton" Grid.Column="1" Classes="hud" Content="Open selected" Click="OnOpenAccessibleNodeClick" AutomationProperties.Name="Open selected graph node" />
             <TextBlock Grid.Column="2" Text="Ctrl+Shift+L" FontSize="9" Foreground="{DynamicResource SecondaryTextBrush}" VerticalAlignment="Center" />
           </Grid>
         </Grid>
@@ -366,15 +448,22 @@
                       Spacing="5"
                       AutomationProperties.Name="Selected relationship details">
             <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,0,0,5" />
-            <TextBlock Text="RELATIONSHIP" FontSize="9" LetterSpacing="1.4" Foreground="{DynamicResource AccentBrush}" />
+            <TextBlock Text="RELATED BECAUSE" FontSize="9" LetterSpacing="1.4" Foreground="{DynamicResource AccentBrush}" />
             <TextBlock x:Name="DetailsRelationshipText"
                        TextWrapping="Wrap"
-                       AutomationProperties.Name="Relationship reason and strength" />
-            <TextBlock x:Name="DetailsProvenanceText"
-                       TextWrapping="Wrap"
-                       FontSize="10"
-                       Foreground="{DynamicResource SecondaryTextBrush}"
-                       AutomationProperties.Name="Relationship evidence and provenance" />
+                       AutomationProperties.Name="Relationship reason" />
+            <Grid ColumnDefinitions="72,*" Margin="0,4,0,0">
+              <TextBlock Text="Strength" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
+              <TextBlock x:Name="DetailsRelationshipStrengthText" Grid.Column="1" TextWrapping="Wrap" AutomationProperties.Name="Relationship ranking strength" />
+            </Grid>
+            <Grid ColumnDefinitions="72,*">
+              <TextBlock Text="Evidence" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
+              <TextBlock x:Name="DetailsRelationshipEvidenceText" Grid.Column="1" TextWrapping="Wrap" AutomationProperties.Name="Relationship evidence class" />
+            </Grid>
+            <Grid ColumnDefinitions="72,*">
+              <TextBlock Text="Source" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
+              <TextBlock x:Name="DetailsProvenanceText" Grid.Column="1" TextWrapping="Wrap" AutomationProperties.Name="Relationship provenance" />
+            </Grid>
           </StackPanel>
         </Grid>
       </Border>
@@ -445,6 +534,28 @@
         </StackPanel>
       </Border>
 
+      <Border x:Name="ContextEmptyPanel"
+              IsVisible="False"
+              Width="360"
+              Padding="20"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Bottom"
+              Margin="0,0,0,32"
+              Background="{DynamicResource SurfaceStrongBrush}"
+              BorderBrush="{DynamicResource BorderBrush}"
+              BorderThickness="1"
+              CornerRadius="4"
+              AutomationProperties.Name="Empty Context state">
+        <StackPanel Spacing="10">
+          <TextBlock Text="NO CONTEXT RELATIONSHIPS" FontSize="10" LetterSpacing="1.4" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" />
+          <TextBlock x:Name="ContextEmptyText" Text="No contextual relationships found for this item." TextWrapping="Wrap" TextAlignment="Center" />
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="6">
+            <Button x:Name="ContextEmptyClearButton" Classes="hud" Content="Clear filters" Click="OnClearContextFiltersClick" AutomationProperties.Name="Clear Context filters from empty state" />
+            <Button Grid.Column="1" Classes="hud" Content="Return to Structure" Click="OnStructureModeClick" AutomationProperties.Name="Return to Structure mode" />
+          </Grid>
+        </StackPanel>
+      </Border>
+
       <Border x:Name="InitialLoadingOverlay" IsVisible="False" Background="{DynamicResource LoadingOverlayBrush}">
         <Grid RowDefinitions="*,Auto,Auto">
           <rendering:DataRainControl x:Name="DataRain" Grid.Row="0" Margin="35" />
@@ -473,7 +584,7 @@
                    Foreground="{DynamicResource AccentBrush}" />
         <TextBlock x:Name="StatusText" Grid.Column="1" Margin="18,0" Text="Choose a folder to begin. Only that location will be accessible."
                    TextTrimming="CharacterEllipsis" Foreground="{DynamicResource SecondaryTextBrush}" AutomationProperties.LiveSetting="Polite" />
-        <TextBlock Grid.Column="2" Text="Enter open · Backspace back · Ctrl+F search · Ctrl+Shift+L list" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
+        <TextBlock Grid.Column="2" Text="Enter open · Backspace back · Ctrl+F search · Ctrl+Shift+F filters · Ctrl+Shift+L list" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
       </Grid>
     </Border>
   </Grid>

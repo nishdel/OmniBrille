@@ -326,6 +326,46 @@ public sealed class MainWindowHeadlessTests
     }
 
     [AvaloniaFact]
+    public async Task ContextFilters_AreAccessibleReversibleAndKeepOneSharedGraphState()
+    {
+        var session = new ExplorerSession();
+        using var window = new MainWindow(
+            session,
+            new MemoryPreferencesStore(),
+            connection: new FakeConnectedCoordinator(),
+            handoffEndpoint: "one-time-handoff");
+        window.Show();
+        await WaitUntilAsync(() => session.ProviderMode == ExplorerProviderMode.Connected && !session.IsLoading);
+        session.SelectNode("opaque-file");
+        window.FindControl<RadioButton>("ContextModeButton")!
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await WaitUntilAsync(() => session.ViewMode == ExplorerViewMode.Context && !session.IsLoading);
+
+        var filterButton = window.FindControl<Button>("ContextFilterButton")!;
+        Assert.True(filterButton.IsVisible);
+        Assert.Contains("Context filters", AutomationProperties.GetName(filterButton), StringComparison.Ordinal);
+        filterButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.True(window.FindControl<Border>("ContextFilterPanel")!.IsVisible);
+        Assert.Equal("Context relationship filters", AutomationProperties.GetName(
+            window.FindControl<Border>("ContextFilterPanel")!));
+
+        window.FindControl<ComboBox>("ContextStrengthFilter")!.SelectedIndex = 3;
+        await WaitUntilAsync(() => session.ContextFilter.MinimumStrength == 100);
+        Assert.Single(session.Neighborhood!.Nodes);
+        Assert.True(session.ContextFilter.IsActive);
+        Assert.Contains("active", filterButton.Content!.ToString(), StringComparison.OrdinalIgnoreCase);
+
+        filterButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.True(window.FindControl<Border>("ContextEmptyPanel")!.IsVisible);
+        window.FindControl<Button>("ContextEmptyClearButton")!
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await WaitUntilAsync(() => !session.ContextFilter.IsActive);
+
+        Assert.Equal(2, session.Neighborhood.Nodes.Count);
+        Assert.False(window.FindControl<Border>("ContextEmptyPanel")!.IsVisible);
+    }
+
+    [AvaloniaFact]
     public async Task ConnectedDisconnect_IsAnnouncedAndStandaloneSwitchClearsOpaqueSession()
     {
         var session = new ExplorerSession();

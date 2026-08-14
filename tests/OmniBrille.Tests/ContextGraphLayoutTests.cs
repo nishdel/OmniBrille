@@ -29,6 +29,19 @@ public sealed class ContextGraphLayoutTests
         Assert.Equal(2, layout["node-10"].Depth);
     }
 
+    [Fact]
+    public void Layout_UsesStrengthForSubtleDepthWithinTheSameRing()
+    {
+        var layout = new ContextGraphLayout().Layout(Scene(3));
+        var strong = layout["node-00"];
+        var weak = layout["node-02"];
+
+        Assert.True(Distance(strong) < Distance(weak));
+        Assert.True(strong.Scale > weak.Scale);
+        Assert.True(strong.Opacity > weak.Opacity);
+        Assert.Equal(strong.Depth, weak.Depth);
+    }
+
     private static ExplorerNeighborhood Scene(int count)
     {
         var focus = Node("focus", "Focus");
@@ -64,4 +77,6 @@ public sealed class ContextGraphLayoutTests
         null,
         true,
         NavigationTarget: id);
+
+    private static double Distance(GraphLayoutNode node) => Math.Sqrt((node.X * node.X) + (node.Y * node.Y));
 }

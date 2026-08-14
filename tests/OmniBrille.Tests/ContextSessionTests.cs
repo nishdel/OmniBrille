@@ -81,6 +81,29 @@ public sealed class ContextSessionTests
         Assert.False(session.CanGoBack);
     }
 
+    [Fact]
+    public async Task ContextFilter_IsLocalReversibleAndClearedForNewProviderGrant()
+    {
+        var provider = ContextProvider.Immediate();
+        using var session = new ExplorerSession();
+        await session.OpenRootAsync(provider, provider);
+        Assert.True(await session.SwitchToContextAsync("a"));
+
+        Assert.True(session.ApplyContextFilter(new ContextFilter(ExplorerRelationshipKind.Entity)));
+        Assert.Single(session.Neighborhood!.Nodes);
+        Assert.Contains("No relationships match", session.Status, StringComparison.Ordinal);
+        Assert.True(session.ContextFilter.IsActive);
+
+        Assert.True(session.ClearContextFilter());
+        Assert.Equal(2, session.Neighborhood.Nodes.Count);
+        Assert.False(session.ContextFilter.IsActive);
+
+        var replacement = ContextProvider.Immediate("new-root", "new-a", "new-b");
+        await session.OpenRootAsync(replacement, replacement);
+        Assert.Equal(ContextFilter.None, session.ContextFilter);
+        Assert.Null(session.ContextFilterSummary);
+    }
+
     private sealed class ContextlessProvider : IExplorerProvider, IExplorerSearchProvider
     {
         public string AccessRoot => Path.GetFullPath("standalone-root");

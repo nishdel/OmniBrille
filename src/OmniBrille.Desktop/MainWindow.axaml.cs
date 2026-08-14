@@ -26,6 +26,7 @@ public sealed partial class MainWindow : Window, IDisposable
     private ExplorerNeighborhood? _lastRenderedNeighborhood;
     private bool _detailsDismissed;
     private bool _isApplyingPreferences;
+    private bool _isApplyingContextFilters;
     private bool _isSynchronizingAccessibleList;
     private bool _isDisposed;
 
@@ -166,6 +167,7 @@ public sealed partial class MainWindow : Window, IDisposable
         {
             SettingsPanel.IsVisible = false;
             AccessibleListPanel.IsVisible = false;
+            ContextFilterPanel.IsVisible = false;
             PopulateConnectedRoots();
             UpdateConnectionView();
         }
@@ -422,6 +424,7 @@ public sealed partial class MainWindow : Window, IDisposable
         {
             ConnectionPanel.IsVisible = false;
             AccessibleListPanel.IsVisible = false;
+            ContextFilterPanel.IsVisible = false;
             _detailsDismissed = true;
             DetailsPanel.IsVisible = false;
             ReducedMotionToggle.Focus();
@@ -461,6 +464,7 @@ public sealed partial class MainWindow : Window, IDisposable
             ConnectionPanel.IsVisible = false;
             SettingsPanel.IsVisible = false;
             SearchResultsPanel.IsVisible = false;
+            ContextFilterPanel.IsVisible = false;
             SynchronizeAccessibleList();
             AccessibleNodesList.Focus();
         }
@@ -469,6 +473,51 @@ public sealed partial class MainWindow : Window, IDisposable
             GraphScene.Focus();
             UpdateView();
         }
+    }
+
+    private void OnContextFilterClick(object? sender, RoutedEventArgs e)
+    {
+        if (_session.ViewMode != ExplorerViewMode.Context)
+        {
+            return;
+        }
+
+        ContextFilterPanel.IsVisible = !ContextFilterPanel.IsVisible;
+        if (ContextFilterPanel.IsVisible)
+        {
+            ConnectionPanel.IsVisible = false;
+            SettingsPanel.IsVisible = false;
+            AccessibleListPanel.IsVisible = false;
+            SearchResultsPanel.IsVisible = false;
+            _detailsDismissed = true;
+            DetailsPanel.IsVisible = false;
+            ApplyContextFilterToControls();
+            ContextKindFilter.Focus();
+        }
+        else
+        {
+            ContextFilterButton.Focus();
+            UpdateView();
+        }
+    }
+
+    private void OnContextFilterChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_isApplyingContextFilters || _session.ViewMode != ExplorerViewMode.Context)
+        {
+            return;
+        }
+
+        _session.ApplyContextFilter(new ContextFilter(
+            KindFromIndex(ContextKindFilter.SelectedIndex),
+            StrengthFromIndex(ContextStrengthFilter.SelectedIndex),
+            EvidenceFromIndex(ContextEvidenceFilter.SelectedIndex)));
+    }
+
+    private void OnClearContextFiltersClick(object? sender, RoutedEventArgs e)
+    {
+        _session.ClearContextFilter();
+        ApplyContextFilterToControls();
     }
 
     private void OnAccessibleNodeSelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -578,7 +627,18 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key == Key.F && e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        if (e.Key == Key.F &&
+            e.KeyModifiers.HasFlag(KeyModifiers.Control) &&
+            e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+        {
+            if (_session.ViewMode == ExplorerViewMode.Context)
+            {
+                OnContextFilterClick(ContextFilterButton, new RoutedEventArgs());
+            }
+
+            e.Handled = true;
+        }
+        else if (e.Key == Key.F && e.KeyModifiers.HasFlag(KeyModifiers.Control))
         {
             SearchBox.Focus();
             SearchBox.SelectAll();
@@ -658,8 +718,24 @@ public sealed partial class MainWindow : Window, IDisposable
         AutomationProperties.SetName(
             GraphScene,
             _session.ViewMode == ExplorerViewMode.Context ? "Spatial Context graph" : "Spatial Structure graph");
+        AutomationProperties.SetName(
+            AccessibleNodesList,
+            _session.ViewMode == ExplorerViewMode.Context ? "Visible Context graph nodes" : "Visible Structure graph nodes");
+        AutomationProperties.SetName(
+            AccessibleOpenButton,
+            _session.ViewMode == ExplorerViewMode.Context ? "Focus selected related node" : "Open selected structural node");
         BackButton.IsEnabled = _session.CanGoBack && !_session.IsLoading;
         WelcomePanel.IsVisible = neighborhood is null && !_session.IsLoading;
+        ContextFilterButton.IsVisible = _session.ViewMode == ExplorerViewMode.Context;
+        if (_session.ViewMode != ExplorerViewMode.Context)
+        {
+            ContextFilterPanel.IsVisible = false;
+        }
+        ContextFilterButton.Content = _session.ContextFilter.IsActive ? "Filter · active" : "Filter";
+        AutomationProperties.SetName(
+            ContextFilterButton,
+            _session.ContextFilter.IsActive ? "Open Context filters, filters active" : "Open Context filters");
+        ApplyContextFilterToControls();
 
         var initialLoading = _session.IsLoading && neighborhood is null;
         InitialLoadingOverlay.IsVisible = initialLoading;
@@ -681,7 +757,8 @@ public sealed partial class MainWindow : Window, IDisposable
         DetailsPanel.IsVisible = selected is not null &&
             !_detailsDismissed &&
             !SettingsPanel.IsVisible &&
-            !ConnectionPanel.IsVisible;
+            !ConnectionPanel.IsVisible &&
+            !ContextFilterPanel.IsVisible;
         if (selected is not null)
         {
             UpdateDetails(selected, neighborhood);
@@ -691,10 +768,19 @@ public sealed partial class MainWindow : Window, IDisposable
         SearchResultsList.ItemsSource = results?.Hits;
         SearchResultsPanel.IsVisible = results is not null &&
             _session.SearchQuery.Length > 0 &&
-            !AccessibleListPanel.IsVisible;
+            !AccessibleListPanel.IsVisible &&
+            !ContextFilterPanel.IsVisible;
         SearchSummaryText.Text = results is null
             ? "Search results"
             : $"{results.Hits.Count:N0} MATCHES{(results.WasTruncated ? " · BOUNDED" : string.Empty)}";
+        var emptyContext = _session.ViewMode == ExplorerViewMode.Context &&
+            !_session.IsLoading &&
+            _session.ContextFilterSummary?.MatchingRelationshipCount == 0;
+        ContextEmptyPanel.IsVisible = emptyContext && !ContextFilterPanel.IsVisible;
+        ContextEmptyClearButton.IsVisible = _session.ContextFilter.IsActive;
+        ContextEmptyText.Text = _session.ContextFilter.IsActive
+            ? "No relationships match these filters. Clear them to restore the authorized Context neighborhood."
+            : "No contextual relationships found for this item. OmniBrille does not invent nearby relationships.";
 
         GraphScene.ReducedMotion = _preferences.ReducedMotion;
         GraphScene.ReducedEffects = _preferences.ReducedEffects;
@@ -736,6 +822,9 @@ public sealed partial class MainWindow : Window, IDisposable
                 "The supplied session uses an incompatible Explorer Protocol major version. Standalone mode remains available.",
             OmniSorSeConnectionState.Disconnected =>
                 "The previous graph is retained as stale context. Retry while the short-lived session is still valid, or switch to standalone.",
+            OmniSorSeConnectionState.Unavailable when
+                string.Equals(_connection.Diagnostics.LastFailureCategory, "Session expired", StringComparison.Ordinal) =>
+                "The 15-minute OmniSorSe session expired. The previous graph is stale; launch OmniBrille from OmniSorSe again for a fresh grant, or use standalone.",
             OmniSorSeConnectionState.Standalone =>
                 "Choose a folder for explicit standalone access. Connected mode begins only from an authorized OmniSorSe launch handoff.",
             _ =>
@@ -782,11 +871,13 @@ public sealed partial class MainWindow : Window, IDisposable
         if (relationship is not null)
         {
             DetailsRelationshipText.Text = string.IsNullOrWhiteSpace(relationship.Reason)
-                ? $"{relationship.Kind} · strength {relationship.Strength}/100"
-                : $"{relationship.Kind} · strength {relationship.Strength}/100\n{relationship.Reason}";
+                ? $"{relationship.Kind} relationship; OmniSorSe supplied no additional reason."
+                : relationship.Reason;
+            DetailsRelationshipStrengthText.Text = $"{StrengthLabel(relationship.Strength)} · {relationship.Strength}/100";
+            DetailsRelationshipEvidenceText.Text = relationship.EvidenceClass.ToString();
             DetailsProvenanceText.Text = string.IsNullOrWhiteSpace(relationship.Provenance)
-                ? $"{relationship.EvidenceClass} evidence · no additional provenance supplied"
-                : $"{relationship.EvidenceClass} evidence · {relationship.Provenance}";
+                ? "Not supplied"
+                : FriendlyProvenance(relationship.Provenance);
         }
     }
 
@@ -925,6 +1016,7 @@ public sealed partial class MainWindow : Window, IDisposable
         SettingsPanel.IsVisible = false;
         ConnectionPanel.IsVisible = false;
         AccessibleListPanel.IsVisible = false;
+        ContextFilterPanel.IsVisible = false;
         _detailsDismissed = true;
         DetailsPanel.IsVisible = false;
         if (_session.SearchResult is not null)
@@ -968,6 +1060,103 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         return $"{value:0.#} {units[unit]}";
+    }
+
+    private void ApplyContextFilterToControls()
+    {
+        _isApplyingContextFilters = true;
+        try
+        {
+            var filter = _session.ContextFilter;
+            ContextKindFilter.SelectedIndex = IndexFromKind(filter.Kind);
+            ContextStrengthFilter.SelectedIndex = IndexFromStrength(filter.MinimumStrength);
+            ContextEvidenceFilter.SelectedIndex = IndexFromEvidence(filter.EvidenceClass);
+        }
+        finally
+        {
+            _isApplyingContextFilters = false;
+        }
+
+        var summary = _session.ContextFilterSummary;
+        ContextFilterSummaryText.Text = summary is null
+            ? "No authoritative Context response is loaded."
+            : $"{summary.VisibleRelationshipCount:N0} visible · {summary.MatchingRelationshipCount:N0} matching · {summary.AuthoritativeRelationshipCount:N0} authorized";
+        ClearContextFiltersButton.IsEnabled = _session.ContextFilter.IsActive;
+    }
+
+    private static ExplorerRelationshipKind? KindFromIndex(int index) => index switch
+    {
+        1 => ExplorerRelationshipKind.Related,
+        2 => ExplorerRelationshipKind.Topic,
+        3 => ExplorerRelationshipKind.Entity,
+        4 => ExplorerRelationshipKind.Temporal,
+        5 => ExplorerRelationshipKind.Ocr,
+        6 => ExplorerRelationshipKind.Transcript,
+        _ => null,
+    };
+
+    private static int IndexFromKind(ExplorerRelationshipKind? kind) => kind switch
+    {
+        ExplorerRelationshipKind.Related => 1,
+        ExplorerRelationshipKind.Topic => 2,
+        ExplorerRelationshipKind.Entity => 3,
+        ExplorerRelationshipKind.Temporal => 4,
+        ExplorerRelationshipKind.Ocr => 5,
+        ExplorerRelationshipKind.Transcript => 6,
+        _ => 0,
+    };
+
+    private static int StrengthFromIndex(int index) => index switch
+    {
+        1 => 60,
+        2 => 80,
+        3 => 100,
+        _ => 0,
+    };
+
+    private static int IndexFromStrength(int strength) => strength switch
+    {
+        >= 100 => 3,
+        >= 80 => 2,
+        >= 60 => 1,
+        _ => 0,
+    };
+
+    private static ExplorerRelationshipEvidenceClass? EvidenceFromIndex(int index) => index switch
+    {
+        1 => ExplorerRelationshipEvidenceClass.Deterministic,
+        2 => ExplorerRelationshipEvidenceClass.Derived,
+        _ => null,
+    };
+
+    private static int IndexFromEvidence(ExplorerRelationshipEvidenceClass? evidenceClass) => evidenceClass switch
+    {
+        ExplorerRelationshipEvidenceClass.Deterministic => 1,
+        ExplorerRelationshipEvidenceClass.Derived => 2,
+        _ => 0,
+    };
+
+    private static string StrengthLabel(int strength) => strength switch
+    {
+        >= 100 => "Confirmed",
+        >= 80 => "Strong",
+        >= 60 => "Moderate",
+        _ => "Limited",
+    };
+
+    private static string FriendlyProvenance(string provenance)
+    {
+        if (provenance.StartsWith("deterministic-evidence ", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"OmniSorSe deterministic evidence · {provenance}";
+        }
+
+        return provenance switch
+        {
+            "Content Intelligence 1" => "Content Intelligence · Content Intelligence 1",
+            "Media Intelligence 1" => "Media Intelligence · Media Intelligence 1",
+            _ => provenance,
+        };
     }
 
     private static bool IsConnectionFailure(Exception exception) => exception is

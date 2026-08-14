@@ -16,6 +16,7 @@ public sealed class ExplorerSession : IDisposable
     private CancellationTokenSource? _searchCancellation;
     private CancellationTokenSource? _detailsCancellation;
     private ExplorerDirectorySnapshot? _currentSnapshot;
+    private ExplorerContextSnapshot? _currentContextSnapshot;
     private ExplorerEntry? _previousContext;
     private AggregatePage? _aggregatePage;
     private readonly List<string> _contextHistory = [];
@@ -54,6 +55,10 @@ public sealed class ExplorerSession : IDisposable
         .ThenBy(edge => edge.Relationship!.Id, ExplorerIdentity.Comparer)
         .Select(edge => edge.Relationship)
         .FirstOrDefault();
+
+    public ContextFilter ContextFilter { get; private set; } = ContextFilter.None;
+
+    public ContextFilterSummary? ContextFilterSummary { get; private set; }
 
     public IReadOnlySet<string> HighlightedNodeIds { get; private set; } = new HashSet<string>();
 
@@ -112,12 +117,15 @@ public sealed class ExplorerSession : IDisposable
         SelectedNodeDetails = null;
         Neighborhood = null;
         _currentSnapshot = null;
+        _currentContextSnapshot = null;
         _previousContext = null;
         _aggregatePage = null;
         ViewMode = ExplorerViewMode.Structure;
         _contextHistory.Clear();
         _structureReturnTarget = null;
         _structureReturnSelectionId = null;
+        ContextFilter = ContextFilter.None;
+        ContextFilterSummary = null;
 
         await LoadDirectoryAsync(
             provider.AccessRoot,
@@ -376,6 +384,8 @@ public sealed class ExplorerSession : IDisposable
             cancellationToken);
         if (outcome.Applied)
         {
+            _currentContextSnapshot = null;
+            ContextFilterSummary = null;
             Status = "Structure mode restored.";
             NotifyChanged();
         }
@@ -391,6 +401,35 @@ public sealed class ExplorerSession : IDisposable
         string nodeId,
         CancellationToken cancellationToken = default) =>
         LoadContextAsync(nodeId, pushHistory: true, cancellationToken);
+
+    public bool ApplyContextFilter(ContextFilter filter)
+    {
+        ArgumentNullException.ThrowIfNull(filter);
+        if (ViewMode != ExplorerViewMode.Context || _currentContextSnapshot is null)
+        {
+            return false;
+        }
+
+        ContextFilter = filter.Normalize();
+        var result = _contextBuilder.BuildDetailed(_currentContextSnapshot, ContextFilter);
+        Neighborhood = result.Neighborhood;
+        ContextFilterSummary = result.Summary;
+        if (SelectedNode is null ||
+            !Neighborhood.Nodes.Any(node => ExplorerIdentity.Equals(node.Id, SelectedNode.Id)))
+        {
+            SelectedNode = Neighborhood.Focus;
+            SelectedNodeDetails = null;
+            _detailsCancellation?.Cancel();
+            _ = RefreshSelectedNodeDetailsAsync();
+        }
+
+        UpdateHighlights(notify: false);
+        UpdateContextStatus();
+        NotifyChanged();
+        return true;
+    }
+
+    public bool ClearContextFilter() => ApplyContextFilter(ContextFilter.None);
 
     public async Task RefreshSelectedNodeDetailsAsync(CancellationToken cancellationToken = default)
     {
@@ -444,11 +483,14 @@ public sealed class ExplorerSession : IDisposable
         SearchQuery = string.Empty;
         HighlightedNodeIds = new HashSet<string>();
         _currentSnapshot = null;
+        _currentContextSnapshot = null;
         _previousContext = null;
         _aggregatePage = null;
         _contextHistory.Clear();
         _structureReturnTarget = null;
         _structureReturnSelectionId = null;
+        ContextFilter = ContextFilter.None;
+        ContextFilterSummary = null;
         ViewMode = ExplorerViewMode.Structure;
         LoadState = ExplorerLoadState.Idle;
         IsSearching = false;
@@ -497,7 +539,14 @@ public sealed class ExplorerSession : IDisposable
         var requestVersion = Interlocked.Increment(ref _loadRequestVersion);
         var previousMode = ViewMode;
         var previousFocusId = Neighborhood?.FocusNodeId;
-        var backup = new SceneBackup(Neighborhood, SelectedNode, _currentSnapshot, _previousContext, _aggregatePage);
+        var backup = new SceneBackup(
+            Neighborhood,
+            SelectedNode,
+            _currentSnapshot,
+            _currentContextSnapshot,
+            ContextFilterSummary,
+            _previousContext,
+            _aggregatePage);
         var stopwatch = Stopwatch.StartNew();
         LoadState = ExplorerLoadState.Loading;
         LoadedItemCount = 0;
@@ -513,7 +562,8 @@ public sealed class ExplorerSession : IDisposable
                 return false;
             }
 
-            var neighborhood = _contextBuilder.Build(snapshot);
+            var result = _contextBuilder.BuildDetailed(snapshot, ContextFilter);
+            var neighborhood = result.Neighborhood;
             if (pushHistory &&
                 previousMode == ExplorerViewMode.Context &&
                 previousFocusId is not null &&
@@ -524,6 +574,8 @@ public sealed class ExplorerSession : IDisposable
 
             ViewMode = ExplorerViewMode.Context;
             Neighborhood = neighborhood;
+            _currentContextSnapshot = snapshot;
+            ContextFilterSummary = result.Summary;
             SelectedNode = neighborhood.Focus;
             SelectedNodeDetails = null;
             _currentSnapshot = null;
@@ -531,14 +583,7 @@ public sealed class ExplorerSession : IDisposable
             _aggregatePage = null;
             LoadedItemCount = Math.Max(0, neighborhood.Nodes.Count - 1);
             LoadState = ExplorerLoadState.Ready;
-            var relationshipCount = neighborhood.Edges.Count(edge => edge.Kind == ExplorerGraphEdgeKind.Contextual);
-            Status = relationshipCount == 0
-                ? "No retained OmniSorSe relationships are available for this focus."
-                : $"{relationshipCount:N0} authoritative relationships · {neighborhood.Nodes.Count:N0} Context nodes visible";
-            if (!string.IsNullOrWhiteSpace(neighborhood.Warning))
-            {
-                Status += $" · {neighborhood.Warning}";
-            }
+            UpdateContextStatus();
 
             _detailsCancellation?.Cancel();
             _ = RefreshSelectedNodeDetailsAsync(CancellationToken.None);
@@ -586,7 +631,14 @@ public sealed class ExplorerSession : IDisposable
         _loadCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var requestVersion = Interlocked.Increment(ref _loadRequestVersion);
         var stopwatch = Stopwatch.StartNew();
-        var backup = new SceneBackup(Neighborhood, SelectedNode, _currentSnapshot, _previousContext, _aggregatePage);
+        var backup = new SceneBackup(
+            Neighborhood,
+            SelectedNode,
+            _currentSnapshot,
+            _currentContextSnapshot,
+            ContextFilterSummary,
+            _previousContext,
+            _aggregatePage);
         var children = new List<ExplorerEntry>();
         var navigationCommitted = commitNavigation is null;
         _aggregatePage = null;
@@ -709,6 +761,8 @@ public sealed class ExplorerSession : IDisposable
         string? preferredSelectionId)
     {
         _currentSnapshot = snapshot;
+        _currentContextSnapshot = null;
+        ContextFilterSummary = null;
         _previousContext = previousContext;
         Neighborhood = _neighborhoodBuilder.Build(snapshot, previousContext, preferredSelectionId, _aggregatePage);
         SelectedNode = preferredSelectionId is null
@@ -736,6 +790,8 @@ public sealed class ExplorerSession : IDisposable
         Neighborhood = backup.Neighborhood;
         SelectedNode = backup.SelectedNode;
         _currentSnapshot = backup.Snapshot;
+        _currentContextSnapshot = backup.ContextSnapshot;
+        ContextFilterSummary = backup.FilterSummary;
         _previousContext = backup.PreviousContext;
         _aggregatePage = backup.AggregatePage;
         UpdateHighlights(notify: false);
@@ -765,6 +821,39 @@ public sealed class ExplorerSession : IDisposable
         if (!string.IsNullOrWhiteSpace(snapshot.Warning))
         {
             Status += $" · {snapshot.Warning}";
+        }
+    }
+
+    private void UpdateContextStatus()
+    {
+        if (Neighborhood is null || ContextFilterSummary is null)
+        {
+            return;
+        }
+
+        var summary = ContextFilterSummary;
+        if (summary.MatchingRelationshipCount == 0)
+        {
+            Status = ContextFilter.IsActive
+                ? "No relationships match the current Context filters. Clear filters to restore the authoritative neighborhood."
+                : "No contextual relationships found for this item.";
+            return;
+        }
+
+        Status = $"{summary.VisibleRelationshipCount:N0} of {summary.MatchingRelationshipCount:N0} matching relationships visible · {Neighborhood.Nodes.Count:N0} Context nodes";
+        if (summary.HiddenMatchingRelationshipCount > 0)
+        {
+            Status += " · bounded by the focus-local Context budget";
+        }
+
+        if (ContextFilter.IsActive)
+        {
+            Status += " · filters active";
+        }
+
+        if (!string.IsNullOrWhiteSpace(Neighborhood.Warning))
+        {
+            Status += $" · {Neighborhood.Warning}";
         }
     }
 
@@ -867,6 +956,8 @@ public sealed class ExplorerSession : IDisposable
         ExplorerNeighborhood? Neighborhood,
         ExplorerNode? SelectedNode,
         ExplorerDirectorySnapshot? Snapshot,
+        ExplorerContextSnapshot? ContextSnapshot,
+        ContextFilterSummary? FilterSummary,
         ExplorerEntry? PreviousContext,
         AggregatePage? AggregatePage);
 }

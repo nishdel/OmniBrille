@@ -155,7 +155,11 @@ public sealed class OmniSorSeConnectionCoordinator : IOmniSorSeConnectionCoordin
     {
         if (_grant is null || _grant.ExpiresAtUtc <= DateTimeOffset.UtcNow)
         {
-            SetFailure(OmniSorSeConnectionState.Unavailable, "No current session grant");
+            SetFailure(
+                OmniSorSeConnectionState.Unavailable,
+                _grant is null
+                    ? _lastFailureCategory == "Session expired" ? "Session expired" : "No current session grant"
+                    : "Session expired");
             return false;
         }
 
@@ -176,6 +180,16 @@ public sealed class OmniSorSeConnectionCoordinator : IOmniSorSeConnectionCoordin
     public void ReportDisconnected(Exception exception)
     {
         ArgumentNullException.ThrowIfNull(exception);
+        if (exception is ExplorerProtocolException { Code: ExplorerErrorCode.SessionExpired })
+        {
+            _grant = null;
+            Client = null;
+            ProtocolInfo = null;
+            AccessibleRoots = [];
+            SetFailure(OmniSorSeConnectionState.Unavailable, "Session expired");
+            return;
+        }
+
         SetFailure(OmniSorSeConnectionState.Disconnected, exception.GetType().Name);
     }
 

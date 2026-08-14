@@ -104,6 +104,48 @@ public sealed class OmniSorSeConnectionCoordinatorTests
         Assert.Empty(coordinator.AccessibleRoots);
     }
 
+    [Fact]
+    public async Task ExpiredSession_FailsClosedAndRequiresFreshCompanionGrant()
+    {
+        var client = new FakeClient
+        {
+            Roots = new ExplorerNodePage([Node("root", ExplorerNodeKind.Source)], 1, false, null),
+        };
+        var coordinator = new OmniSorSeConnectionCoordinator(new FixedFactory(client), new FixedReceiver(client.Grant));
+        Assert.True(await coordinator.ConnectAsync(client.Grant));
+
+        coordinator.ReportDisconnected(new ExplorerProtocolException(
+            ExplorerErrorCode.SessionExpired,
+            "Controlled expiry"));
+        var retried = await coordinator.RetryAsync();
+
+        Assert.False(retried);
+        Assert.Equal(OmniSorSeConnectionState.Unavailable, coordinator.State);
+        Assert.Equal("Session expired", coordinator.Diagnostics.LastFailureCategory);
+    }
+
+    [Fact]
+    public async Task SeparateCoordinators_DoNotMixConcurrentCompanionGrants()
+    {
+        var firstClient = new FakeClient
+        {
+            Roots = new ExplorerNodePage([Node("first-root", ExplorerNodeKind.Source)], 1, false, null),
+        };
+        var secondClient = new FakeClient
+        {
+            Roots = new ExplorerNodePage([Node("second-root", ExplorerNodeKind.Source)], 1, false, null),
+        };
+        var first = new OmniSorSeConnectionCoordinator(new FixedFactory(firstClient));
+        var second = new OmniSorSeConnectionCoordinator(new FixedFactory(secondClient));
+
+        Assert.True(await first.ConnectAsync(firstClient.Grant with { SessionId = "first-session" }));
+        Assert.True(await second.ConnectAsync(secondClient.Grant with { SessionId = "second-session" }));
+
+        Assert.Equal("first-root", Assert.Single(first.AccessibleRoots).Id);
+        Assert.Equal("second-root", Assert.Single(second.AccessibleRoots).Id);
+        Assert.NotSame(first.Client, second.Client);
+    }
+
     private static ExplorerNode Node(string id, ExplorerNodeKind kind) =>
         new(id, id, kind, null, null, null, null, new Dictionary<string, string>(), 0, 0);
 

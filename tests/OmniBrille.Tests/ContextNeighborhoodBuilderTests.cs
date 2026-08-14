@@ -94,6 +94,55 @@ public sealed class ContextNeighborhoodBuilderTests
         Assert.DoesNotContain(result.Edges, edge => edge.Relationship?.Id == "missing");
     }
 
+    [Fact]
+    public void BuildDetailed_FiltersReversiblyAndSummarizesAuthorizedMetadata()
+    {
+        var focus = Entry("focus", "Focus");
+        var topic = Entry("topic", "Topic");
+        var entity = Entry("entity", "Entity");
+        ExplorerRelationship[] relationships =
+        [
+            Relationship("topic-r", focus.Id, topic.Id, 80) with { Kind = ExplorerRelationshipKind.Topic },
+            Relationship("entity-r", focus.Id, entity.Id, 60) with
+            {
+                Kind = ExplorerRelationshipKind.Entity,
+                EvidenceClass = ExplorerRelationshipEvidenceClass.Derived,
+            },
+        ];
+        var snapshot = new ExplorerContextSnapshot(focus, [topic, entity], [], relationships);
+        var builder = new ContextNeighborhoodBuilder();
+
+        var filtered = builder.BuildDetailed(
+            snapshot,
+            new ContextFilter(ExplorerRelationshipKind.Entity, 60, ExplorerRelationshipEvidenceClass.Derived));
+        var restored = builder.BuildDetailed(snapshot, ContextFilter.None);
+
+        Assert.Equal(2, filtered.Summary.AuthoritativeRelationshipCount);
+        Assert.Equal(1, filtered.Summary.MatchingRelationshipCount);
+        Assert.Equal("entity-r", Assert.Single(filtered.Neighborhood.Edges).Relationship!.Id);
+        Assert.Equal(2, restored.Summary.MatchingRelationshipCount);
+        Assert.Equal(2, restored.Neighborhood.Edges.Count);
+    }
+
+    [Fact]
+    public void BuildDetailed_UsesEvidenceClassAsStableTieBreakerAfterStrength()
+    {
+        var focus = Entry("focus", "Focus");
+        var nodes = Enumerable.Range(0, 4).Select(index => Entry($"n{index}", $"Node {index}")).ToArray();
+        var relationships = nodes.Select((node, index) => Relationship(
+            $"r{index}", focus.Id, node.Id, 80) with
+        {
+            EvidenceClass = index == 3
+                    ? ExplorerRelationshipEvidenceClass.Derived
+                    : ExplorerRelationshipEvidenceClass.Deterministic,
+        }).ToArray();
+
+        var result = new ContextNeighborhoodBuilder().BuildDetailed(
+            new ExplorerContextSnapshot(focus, nodes, [], relationships));
+
+        Assert.DoesNotContain(result.Neighborhood.Edges, edge => edge.Relationship?.Id == "r3");
+    }
+
     private static ExplorerEntry Entry(string id, string name) => new(
         id,
         name,

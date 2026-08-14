@@ -44,14 +44,17 @@ public sealed class ContextGraphLayout : IGraphLayoutEngine
             for (var ringIndex = 0; ringIndex < ring.Count; ringIndex++, index++)
             {
                 var node = related[index];
+                var strength = Math.Clamp(relationshipStrength.GetValueOrDefault(node.Id), 0, 100);
+                var weakness = (100 - strength) / 100d;
+                var radialDepth = 1 + (weakness * 0.12);
                 var deterministicOffset = StableUnit(node.Id) * (Math.PI * 2 / Math.Max(1, ring.Count)) * 0.28;
                 var angle = (-Math.PI / 2) + ((Math.PI * 2 * ringIndex) / Math.Max(1, ring.Count)) + deterministicOffset;
                 var target = new GraphLayoutNode(
                     node.Id,
-                    Math.Cos(angle) * ring.RadiusX,
-                    Math.Sin(angle) * ring.RadiusY,
-                    ring.Scale,
-                    ring.Opacity,
+                    Math.Cos(angle) * ring.RadiusX * radialDepth,
+                    Math.Sin(angle) * ring.RadiusY * radialDepth,
+                    ring.Scale * (1 - (weakness * 0.08)),
+                    ring.Opacity * (1 - (weakness * 0.16)),
                     ring.Depth);
                 result[node.Id] = PreserveAngle(target, previousLayout);
             }

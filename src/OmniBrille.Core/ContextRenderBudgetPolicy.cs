@@ -13,7 +13,8 @@ public sealed record ContextRelationshipCandidate(
     string TargetId,
     double Importance,
     bool TouchesFocus = false,
-    bool IsSelected = false);
+    bool IsSelected = false,
+    ExplorerRelationshipEvidenceClass EvidenceClass = ExplorerRelationshipEvidenceClass.Derived);
 
 /// <summary>
 /// Renderer-facing limits for future contextual relationships. This policy neither
@@ -57,6 +58,7 @@ public static class ContextRenderBudgetPolicy
                      .OrderByDescending(item => item.IsSelected)
                      .ThenByDescending(item => item.TouchesFocus)
                      .ThenByDescending(item => Math.Clamp(item.Importance, 0, 1))
+                     .ThenBy(item => item.EvidenceClass == ExplorerRelationshipEvidenceClass.Deterministic ? 0 : 1)
                      .ThenBy(item => item.Id, ExplorerIdentity.Comparer))
         {
             if (accepted.Count >= available)
