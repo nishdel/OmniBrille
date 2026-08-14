@@ -2,7 +2,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
-    <AssemblyName>OmniBrille.Desktop</AssemblyName>
+    <AssemblyName>OmniBrille</AssemblyName>
     <RootNamespace>OmniBrille.Desktop</RootNamespace>
     <Product>OmniBrille</Product>
     <Title>OmniBrille</Title>
@@ -10,6 +10,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <ApplicationIcon>Assets\OmniBrille.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
     <PackageReference Include="Avalonia" Version="12.1.0" />
     <!-- BuildServices is telemetry-only for the open-source Avalonia packages; OmniBrille opts out in-project. -->
     <PackageReference Include="Avalonia.BuildServices" Version="11.3.2" ExcludeAssets="all" PrivateAssets="all" />
