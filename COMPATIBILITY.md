@@ -1,0 +1,24 @@
+# Compatibility
+
+OmniBrille uses capability negotiation and Explorer Protocol major-version validation rather than requiring lockstep application versions. This matrix records tested combinations; it is not a claim about untested releases.
+
+| OmniBrille | OmniSorSe | Explorer Protocol | Platform | Status |
+|---|---|---|---|---|
+| 0.6.0-preview.2 | committed v2.5 RC `59be07c6cebff12072cbf18701fb16cb11801287` | v1.0 | Windows x64 | Supported and validated: installed discovery/handoff, Structure, Search, details, and Context |
+| 0.6.x preview | 2.4.0 | v1.0 | Windows x64 | Protocol data path validated in Stage 4; normal installed companion launch is unavailable because 2.4.0 has no launcher handoff |
+| 0.6.x preview | not installed | n/a | Windows x64 | Standalone supported and installed-runtime validated |
+| 0.6.x preview | compatible future 2.5.x build | v1.x | Windows x64 | Expected to negotiate by protocol/capability; not claimed until tested |
+| 0.6.x preview | any | incompatible protocol major | any | Connected mode fails closed; standalone remains available |
+| current source | not required | n/a | Ubuntu | Restore/build/tests validated in CI; interactive runtime and packaging are not validated |
+| current source | not required | n/a | macOS | Architecture intended to remain portable; build/runtime are not validated |
+
+## Compatibility policy
+
+- OmniSorSe absent: OmniBrille starts in Standalone and accesses only an explicitly selected root.
+- Protocol v1-compatible OmniSorSe: the client validates the grant, major version, read-only server identity, hard limits, and required `Structure` and `Search` capabilities before accepting the session.
+- Missing optional capability: only the dependent feature is unavailable. In particular, Context requires server-advertised Context/Related capability and is never simulated locally.
+- Incompatible major version, malformed limits, or missing required capability: connected mode is rejected without undefined parsing; the UI says the versions are incompatible and keeps Standalone available. Expected/actual protocol values remain in local diagnostics.
+- Minor-version additions: unknown JSON fields are tolerated by the serializer, but OmniBrille consumes only understood fields and negotiated capabilities. Server bounds still apply.
+- Application version labels are informational. Explorer Protocol v1 and capabilities are the compatibility authority.
+
+OmniBrille never reads OmniSorSe SQLite, broadens an authorized root, or falls back to direct filesystem access for connected nodes.

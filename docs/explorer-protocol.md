@@ -2,7 +2,7 @@
 
 ## Status and authority
 
-Stage 6 consumes the real read-only protocol introduced in OmniSorSe v2.4.0 and the companion workflow committed in the v2.5 release candidate. The authoritative source inspected and run is repository `OpenSorSe-recovered-clean`, commit `59be07c6cebff12072cbf18701fb16cb11801287`, especially `src/OpenSorSe.Application/Explorer/ExplorerCompanionLaunch.cs`, `ExplorerReadService.cs`, and `docs/OMNIBRILLE_COMPANION_HANDOFF_v2.5.md`. Protocol major remains 1 and schema remains 5; OmniSorSe source was not modified.
+Stage 7 consumes the same real read-only protocol introduced in OmniSorSe v2.4.0 and companion workflow committed in the v2.5 release candidate. The authoritative source inspected and run is repository `OpenSorSe-recovered-clean`, commit `59be07c6cebff12072cbf18701fb16cb11801287`, especially `src/OpenSorSe.Application/Explorer/ExplorerCompanionLaunch.cs`, `ExplorerReadService.cs`, and `docs/OMNIBRILLE_COMPANION_HANDOFF_v2.5.md`. Protocol major remains 1 and schema remains 5; OmniSorSe source was not modified.
 
 The earlier OmniBrille document was conceptual. Its core boundary was correct—opaque graph DTOs, bounded reads, capability/version negotiation, cancellation, and no SQLite—but transport and exact fields were undecided. This document records the shipped behavior. OmniSorSe is authoritative when the two differ.
 
@@ -101,6 +101,10 @@ The 15-minute grant remains server-owned and is never extended by OmniBrille. `S
 
 ## Protocol v1 gap analysis
 
+### Compatibility behavior
+
+OmniBrille validates protocol major 1, the read-only `OmniSorSe` server identity, negotiated hard bounds, and required Structure/Search capabilities. An absent OmniSorSe instance simply leaves Standalone active. Missing optional Context capability disables Context without local substitution. An incompatible major, malformed server limits, or missing required capability is rejected before provider creation; the main UI reports that this OmniBrille/OmniSorSe combination is incompatible while detailed expected/actual protocol values remain local diagnostics. Unknown additive fields and minor-version features are ignored unless explicitly understood and capability-gated. See [`COMPATIBILITY.md`](../COMPATIBILITY.md).
+
 ### Required for ordinary connected Structure use
 
 - No blocker remains in the committed v2.5 RC contract. Packaging must place the reviewed executable in a configured/adjacent/conventional/PATH location; the RC is not described here as a released product.
@@ -122,4 +126,4 @@ The 15-minute grant remains server-owned and is never extended by OmniBrille. `S
 
 ## Next boundary
 
-Stage 6 found no connected Structure or bounded Context blocker that justifies protocol churn. Relationship IDs, immutable snapshots, session-wide Search/Context scope, presentation-string provenance, lack of pushed disconnect, and lack of exact progress remain known limitations, but all fail safely or have honest bounded UX. Protocol v1 should remain unchanged until durable edge actions, incremental updates, selected-root server filtering, or structured provenance becomes a demonstrated requirement.
+Stage 7 found no release or compatibility blocker that justifies protocol churn. Relationship IDs, immutable snapshots, session-wide Search/Context scope, presentation-string provenance, lack of pushed disconnect, and lack of exact progress remain known limitations, but all fail safely or have honest bounded UX. Protocol v1 should remain unchanged until durable edge actions, incremental updates, selected-root server filtering, or structured provenance becomes a demonstrated requirement.

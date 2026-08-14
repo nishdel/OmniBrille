@@ -4,7 +4,7 @@ OmniBrille is an optional, standalone-capable spatial navigation application for
 
 Conceptually, OmniSorSe is the brain. OmniBrille is the visual lens and spatial navigation interface.
 
-Stage 6 packages that connected experience as an independently installable Windows companion and matures bounded Context filtering and inspection over unchanged Explorer Protocol v1. Voice, destructive file operations, Hybrid mode, and automatic updating remain intentionally absent.
+OmniBrille is currently a **Private Preview / Pre-release**. Stage 7 hardens the independently installable Windows companion with coherent release metadata and branding, checksum/manifest generation, signing-ready fail-closed automation, compatibility guidance, and a repeatable private-preview gate over unchanged Explorer Protocol v1. Voice, destructive file operations, Hybrid mode, and automatic updating remain intentionally absent.
 
 ## What works now
 
@@ -32,7 +32,8 @@ Stage 6 packages that connected experience as an independently installable Windo
 - Context refocus and Back, real OmniSorSe Search-to-Context focus, compact reason/evidence/provenance details, Context-aware graph automation peers, and synchronized keyboard/list navigation.
 - Reversible, local presentation filters for server-authored relationship kind, minimum ranking strength, and evidence class. The HUD reports visible, matching, and authorized counts and never alters OmniSorSe state.
 - Strength-aware deterministic Context depth, a clear no-relationships/no-filter-matches state, and a compact relationship hierarchy (`Related because`, `Strength`, `Evidence`, `Source`).
-- A reproducible unsigned, per-user Windows installer at `%LOCALAPPDATA%\Programs\OmniBrille`, which the committed OmniSorSe v2.5 RC discovers through its existing conventional-location policy without an environment override.
+- A reproducible per-user Windows installer at `%LOCALAPPDATA%\Programs\OmniBrille`, which the committed OmniSorSe v2.5 RC discovers through its existing conventional-location policy without an environment override. Development artifacts are unsigned; the release workflow supports externally supplied Authenticode credentials and fails closed when signing is required.
+- A release manifest, SHA-256 sidecar, sanitized runtime dependency manifest, release-quality provisional icon, compatibility matrix, and deterministic `verify-release.ps1` gate.
 - Accessible `Standalone`, connecting, connected, unavailable, incompatible, disconnected, and reconnecting states; a disconnected graph remains visible as stale context rather than crashing.
 - Safe provider switching: connected opaque IDs, selection, Search, details, and Back history are cleared before standalone access is established.
 
@@ -44,7 +45,7 @@ Visual preferences are stored below the operating system's local application-dat
 
 ## Build and run
 
-Prerequisites for source builds: .NET 8 SDK and a Windows, macOS, or Linux desktop supported by Avalonia. Stage 6 validates Windows installed runtime and the normal v2.5 RC two-process handoff plus Windows/Ubuntu build/tests; macOS remains build-compatible by design but is not runtime-validated yet.
+Prerequisites for source builds: the SDK selected by `global.json` and a Windows, macOS, or Linux desktop supported by Avalonia. Stage 7 validates Windows installed runtime and the normal v2.5 RC two-process handoff plus Windows/Ubuntu build/tests; Linux interactive runtime and macOS build/runtime remain unvalidated.
 
 ```powershell
 cd "D:\Own Projects\OmniBrille"
@@ -60,7 +61,7 @@ Build the pinned, unsigned Windows installer with:
 .\build\Package-Windows.ps1 -BootstrapInnoSetup
 ```
 
-The current package is `OmniBrille-0.6.0-preview.1-win-x64-setup.exe`. It is self-contained, non-trimmed, and multi-file for reliable Avalonia/XAML behavior. See [PACKAGING.md](docs/PACKAGING.md) for prerequisites, install/upgrade/uninstall semantics, signing readiness, and alternatives considered.
+The current package is `OmniBrille-0.6.0-preview.2-win-x64-setup.exe`. It is self-contained, non-trimmed, and multi-file for reliable Avalonia/XAML behavior. The build also emits a release manifest, sanitized dependency manifest, and SHA-256 sidecar. See [PACKAGING.md](docs/PACKAGING.md) for prerequisites, install/upgrade/uninstall semantics, signing, private-preview automation, and alternatives considered.
 
 The application initially shows no filesystem content. Choose a folder to establish the access root. For an explicit command-line launch (useful for local smoke testing), append `-- --root "C:\path\you\chose" --theme Light`. The theme value may be `Light` or `Dark`.
 
@@ -84,6 +85,10 @@ docs/
   context-rendering-contract.md implemented Context limits, semantics, accessibility, and gaps
   explorer-protocol.md        actual Protocol v1 and v2.5 RC handoff behavior
   PACKAGING.md                reproducible Windows installer and lifecycle policy
+  SECURITY-PRIVACY.md         release security, privacy, handoff, and safe diagnostics posture
+COMPATIBILITY.md              tested OmniBrille/OmniSorSe/protocol/platform combinations
+CHANGELOG.md                  sustainable preview milestone history
+RELEASE_CHECKLIST.md          automated and manual private-preview gates
 ROADMAP.md                    staged implementation plan
 ```
 
@@ -91,7 +96,7 @@ ROADMAP.md                    staged implementation plan
 
 Enable `Developer diagnostics` from the settings HUD. The overlay reports node/edge/label counts; scene budget and zoom; layout, preparation, total render, background, edge, glyph, and label time; per-render allocations; bounded cache occupancy; data-rain cost; and the latest directory-load duration. These are local sampling aids, not product guarantees or telemetry. Representative measurements and the rationale for retaining the 48-node budget are recorded in [the architecture](docs/architecture.md).
 
-CI is defined in `.github/workflows/ci.yml`. It restores, verifies formatting, builds Release with analyzers-as-errors, and runs all tests on `windows-latest` and `ubuntu-latest`. The Windows leg also builds the unsigned installer and retains it as a private workflow artifact for 14 days; it does not publish a release.
+CI is defined in `.github/workflows/ci.yml`. It restores, verifies formatting, builds Release with analyzers-as-errors, runs all tests, and audits NuGet vulnerabilities on `windows-latest` and `ubuntu-latest`. The Windows leg also builds the unsigned installer and retains it privately for 14 days. `.github/workflows/private-preview.yml` is a manual unsigned/signed release-validation workflow; it never creates a tag, release, or feed publication.
 
 ## OmniSorSe relationship
 
@@ -103,4 +108,4 @@ OmniBrille consumes OmniSorSe Explorer Protocol v1 through a narrow named-pipe c
 
 The private GitHub repository is `nishdel/OmniBrille`.
 
-See [the architecture](docs/architecture.md), [the packaging guide](docs/PACKAGING.md), [the Context rendering contract](docs/context-rendering-contract.md), [the Protocol v1 and handoff integration record](docs/explorer-protocol.md), and [the roadmap](ROADMAP.md).
+See [the architecture](docs/architecture.md), [the packaging guide](docs/PACKAGING.md), [compatibility matrix](COMPATIBILITY.md), [release checklist](RELEASE_CHECKLIST.md), [security/privacy posture](docs/SECURITY-PRIVACY.md), [Context rendering contract](docs/context-rendering-contract.md), [Protocol v1 and handoff integration record](docs/explorer-protocol.md), and [roadmap](ROADMAP.md).

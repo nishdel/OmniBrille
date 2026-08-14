@@ -54,14 +54,24 @@ Status language is intentionally conservative: checked items exist in the applic
 - [x] Validate installed standalone use and normal OmniSorSe discovery/handoff without `OMNISORSE_OMNIBRILLE_PATH`.
 - [x] Preserve hard Context budgets, session expiry/new-grant safety, multiple-grant isolation, accessibility, reduced motion/effects, and Windows/Ubuntu CI.
 
-## Stage 7 — Voice
+## Stage 7 — Private preview and release hardening (complete)
+
+- [x] Coherent preview version/product metadata and release-quality provisional Windows branding.
+- [x] Deterministic release check, SHA-256 sidecar, release manifest, and sanitized runtime dependency inventory.
+- [x] External-secret Authenticode path with fail-closed signed mode and unsigned development mode.
+- [x] Node.js 24+ GitHub Actions modernization plus separate normal CI and manual private-preview workflows.
+- [x] Compatibility matrix, changelog, release checklist, security/privacy review, and private-preview support guidance.
+- [x] Clean/isolated install, previous-preview upgrade, installed OmniSorSe companion, artifact, performance, and uninstall gates.
+
+## Stage 8 — Private-preview distribution and support
+
+- [ ] Maintainer license decision before any public distribution.
+- [ ] Production Authenticode certificate and signed preview validation.
+- [ ] Private tester rollout, support triage, and evidence-driven blocker remediation.
+- [ ] Windows VM matrix expansion and Linux/macOS interactive runtime validation.
+
+## Stage 9 — Voice (future, separately approved)
 
 - [ ] Push-to-talk local speech recognition.
 - [ ] Deterministic navigation commands and OmniSorSe-backed search queries.
 - [ ] No always-listening microphone.
-
-## Stage 8 — Release hardening
-
-- [ ] Production Authenticode signing, final icon/branding review, compatibility matrix, and public beta decision.
-- [ ] Optional update mechanism evaluation without a background service.
-- [ ] Public-release documentation, license decision, compatibility matrix, and support diagnostics.

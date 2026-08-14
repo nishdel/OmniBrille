@@ -1,8 +1,8 @@
-# Windows packaging
+# Windows packaging and private-preview releases
 
 ## Decision
 
-OmniBrille uses Inno Setup 6.7.3 for its first serious Windows package. The installer is per-user and independent of OmniSorSe. It installs no service, auto-start entry, telemetry component, file association, or OmniSorSe binary.
+OmniBrille uses pinned Inno Setup 6.7.3 for its Windows private-preview installer. It is a separate per-user application and installs no OmniSorSe binary, service, startup entry, telemetry component, updater, file association, or background companion.
 
 The deterministic install path is:
 
@@ -10,55 +10,91 @@ The deterministic install path is:
 %LOCALAPPDATA%\Programs\OmniBrille\OmniBrille.exe
 ```
 
-This is already one of the bounded conventional locations searched by the committed OmniSorSe v2.5 release-candidate companion locator. `OMNISORSE_OMNIBRILLE_PATH` is not required for an installed workflow.
+That path is already one of the bounded conventional locations searched by the committed OmniSorSe v2.5 RC locator. A normal installed handoff does not need `OMNISORSE_OMNIBRILLE_PATH`.
 
-Inno Setup was selected because it provides reliable current-user installation, one stable application ID, upgrade/uninstall handling, Start Menu registration, close-app coordination, version metadata, and a straightforward signing hook without requiring Store identity or an oversized toolchain. MSIX was deferred because identity/signing and package lifecycle constraints add friction to the current private preview. WiX/MSI was unnecessarily heavy for a per-user optional companion. NSIS remains viable but would require more custom lifecycle scripting for no current benefit.
+Inno Setup supplies reliable current-user install, one stable application ID, in-place upgrade/uninstall, Start Menu registration, running-app coordination, version metadata, and a modest open-source toolchain. MSIX was deferred because signing/identity and package-lifecycle constraints add friction to a private preview. WiX/MSI is unnecessarily heavy for this optional per-user app. NSIS is viable, but would require more lifecycle script of our own.
 
 ## Version and deployment model
 
-Stage 6 is `0.6.0-preview.1`; the numeric Windows file version is `0.6.0.0`. Pre-1.0 semantic versions may make breaking product changes. Preview suffixes identify engineering packages that are not public stable releases. `Directory.Build.props` is the source of truth for assembly, product, and installer version inputs.
+Stage 7 is `0.6.0-preview.2`. `Directory.Build.props` is the source of truth:
 
-The package is:
+- SemVer/informational version: `0.6.0-preview.2`;
+- assembly compatibility version: `0.6.0.0`;
+- Windows file/installer version: `0.6.0.2`.
 
-- `win-x64`;
-- self-contained, so users do not need to install .NET separately;
-- non-trimmed, to preserve reflection/XAML behavior;
-- multi-file, to minimize Avalonia/native extraction risk;
-- named `OmniBrille-<version>-win-x64-setup.exe`.
+Patch-like preview increments advance the final numeric file-version component. Pre-release labels progress through `preview.N`, `beta.N`, and `rc.N` before a separately approved stable version. No tag or release is created automatically.
 
-The compressed Stage 6 development installer is approximately 35 MB and the published runtime is approximately 210 MB before installer exclusions. PDB files are deliberately excluded from the installed package, and an upgrade removes legacy root-level PDBs from this installer-owned directory, so developer source paths are not shipped.
+The package remains `win-x64`, self-contained, non-trimmed, and multi-file. This costs disk space but avoids requiring a separate .NET runtime and avoids trimming/single-file risks in Avalonia XAML, reflection, and native library loading. Publish explicitly disables debug symbols; the installer also excludes PDBs and removes legacy root-level PDBs during an upgrade.
 
-## Reproducible command
+Artifact names are:
 
-From a clean checkout with the .NET 8 SDK and PowerShell:
+```text
+OmniBrille-0.6.0-preview.2-win-x64-setup.exe
+OmniBrille-0.6.0-preview.2-win-x64-setup.exe.sha256
+OmniBrille-0.6.0-preview.2-win-x64-setup-manifest.json
+OmniBrille-0.6.0-preview.2-win-x64-setup-dependencies.json
+```
+
+The manifest contains product/version, commit SHA, UTC build time, runtime/deployment, Explorer Protocol compatibility, signing status, installer size/hash, and published-runtime size. It contains no username, developer path, token, or user content. The dependency document is a sanitized runtime package inventory, not a formal SPDX/CycloneDX SBOM; a formal SBOM was deferred to avoid adding a release-critical tool dependency before it provides a clear private-preview benefit.
+
+## Reproducible commands
+
+From a clean Windows checkout with the SDK pinned by `global.json` and PowerShell:
 
 ```powershell
 dotnet restore .\OmniBrille.sln
 .\build\Package-Windows.ps1 -BootstrapInnoSetup
 ```
 
-`Get-InnoSetup.ps1` downloads the official Inno Setup 6.7.3 installer into the ignored `artifacts/tools` directory and verifies its pinned SHA-256 before a local, non-advertised tool installation. Alternatively, pass an existing compiler explicitly:
+`Get-InnoSetup.ps1` downloads the official Inno Setup 6.7.3 installer into ignored `artifacts/tools` and verifies its pinned SHA-256 before installing that build tool locally. An existing compiler may be supplied with `-InnoCompiler`.
+
+The complete technical preview gate is:
 
 ```powershell
-.\build\Package-Windows.ps1 -InnoCompiler "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+.\build\verify-release.ps1
 ```
 
-Outputs are written below ignored `artifacts/publish/win-x64` and `artifacts/packages`. CI uses the same script on Windows and retains, but does not publicly release, the unsigned installer.
+It requires a clean checkout by default and performs version/stale-brand/tracked-artifact checks, restore, formatting, analyzer-enabled Release build, all tests, NuGet vulnerability audit, an informational outdated-package review, package build, publish-content audit, checksum/manifest validation, and `git diff --check`. `-AllowDirty` exists only for developing the release machinery; it is not a release gate. The script never publishes, tags, or creates a GitHub Release.
 
-## Install, upgrade, and uninstall semantics
+Outputs are below ignored `artifacts/publish/win-x64` and `artifacts/packages`. The publish directory is safely recreated for each build so removed runtime files cannot accumulate. Exact installer bytes can differ across machines because executable/installer timestamps and signing timestamps are not normalized; inputs, process, naming, version, content policy, and tool version are reproducible.
 
-The fixed Inno application ID makes a newer package an in-place upgrade. The installer coordinates with a running OmniBrille process through standard close-app behavior, updates the one install directory, and preserves one Start Menu and one uninstall entry. It does not force-kill without installer coordination.
+## Signing architecture
 
-Small visual preferences remain in `%LOCALAPPDATA%\OmniBrille\visual-preferences.json` and are intentionally outside the install directory. Upgrade and uninstall preserve these safe theme/effects/diagnostics choices. They contain no bearer tokens, grant, selected root, opaque node ID, search query, or Context cache. Protocol credentials and session state exist only in process memory.
+Unsigned development packages remain the default. To sign, an Authenticode certificate with a private key must first be present in the current-user or local-machine `My` store. Supply only its thumbprint:
 
-Uninstall removes the application directory, Start Menu entry, and uninstall registration. It does not touch OmniSorSe, its indexes/settings, user files, or retained OmniBrille visual preferences. There is no installed service or background process to remove.
+```powershell
+$env:OMNIBRILLE_SIGNING_CERTIFICATE_THUMBPRINT = '<thumbprint>'
+.\build\verify-release.ps1 -RequireSigning
+```
 
-## Signing readiness
+The package script signs and validates `OmniBrille.exe` before installer compilation, then signs and validates the final installer using SHA-256 and a timestamp server. `-RequireSigning` fails immediately when no thumbprint is provided and fails if the certificate is missing, expired, lacks a private key, or produces a non-valid signature. An unsigned file is never described as signed in the manifest.
 
-Stage 6 installers and executables are unsigned development artifacts. No private key or placeholder production certificate is committed. A future release pipeline should Authenticode-sign the published executable and final installer after build, using an externally supplied certificate/secret, then verify signatures before publication. The current scripts and deterministic artifact naming provide that hook without weakening present builds.
+The manual private-preview workflow accepts `unsigned` or `signed`. In signed mode it requires repository secrets `OMNIBRILLE_SIGNING_PFX_BASE64` and `OMNIBRILLE_SIGNING_PFX_PASSWORD`, imports the certificate into the ephemeral runner user's certificate store, supplies only the thumbprint to the build, and removes both temporary PFX and imported certificate. Private keys/passwords are never source, command-line inputs, logs, or artifacts. A future signing service can replace certificate import without changing package semantics.
 
-## Privacy audit
+No production signing certificate is currently available. Stage 7 local artifacts are therefore unsigned. Private testers should expect Windows reputation/unknown-publisher warnings and should verify the SHA-256 from the separately retained sidecar. Hash verification detects corruption; it does not authenticate an unsigned publisher. Testers should follow their organization's security policy rather than casually bypass protections.
 
-The installer includes only self-contained application/runtime files and branded assets. It excludes PDBs and must never include logs, databases, screenshots, test fixtures, user paths/content, bearer tokens, handoff grants, developer configuration, or OmniSorSe state. No telemetry is present. Inspect package contents and the installed directory as a release gate.
+## CI and private-preview workflow
 
-The bundled blue/cyan spatial-node icon is a temporary, replaceable branded asset created for packaging consistency; it is not a claim of final logo completion.
+Normal CI restores, formats, builds, tests, and audits NuGet packages on Windows and Ubuntu. The Windows leg also creates an unsigned installer plus its manifests/checksum and retains them privately for 14 days.
+
+`.github/workflows/private-preview.yml` is `workflow_dispatch` only. It runs the full release check on Windows and retains one private artifact for 30 days. It does not create tags, GitHub Releases, or feed publications. Selecting signed mode without valid secrets is an intentional hard failure.
+
+## Install, upgrade, and uninstall
+
+The fixed Inno application ID makes a newer package an in-place upgrade. Standard close-app handling asks OmniBrille to close; the installer does not add a custom force-kill path. Upgrade refreshes the owned install directory and preserves exactly one Start Menu/uninstall registration.
+
+Safe visual preferences remain at `%LOCALAPPDATA%\OmniBrille\visual-preferences.json`, outside the install directory, and intentionally survive upgrade/uninstall. They contain only theme, reduced-motion/effects, and the diagnostics toggle. Grants, bearer tokens, endpoints, selected roots, queries, opaque IDs, and Context caches are never persisted.
+
+Uninstall removes application files, Start Menu entry, and uninstall registration. It leaves preferences, user files, and every OmniSorSe index/setting untouched. No service or daemon exists. Downgrade is not supported or promised; preview upgrade testing is forward-only.
+
+The Stage 7 isolated-host lifecycle sample upgraded `0.6.0-preview.1` to `0.6.0-preview.2` in place while OmniBrille was running. Standard installer coordination closed the process, retained one Start Menu shortcut and one uninstall registration, preserved visual preferences byte-for-byte, and installed no PDBs. The local sample took 8.599 seconds to install preview.1, 10.093 seconds to upgrade, and 2.237 seconds to uninstall preview.2. The installed footprint was 222 files / 109,315,321 bytes (about 104.25 MiB). The final uninstall removed the install directory, shortcut, and product registration and retained `%LOCALAPPDATA%\OmniBrille\visual-preferences.json` by policy.
+
+This validation used an isolated install lifecycle on the Windows 10 development host, not a fresh VM: Windows Sandbox and a suitable clean Windows VM were unavailable. The installed executable was launched from the deterministic install path and did not need the source checkout or a separately installed .NET runtime. A genuinely clean Windows VM remains a private-preview distribution gate in `RELEASE_CHECKLIST.md`.
+
+The maintainer checklist in [`RELEASE_CHECKLIST.md`](../RELEASE_CHECKLIST.md) requires a clean Windows environment for fresh install, installed standalone, normal OmniSorSe handoff, in-place upgrade, uninstall, signature state, checksum, artifact/privacy audit, and release notes. Source-tree execution does not satisfy that manual gate.
+
+## Branding and licensing
+
+The executable, window, Start Menu entry, installer, and uninstall metadata use `OmniBrille`. The Stage 7 mark is a release-quality provisional blue/cyan spatial-navigation asset with transparent PNG source and complete Windows icon sizes; see [`assets/branding/README.md`](../assets/branding/README.md). It can later be professionally refined without changing resource names.
+
+This private repository currently has no selected license. Stage 7 does not choose one. Public distribution should not proceed until the maintainer makes and records that decision.

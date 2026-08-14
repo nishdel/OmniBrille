@@ -2,7 +2,7 @@
 
 ## Status
 
-This is the renderer-facing contract implemented through Stage 6. OmniSorSe remains authoritative for every contextual node, relationship, score, reason, and provenance record; OmniBrille does not infer semantic relationships or read OmniSorSe storage directly. Synthetic pressure fixtures remain test-only and never appear in the production UI.
+This is the renderer-facing contract implemented through Stage 6 and regression-gated unchanged for the Stage 7 private preview. OmniSorSe remains authoritative for every contextual node, relationship, score, reason, and provenance record; OmniBrille does not infer semantic relationships or read OmniSorSe storage directly. Synthetic pressure fixtures remain test-only and never appear in the production UI.
 
 Stage 5 consumes bounded contextual neighborhoods and Related Files through `GetNeighborhood(IncludeContext: true)` and focus-local `GetRelated`, with edge kind, strength, reason, evidence class, and provenance. The shipped `ExplorerEdge` does **not** contain a stable relationship ID. OmniBrille therefore derives an ephemeral session-local SHA-256 scene key from source, target, kind, reason, and provenance. That key only deduplicates and selects immutable snapshots; it is not persisted or treated as durable across refresh/session restart.
 
@@ -72,7 +72,7 @@ The synchronized list/tree remains a view of the one session, not a second provi
 
 ## Performance and test gate
 
-Stage 6 validation covers:
+Stage 7 retains the Stage 6 validation coverage:
 
 - 48 combined nodes with 47 structural and 36 contextual edges;
 - focus/selected relationship emphasis;
