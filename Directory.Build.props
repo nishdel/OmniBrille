@@ -1,12 +1,15 @@
 <Project>
   <PropertyGroup>
     <VersionPrefix>0.6.0</VersionPrefix>
-    <VersionSuffix>preview.1</VersionSuffix>
+    <VersionSuffix>preview.2</VersionSuffix>
     <AssemblyVersion>0.6.0.0</AssemblyVersion>
-    <FileVersion>0.6.0.0</FileVersion>
+    <FileVersion>0.6.0.2</FileVersion>
+    <Title>OmniBrille</Title>
     <Product>OmniBrille</Product>
+    <Description>Optional spatial navigation companion for OmniSorSe.</Description>
+    <Authors>OmniBrille Contributors</Authors>
     <Company>OmniBrille Contributors</Company>
-    <Copyright>Copyright © OmniBrille Contributors</Copyright>
+    <Copyright>Copyright (c) 2026 OmniBrille Contributors</Copyright>
     <RepositoryUrl>https://github.com/nishdel/OmniBrille</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <Nullable>enable</Nullable>

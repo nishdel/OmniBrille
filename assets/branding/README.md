@@ -1,0 +1,9 @@
+# OmniBrille icon source
+
+`OmniBrille-icon-source.png` is the transparent high-resolution source for the release-quality provisional Stage 7 application mark. The app PNG and multi-size Windows ICO are derived from it. The mark intentionally uses one high-contrast blue/cyan spatial orbit, three nodes, and a central navigation star so it remains recognizable at small sizes without text.
+
+The source was generated with OpenAI's built-in image-generation tool using this prompt:
+
+> Use case: a release-quality provisional application icon and logo mark for OmniBrille, a private-preview spatial graph navigation desktop app. Create one centered, square icon mark only. The symbol should be a bold geometric optical-lens/navigation motif built from a central four-point negative-space navigation star or aperture, surrounded by a clean incomplete ring and exactly three small network nodes connected by simple arcs. Visual identity: deep electric blue and bright cyan with a small white highlight, crisp flat vector-like shapes, high contrast, minimal, futuristic, spatial, recognizable at 16–32 px. Use thick consistent strokes and generous outer padding. No text, no letters, no folder, no eyeball realism, no globe/browser resemblance, no glossy 3D, no fine circuitry, no tiny details, no drop shadow, no border around the square. Background must be a perfectly flat uniform chroma-key magenta #FF00FF with no texture, no lighting, no shadows, and the subject itself must contain no magenta. The output will have the magenta removed to transparency, so keep the subject edge hard and clean.
+
+The generated output already supplied a transparent alpha channel. The checked ICO contains 16, 20, 24, 32, 40, 48, 64, 128, and 256 px layers. A future professional brand review may replace the mark while retaining the filenames and application/installer wiring.

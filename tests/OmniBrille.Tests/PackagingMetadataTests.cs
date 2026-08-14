@@ -5,14 +5,15 @@ namespace OmniBrille.Tests;
 public sealed class PackagingMetadataTests
 {
     [Fact]
-    public void CentralVersion_IsPreReleaseAndConsistentWithStageSixPackage()
+    public void CentralVersion_IsPreReleaseAndConsistentWithStageSevenPackage()
     {
         var root = FindRepositoryRoot();
         var document = XDocument.Load(Path.Combine(root, "Directory.Build.props"));
 
         Assert.Equal("0.6.0", document.Descendants("VersionPrefix").Single().Value);
-        Assert.Equal("preview.1", document.Descendants("VersionSuffix").Single().Value);
-        Assert.Equal("0.6.0.0", document.Descendants("FileVersion").Single().Value);
+        Assert.Equal("preview.2", document.Descendants("VersionSuffix").Single().Value);
+        Assert.Equal("0.6.0.2", document.Descendants("FileVersion").Single().Value);
+        Assert.Equal("0.6.0.0", document.Descendants("AssemblyVersion").Single().Value);
         Assert.Equal("OmniBrille", document.Descendants("Product").Single().Value);
     }
 
@@ -40,8 +41,8 @@ public sealed class PackagingMetadataTests
         Assert.Contains("Excludes: \"*.pdb\"", script, StringComparison.Ordinal);
         Assert.Contains("Type: files; Name: \"{app}\\*.pdb\"", script, StringComparison.Ordinal);
         Assert.DoesNotContain("OMNISORSE_OMNIBRILLE_PATH", script, StringComparison.Ordinal);
-        Assert.DoesNotContain("OmniExplorer", script, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("OmniNav", script, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(string.Concat("Omni", "Explorer"), script, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(string.Concat("Omni", "Nav"), script, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -54,6 +55,7 @@ public sealed class PackagingMetadataTests
         Assert.Contains("--self-contained', 'true", packageScript, StringComparison.Ordinal);
         Assert.Contains("PublishSingleFile=false", packageScript, StringComparison.Ordinal);
         Assert.Contains("PublishTrimmed=false", packageScript, StringComparison.Ordinal);
+        Assert.Contains("DebugSymbols=false", packageScript, StringComparison.Ordinal);
         Assert.Contains("6.7.3", bootstrapScript, StringComparison.Ordinal);
         Assert.Contains("Get-FileHash", bootstrapScript, StringComparison.Ordinal);
     }

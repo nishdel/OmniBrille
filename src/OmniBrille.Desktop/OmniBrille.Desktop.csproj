@@ -4,9 +4,6 @@
     <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>OmniBrille</AssemblyName>
     <RootNamespace>OmniBrille.Desktop</RootNamespace>
-    <Product>OmniBrille</Product>
-    <Title>OmniBrille</Title>
-    <Description>Optional spatial navigation companion for OmniSorSe.</Description>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
@@ -20,11 +17,11 @@
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
-    <PackageReference Include="Avalonia" Version="12.1.0" />
+    <PackageReference Include="Avalonia" Version="12.1.1" />
     <!-- BuildServices is telemetry-only for the open-source Avalonia packages; OmniBrille opts out in-project. -->
     <PackageReference Include="Avalonia.BuildServices" Version="11.3.2" ExcludeAssets="all" PrivateAssets="all" />
-    <PackageReference Include="Avalonia.Desktop" Version="12.1.0" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.0" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.1" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.1" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.1" />
   </ItemGroup>
 </Project>

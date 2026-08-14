@@ -819,7 +819,7 @@ public sealed partial class MainWindow : Window, IDisposable
             OmniSorSeConnectionState.Connected =>
                 $"Explorer Protocol {_connection.ProtocolInfo?.ProtocolMajor}.{_connection.ProtocolInfo?.ProtocolMinor} · {_connection.AccessibleRoots.Count:N0} authorized indexed root(s) · read-only.",
             OmniSorSeConnectionState.Incompatible =>
-                "The supplied session uses an incompatible Explorer Protocol major version. Standalone mode remains available.",
+                "This version of OmniBrille is not compatible with the running OmniSorSe version. Standalone mode remains available.",
             OmniSorSeConnectionState.Disconnected =>
                 "The previous graph is retained as stale context. Retry while the short-lived session is still valid, or switch to standalone.",
             OmniSorSeConnectionState.Unavailable when
