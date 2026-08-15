@@ -133,7 +133,7 @@ $dependencies = [ordered]@{
 }
 $dependencies | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $dependencyPath -Encoding UTF8
 
-$previewTemplatePath = Join-Path $repositoryRoot 'docs\private-preview-0.6.md'
+$previewTemplatePath = Join-Path $repositoryRoot 'docs\private-preview.md'
 if (-not (Test-Path -LiteralPath $previewTemplatePath -PathType Leaf)) {
     throw "Tester-facing preview notes were not found at '$previewTemplatePath'."
 }

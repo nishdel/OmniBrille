@@ -16,11 +16,11 @@ Inno Setup supplies reliable current-user install, one stable application ID, in
 
 ## Version and deployment model
 
-Stage 8 is `0.6.0-preview.3`. `Directory.Build.props` is the source of truth:
+Stage 9 is `0.7.0-preview.1`. The minor preview increment reflects the new optional voice input surface; `Directory.Build.props` is the source of truth:
 
-- SemVer/informational version: `0.6.0-preview.3`;
-- assembly compatibility version: `0.6.0.0`;
-- Windows file/installer version: `0.6.0.3`.
+- SemVer/informational version: `0.7.0-preview.1`;
+- assembly compatibility version: `0.7.0.0`;
+- Windows file/installer version: `0.7.0.1`.
 
 Patch-like preview increments advance the final numeric file-version component. Pre-release labels progress through `preview.N`, `beta.N`, and `rc.N` before a separately approved stable version. No tag or release is created automatically.
 
@@ -29,11 +29,11 @@ The package remains `win-x64`, self-contained, non-trimmed, and multi-file. This
 Artifact names are:
 
 ```text
-OmniBrille-0.6.0-preview.3-win-x64-setup.exe
-OmniBrille-0.6.0-preview.3-win-x64-setup.exe.sha256
-OmniBrille-0.6.0-preview.3-win-x64-setup-manifest.json
-OmniBrille-0.6.0-preview.3-win-x64-setup-dependencies.json
-OmniBrille-0.6.0-preview.3-win-x64-setup-private-preview-notes.md
+OmniBrille-0.7.0-preview.1-win-x64-setup.exe
+OmniBrille-0.7.0-preview.1-win-x64-setup.exe.sha256
+OmniBrille-0.7.0-preview.1-win-x64-setup-manifest.json
+OmniBrille-0.7.0-preview.1-win-x64-setup-dependencies.json
+OmniBrille-0.7.0-preview.1-win-x64-setup-private-preview-notes.md
 ```
 
 The manifest contains product/version, commit SHA, UTC build time, runtime/deployment, Explorer Protocol compatibility, signing status, installer size/hash, published-runtime size, and optional private workflow identity. It contains no username, developer path, token, or user content. Generated tester notes bind the exact filename, commit, hash, signing state, and workflow to concise installation/support guidance. The dependency document is a sanitized runtime package inventory, not a formal SPDX/CycloneDX SBOM; a formal SBOM was deferred to avoid adding a release-critical tool dependency before it provides a clear private-preview benefit.
@@ -72,7 +72,7 @@ The package script signs and validates `OmniBrille.exe` before installer compila
 
 The manual private-preview workflow accepts `unsigned` or `signed`. In signed mode it requires repository secrets `OMNIBRILLE_SIGNING_PFX_BASE64` and `OMNIBRILLE_SIGNING_PFX_PASSWORD`, imports the certificate into the ephemeral runner user's certificate store, supplies only the thumbprint to the build, and removes both temporary PFX and imported certificate. Private keys/passwords are never source, command-line inputs, logs, or artifacts. A future signing service can replace certificate import without changing package semantics.
 
-No production signing certificate is currently available. Stage 8 candidates are therefore unsigned unless externally managed credentials are supplied. Private testers should expect Windows reputation/unknown-publisher warnings and should verify the SHA-256 from the separately retained sidecar. Hash verification detects corruption; it does not authenticate an unsigned publisher. Testers should follow their organization's security policy rather than casually bypass protections.
+No production signing certificate is currently available. Stage 9 candidates are therefore unsigned unless externally managed credentials are supplied. Private testers should expect Windows reputation/unknown-publisher warnings and should verify the SHA-256 from the separately retained sidecar. Hash verification detects corruption; it does not authenticate an unsigned publisher. Testers should follow their organization's security policy rather than casually bypass protections.
 
 ## CI and private-preview workflow
 
@@ -84,7 +84,11 @@ Normal CI restores, formats, builds, tests, and audits NuGet packages on Windows
 
 The fixed Inno application ID makes a newer package an in-place upgrade. Standard close-app handling asks OmniBrille to close; the installer does not add a custom force-kill path. Upgrade refreshes the owned install directory and preserves exactly one Start Menu/uninstall registration.
 
-Safe visual preferences remain at `%LOCALAPPDATA%\OmniBrille\visual-preferences.json`, outside the install directory, and intentionally survive upgrade/uninstall. They contain only theme, reduced-motion/effects, and the diagnostics toggle. Grants, bearer tokens, endpoints, selected roots, queries, opaque IDs, and Context caches are never persisted.
+Safe UI preferences remain at `%LOCALAPPDATA%\OmniBrille\visual-preferences.json`, outside the install directory, and intentionally survive upgrade/uninstall. They contain theme, reduced-motion/effects, diagnostics toggle, and optional voice enable/language plus explicit runtime/model paths. Grants, bearer tokens, endpoints, selected roots, raw audio, transcripts, queries, opaque IDs, and Context caches are never persisted. User-provided speech runtimes/models outside the installer directory are never removed by upgrade or uninstall.
+
+Stage 9 adds NAudio WinMM assemblies for explicit Windows capture. The package deliberately excludes `whisper-cli`, GGML models, audio samples, and temporary utterances; the application launches normally when those optional external components are absent. Release verification fails if packaged/tracked audio, a whisper runtime, or a `ggml-*.bin` model is found.
+
+The local Stage 9 packaging sample produced a 34,736,556-byte installer and a 105,120,167-byte published runtime. Compared with the preserved Stage 8 installer (34,618,536 bytes), optional capture added 118,020 installer bytes (0.341%). The in-place Stage 8-to-Stage 9 validation retained one Start Menu entry and one uninstall registration, installed no PDB/audio/model/whisper files, and occupied 109,670,113 bytes including installer metadata. These are build-specific engineering samples rather than universal or byte-reproducible guarantees.
 
 Uninstall removes application files, Start Menu entry, and uninstall registration. It leaves preferences, user files, and every OmniSorSe index/setting untouched. No service or daemon exists. Downgrade is not supported or promised; preview upgrade testing is forward-only.
 
@@ -98,4 +102,4 @@ The maintainer checklist in [`RELEASE_CHECKLIST.md`](../RELEASE_CHECKLIST.md) re
 
 The executable, window, Start Menu entry, installer, and uninstall metadata use `OmniBrille`. The Stage 7 mark is a release-quality provisional blue/cyan spatial-navigation asset with transparent PNG source and complete Windows icon sizes; see [`assets/branding/README.md`](../assets/branding/README.md). It can later be professionally refined without changing resource names.
 
-This private repository currently has no selected license. Stage 8 does not choose one. Public distribution should not proceed until the maintainer makes and records that decision.
+This private repository currently has no selected license. Stage 9 does not choose one. Public distribution should not proceed until the maintainer makes and records that decision.

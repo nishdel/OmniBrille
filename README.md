@@ -4,7 +4,7 @@ OmniBrille is an optional, standalone-capable spatial navigation application for
 
 Conceptually, OmniSorSe is the brain. OmniBrille is the visual lens and spatial navigation interface.
 
-OmniBrille is currently a **Private Preview / Pre-release**. Stage 8 adds an exact-candidate distribution gate: checksum-bound tester notes, a fresh hosted-Windows installer lifecycle, an explicit private rollout boundary, and user-invoked sanitized diagnostics over the unchanged Explorer Protocol v1. Voice, destructive file operations, Hybrid mode, and automatic updating remain intentionally absent.
+OmniBrille is currently a **Private Preview / Pre-release**. Stage 9 adds optional local push-to-talk voice as another input for the existing navigation and Search model. Deterministic commands require no LLM; standalone utterances use structural Search, while connected utterances use the existing OmniSorSe Search provider over unchanged Explorer Protocol v1. Voice is off by default and requires a user-provided local whisper.cpp runtime/model. Always-listening audio, destructive file operations, Hybrid mode, and automatic updating remain intentionally absent.
 
 ## What works now
 
@@ -37,16 +37,18 @@ OmniBrille is currently a **Private Preview / Pre-release**. Stage 8 adds an exa
 - A user-invoked `Copy safe diagnostics` action that reports version/runtime, provider/protocol state, bounded counts, timings, and safe error categories without paths, filenames, queries, content, endpoints, grants, tokens, or session/node IDs.
 - Accessible `Standalone`, connecting, connected, unavailable, incompatible, disconnected, and reconnecting states; a disconnected graph remains visible as stale context rather than crashing.
 - Safe provider switching: connected opaque IDs, selection, Search, details, and Back history are cleared before standalone access is established.
+- Optional one-shot push-to-talk (`Ctrl+Shift+Space`) with a visible bounded 45-second capture state, local whisper.cpp transcription, a deterministic English command registry, visible-node matching, and conservative Search fallback. No model/runtime is bundled or downloaded; missing voice components never block normal startup.
+- Voice Search reuses the current provider: standalone remains filename/folder/path Search and connected mode delegates to real OmniSorSe Search. Voice never adds a semantic engine or client-generated Context relationship.
 
 ## Privacy and access philosophy
 
-Standalone mode can inspect only the root the user explicitly chooses. It does not enumerate unrelated drives or user folders, follow directory reparse points recursively, modify files, use cloud services, emit telemetry, or run a background indexer. Structural search is an explicit foreground action, stays inside that root, and has result/directory limits.
+Standalone mode can inspect only the root the user explicitly chooses. It does not enumerate unrelated drives or user folders, follow directory reparse points recursively, modify files, use cloud services, emit telemetry, or run a background indexer. Structural search is an explicit foreground action, stays inside that root, and has result/directory limits. Voice has no wake word or background recorder: the microphone activates only after explicit push-to-talk, audio is processed locally, bounded, and discarded after transcription, and transcript text is neither logged nor persisted.
 
-Visual preferences are stored below the operating system's local application-data directory in `OmniBrille/visual-preferences.json` (`%LOCALAPPDATA%\OmniBrille` on Windows). They contain only theme/effects choices and the developer diagnostics toggle; selected filesystem paths are not persisted.
+Visual preferences are stored below the operating system's local application-data directory in `OmniBrille/visual-preferences.json` (`%LOCALAPPDATA%\OmniBrille` on Windows). They contain theme/effects choices, the developer diagnostics toggle, and—only when configured—the voice-enabled/language and local runtime/model paths. Selected filesystem roots, audio, transcripts, queries, grants, and session IDs are not persisted.
 
 ## Build and run
 
-Prerequisites for source builds: the SDK selected by `global.json` and a Windows, macOS, or Linux desktop supported by Avalonia. Stage 8 retains Windows installed runtime and normal v2.5 RC two-process validation, adds an artifact-only fresh hosted-Windows install/launch/uninstall gate, and keeps Windows/Ubuntu build/tests; Linux interactive runtime and macOS build/runtime remain unvalidated.
+Prerequisites for source builds: the SDK selected by `global.json` and a Windows, macOS, or Linux desktop supported by Avalonia. Windows is the validated microphone/runtime platform; Windows/Ubuntu build and model-independent test coverage remain in CI. Linux interactive voice runtime and macOS build/runtime remain unvalidated.
 
 ```powershell
 cd "D:\Own Projects\OmniBrille"
@@ -62,21 +64,21 @@ Build the pinned, unsigned Windows installer with:
 .\build\Package-Windows.ps1 -BootstrapInnoSetup
 ```
 
-The current package is `OmniBrille-0.6.0-preview.3-win-x64-setup.exe`. It is self-contained, non-trimmed, and multi-file for reliable Avalonia/XAML behavior. The build also emits a release manifest, sanitized dependency manifest, SHA-256 sidecar, and tester notes containing that exact artifact's hash. See [PACKAGING.md](docs/PACKAGING.md) for prerequisites, install/upgrade/uninstall semantics, signing, private-preview automation, and alternatives considered.
+The Stage 9 package is `OmniBrille-0.7.0-preview.1-win-x64-setup.exe`. It remains self-contained, non-trimmed, and multi-file for reliable Avalonia/XAML behavior. It includes only the small Windows capture dependency—not whisper.cpp or a speech model. The build also emits a release manifest, sanitized dependency manifest, SHA-256 sidecar, and tester notes containing that exact artifact's hash. See [PACKAGING.md](docs/PACKAGING.md) for prerequisites, install/upgrade/uninstall semantics, signing, private-preview automation, and alternatives considered.
 
 The application initially shows no filesystem content. Choose a folder to establish the access root. For an explicit command-line launch (useful for local smoke testing), append `-- --root "C:\path\you\chose" --theme Light`. The theme value may be `Light` or `Dark`.
 
 The committed OmniSorSe v2.5 release candidate can start OmniBrille with `--omnisorse-handoff <one-time-pipe-name>`. The pipe name has the fixed product prefix and a 128-bit random suffix; the pipe transfers a strict, bounded, short-lived grant over a current-user-only channel. The secret is never a command-line value, file, preference, UI string, or normal diagnostic. OmniBrille performs no background discovery. Direct launch remains standalone.
 
-Open the HUD settings control to select `Reduced motion`, `Reduced visual effects`, the local diagnostics overlay, or `Copy safe diagnostics` for a user-reviewed support snapshot. Open the accessible list from the `List` HUD control or `Ctrl+Shift+L`. Keyboard essentials are `Ctrl+1` for Structure, `Ctrl+2` for Context, `Ctrl+Shift+F` for Context filters, `Ctrl+F` for Search, `Backspace` or `Alt+Left` for Back, arrows to change selection, `Enter` to activate/refocus, `Escape` to dismiss/cancel, `+`/`-` to zoom, and `0` to reset the graph view.
+Open the HUD settings control to select `Reduced motion`, `Reduced visual effects`, local Voice configuration, the diagnostics overlay, or `Copy safe diagnostics` for a user-reviewed support snapshot. Open the accessible list from the `List` HUD control or `Ctrl+Shift+L`. Keyboard essentials are `Ctrl+1` for Structure, `Ctrl+2` for Context, `Ctrl+Shift+F` for Context filters, `Ctrl+F` for Search, `Ctrl+Shift+Space` for push-to-talk, `Backspace` or `Alt+Left` for Back, arrows to change selection, `Enter` to activate/refocus, `Escape` to dismiss/cancel, `+`/`-` to zoom, and `0` to reset the graph view. See [local push-to-talk voice](docs/voice.md) for setup, commands, privacy, and limitations.
 
 ## Repository structure
 
 ```text
 src/
-  OmniBrille.Core/            explorer/Context contracts, bounded builders, layouts, caches, presentation policy
-  OmniBrille.Infrastructure/  standalone adapter, strict Protocol v1 client/connected Context adapter, preferences
-  OmniBrille.Desktop/         Avalonia shell/session, Structure/Context renderer, accessibility, themes
+  OmniBrille.Core/            explorer/Context/voice contracts, bounded builders, layouts, caches, command coordinator
+  OmniBrille.Infrastructure/  standalone/Protocol adapters, preferences, bounded local audio/whisper.cpp provider
+  OmniBrille.Desktop/         Avalonia shell/session, Structure/Context renderer, accessible push-to-talk HUD, themes
   OmniSorSe.ExplorerProtocol/ exact dependency-free v1 wire contracts mirrored from OmniSorSe
 tests/
   OmniBrille.Tests/           domain, session, filesystem, failure, and persistence tests
@@ -86,7 +88,8 @@ docs/
   context-rendering-contract.md implemented Context limits, semantics, accessibility, and gaps
   explorer-protocol.md        actual Protocol v1 and v2.5 RC handoff behavior
   PACKAGING.md                reproducible Windows installer and lifecycle policy
-  private-preview-0.6.md      concise tester installation, checksum, and feature guidance
+  voice.md                    local runtime/model setup, deterministic grammar, privacy, and limitations
+  private-preview.md          generated-note template for installation, checksum, voice, and feature guidance
   PRIVATE_PREVIEW_FEEDBACK.md privacy-conscious tester report template
   PRIVATE_PREVIEW_ROLLOUT.md  controlled rollout boundary and blocker policy
   SECURITY-PRIVACY.md         release security, privacy, handoff, and safe diagnostics posture
@@ -106,10 +109,10 @@ CI is defined in `.github/workflows/ci.yml`. It restores, verifies formatting, b
 
 OmniSorSe is the primary local-first file intelligence application. It is responsible for scanning, indexing, Search, Content Intelligence, Media Intelligence, OCR, transcripts, Related Files, organization, safe file operations, and persistent intelligence/index state.
 
-OmniBrille is the optional spatial navigation companion. It is responsible for graph-based filesystem navigation, Structure mode, spatial Search presentation, visual navigation, real server-authored Context presentation, and future voice navigation/search. Context relationships are supplied exclusively by OmniSorSe; OmniBrille does not duplicate its intelligence.
+OmniBrille is the optional spatial navigation companion. It is responsible for graph-based filesystem navigation, Structure mode, spatial Search presentation, visual navigation, real server-authored Context presentation, and optional local voice input. Context relationships are supplied exclusively by OmniSorSe; voice Search routes through the same existing standalone/connected providers, so OmniBrille does not duplicate its intelligence.
 
 OmniBrille consumes OmniSorSe Explorer Protocol v1 through a narrow named-pipe client and will never read OmniSorSe's SQLite schema or reuse its application/indexing implementations. Only the small dependency-free wire contract is mirrored locally. Standalone and connected providers remain separate authorities: connected mode uses only roots and opaque nodes authorized by OmniSorSe, with no direct-filesystem fallback.
 
 The private GitHub repository is `nishdel/OmniBrille`.
 
-See [the architecture](docs/architecture.md), [the packaging guide](docs/PACKAGING.md), [compatibility matrix](COMPATIBILITY.md), [release checklist](RELEASE_CHECKLIST.md), [security/privacy posture](docs/SECURITY-PRIVACY.md), [Context rendering contract](docs/context-rendering-contract.md), [Protocol v1 and handoff integration record](docs/explorer-protocol.md), and [roadmap](ROADMAP.md).
+See [the architecture](docs/architecture.md), [voice guide](docs/voice.md), [packaging guide](docs/PACKAGING.md), [compatibility matrix](COMPATIBILITY.md), [release checklist](RELEASE_CHECKLIST.md), [security/privacy posture](docs/SECURITY-PRIVACY.md), [Context rendering contract](docs/context-rendering-contract.md), [Protocol v1 and handoff integration record](docs/explorer-protocol.md), and [roadmap](ROADMAP.md).

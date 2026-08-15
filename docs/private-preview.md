@@ -31,15 +31,17 @@ If the header identifies an unsigned preview, Windows may show **Unknown Publish
 - Standalone selected-folder Structure navigation, bounded aggregation, Search, details, Light/Dark, reduced motion/effects, and accessible list.
 - Compatible OmniSorSe discovery and one-time handoff, authorized Structure, Search, details, and bounded server-authored Context.
 - Context filters, relationship reason/evidence/provenance, refocus, Back, keyboard navigation, and disconnect-safe stale orientation.
-- Per-user install, in-place preview upgrade, and uninstall that retains only safe visual preferences by policy.
+- Optional local push-to-talk commands and Search on Windows. Voice is off by default and requires a separately obtained `whisper-cli` plus compatible GGML model configured in Settings; neither is downloaded or bundled.
+- Per-user install, in-place preview upgrade, and uninstall that retains only safe UI preferences by policy. User-provided models outside the install directory are untouched.
 
 ## Known limitations
 
 - Windows x64 is the only installed/runtime-validated platform. Ubuntu is build/test-only; macOS runtime is unvalidated.
 - Context density depends on OmniSorSe's indexed intelligence. OmniBrille does not invent relationships.
-- Voice, Hybrid mode, destructive file operations, automatic updating, cloud services, and telemetry are absent.
+- Voice commands are English-only, use the default Windows input device, and have process-per-utterance model-load latency. Linux/macOS microphone capture is not validated.
+- Hybrid mode, destructive file operations, automatic updating, cloud services, always-listening audio, and telemetry are absent.
 - The repository has no selected public-distribution license.
 
 ## Safe feedback
 
-Use the settings HUD's **Copy safe diagnostics** action and review the text before sharing. It excludes paths, filenames, queries, content, endpoints, grants, tokens, and session/node identifiers. Include the OmniBrille/OmniSorSe versions, Windows version, Standalone or Connected, Structure or Context, the action attempted, actual behavior, and whether it reproduces. Do not attach private content or databases unless separately reviewed and requested.
+Use the settings HUD's **Copy safe diagnostics** action and review the text before sharing. It excludes audio, transcript text, runtime/model paths, filesystem paths, filenames, queries, content, endpoints, grants, tokens, and session/node identifiers. Include the OmniBrille/OmniSorSe versions, Windows version, Standalone or Connected, Structure or Context, voice state/model family where relevant, the action attempted, actual behavior, and whether it reproduces. Do not attach microphone audio, spoken text, private content, or databases unless separately reviewed and requested.

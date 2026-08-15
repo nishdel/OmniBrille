@@ -10,6 +10,25 @@ All notable OmniBrille changes are recorded here. The project uses SemVer-compat
 - Maintainer license decision before any public distribution.
 - Production Authenticode signing when externally managed credentials are available.
 
+## [0.7.0-preview.1] - 2026-08-15
+
+### Added
+
+- Optional Windows push-to-talk capture with an explicit 45-second bound, visible microphone state, `Ctrl+Shift+Space`, cancellation, and reduced-motion/effects presentation.
+- Replaceable local speech contracts plus a user-provided whisper.cpp CLI/GGML provider with lazy validation, bounded process/output handling, and guaranteed temporary-audio cleanup.
+- Deterministic English navigation/mode/theme/UI command registry with exact visible-node matching and conservative Search fallback.
+- Voice-specific automation/live regions, sanitized timing/classification diagnostics, provider-generation stale-result protection, and model/microphone-independent unit/headless coverage.
+
+### Changed
+
+- Standalone voice queries now use the existing bounded structural Search; connected voice queries use the existing OmniSorSe Explorer Protocol v1 Search path. No semantic or LLM pipeline was added.
+- Windows packaging includes only small NAudio WinMM capture assemblies. whisper.cpp, models, and audio are neither bundled nor downloaded.
+
+### Security
+
+- Voice is disabled by default, never listens in the background, never logs/persists transcript text, and discards in-memory/temporary audio after each utterance.
+- Speech process invocation uses structured arguments with explicit paths, bounded output/time, cancellation process-tree termination, and release gates that reject audio/model/runtime artifacts.
+
 ## [0.6.0-preview.3] - 2026-08-15
 
 ### Added

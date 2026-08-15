@@ -34,6 +34,10 @@ Checkboxes are maintainer gates. Automated verification does not mark manual che
 - [ ] Fresh install succeeds as a normal current user.
 - [ ] Start Menu launch opens Standalone.
 - [ ] Folder selection, Structure, Search, Light/Dark, reduced motion/effects, and accessible list are smoke-tested.
+- [ ] Application starts and all non-voice features work with Voice disabled and with no whisper.cpp runtime/model installed.
+- [ ] On Windows hardware, push-to-talk clearly announces listening/transcribing, stops on `Escape`, and runs representative deterministic commands.
+- [ ] Standalone spoken Search uses only the selected-root structural provider; connected spoken Search reaches the existing OmniSorSe Search capability.
+- [ ] Missing runtime/model, microphone unavailable, and permission denial remain non-fatal and leave typed Search available.
 - [ ] Compatible OmniSorSe discovers the installed executable without `OMNISORSE_OMNIBRILLE_PATH`.
 - [ ] Handoff reaches `Connected · OmniSorSe`; authorized roots, Structure, Search, details, Context, filters, refocus, and Back work.
 - [ ] In-place upgrade from the previous preview preserves safe preferences and creates no duplicate registration or stale PDBs.
@@ -44,7 +48,10 @@ Checkboxes are maintainer gates. Automated verification does not mark manual che
 - [ ] Installer name, version metadata, size, installed footprint, and hash are recorded in release notes.
 - [ ] Artifact contains no PDB/source/test files, logs, databases, screenshots, user content, local paths, keys, tokens, or OmniSorSe application binaries.
 - [ ] Handoff grants remain memory-only; no secret appears in arguments, preferences, manifests, hashes, or diagnostics.
-- [ ] No telemetry, cloud upload, microphone, background service, or auto-start behavior is present.
+- [ ] No telemetry, cloud upload, always-listening microphone, voice helper/background service, or auto-start behavior is present.
+- [ ] Artifact contains no raw/test audio, whisper runtime, GGML model, or temporary utterance; configured external models remain untouched by uninstall.
+- [ ] Voice diagnostics contain timing/length/classification only—no audio, transcript, runtime/model path, or spoken query text.
+- [ ] Runtime/model licenses and distribution boundary are documented; only distributable NAudio capture assemblies are packaged.
 - [ ] Runtime performance regression samples are recorded.
 - [ ] Known limitations and safe support-data instructions are included in preview notes.
 - [ ] `Copy safe diagnostics` output is reviewed and contains no paths, queries, content, endpoint, grant, token, or session/node identity.

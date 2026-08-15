@@ -78,7 +78,7 @@ public sealed class MainWindowHeadlessTests
 
         var report = window.CreateSanitizedDiagnosticsReport();
         Assert.Contains("OmniBrille safe diagnostics", report, StringComparison.Ordinal);
-        Assert.Contains("0.6.0-preview.3", report, StringComparison.Ordinal);
+        Assert.Contains("0.7.0-preview.1", report, StringComparison.Ordinal);
         Assert.Contains("Provider: Connected", report, StringComparison.Ordinal);
         Assert.DoesNotContain("one-time-handoff", report, StringComparison.Ordinal);
         Assert.DoesNotContain("private search query", report, StringComparison.Ordinal);

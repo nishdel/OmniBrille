@@ -5,15 +5,15 @@ namespace OmniBrille.Tests;
 public sealed class PackagingMetadataTests
 {
     [Fact]
-    public void CentralVersion_IsPreReleaseAndConsistentWithStageEightPackage()
+    public void CentralVersion_IsPreReleaseAndConsistentWithStageNinePackage()
     {
         var root = FindRepositoryRoot();
         var document = XDocument.Load(Path.Combine(root, "Directory.Build.props"));
 
-        Assert.Equal("0.6.0", document.Descendants("VersionPrefix").Single().Value);
-        Assert.Equal("preview.3", document.Descendants("VersionSuffix").Single().Value);
-        Assert.Equal("0.6.0.3", document.Descendants("FileVersion").Single().Value);
-        Assert.Equal("0.6.0.0", document.Descendants("AssemblyVersion").Single().Value);
+        Assert.Equal("0.7.0", document.Descendants("VersionPrefix").Single().Value);
+        Assert.Equal("preview.1", document.Descendants("VersionSuffix").Single().Value);
+        Assert.Equal("0.7.0.1", document.Descendants("FileVersion").Single().Value);
+        Assert.Equal("0.7.0.0", document.Descendants("AssemblyVersion").Single().Value);
         Assert.Equal("OmniBrille", document.Descendants("Product").Single().Value);
     }
 
@@ -58,6 +58,30 @@ public sealed class PackagingMetadataTests
         Assert.Contains("DebugSymbols=false", packageScript, StringComparison.Ordinal);
         Assert.Contains("6.7.3", bootstrapScript, StringComparison.Ordinal);
         Assert.Contains("Get-FileHash", bootstrapScript, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void VoiceCaptureDependency_HasPackagedLicenseNoticeWithoutBundledModel()
+    {
+        var root = FindRepositoryRoot();
+        var infrastructure = XDocument.Load(Path.Combine(
+            root,
+            "src",
+            "OmniBrille.Infrastructure",
+            "OmniBrille.Infrastructure.csproj"));
+        var desktop = File.ReadAllText(Path.Combine(
+            root,
+            "src",
+            "OmniBrille.Desktop",
+            "OmniBrille.Desktop.csproj"));
+        var notice = File.ReadAllText(Path.Combine(root, "THIRD-PARTY-NOTICES.txt"));
+
+        Assert.Equal("2.3.0", infrastructure.Descendants("PackageReference")
+            .Single(reference => (string?)reference.Attribute("Include") == "NAudio.WinMM")
+            .Attribute("Version")!.Value);
+        Assert.Contains("THIRD-PARTY-NOTICES.txt", desktop, StringComparison.Ordinal);
+        Assert.Contains("Copyright 2020 Mark Heath", notice, StringComparison.Ordinal);
+        Assert.Contains("whisper.cpp and GGML speech models are not included", notice, StringComparison.Ordinal);
     }
 
     private static string FindRepositoryRoot()

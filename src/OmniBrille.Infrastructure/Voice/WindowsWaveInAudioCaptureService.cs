@@ -78,6 +78,11 @@ public sealed class WindowsWaveInAudioCaptureService : IAudioCaptureService
             {
                 _recorder.StartRecording();
             }
+            catch (MmException exception)
+            {
+                CleanupRecorder();
+                throw new InvalidOperationException("Windows microphone capture could not be started.", exception);
+            }
             catch
             {
                 CleanupRecorder();
@@ -100,7 +105,15 @@ public sealed class WindowsWaveInAudioCaptureService : IAudioCaptureService
             }
 
             stoppedTask = _stopped.Task;
-            _recorder.StopRecording();
+            try
+            {
+                _recorder.StopRecording();
+            }
+            catch (MmException exception)
+            {
+                CleanupRecorder();
+                throw new InvalidOperationException("Windows microphone capture could not be stopped safely.", exception);
+            }
         }
 
         var failure = await stoppedTask.WaitAsync(cancellationToken).ConfigureAwait(false);

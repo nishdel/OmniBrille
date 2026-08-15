@@ -39,7 +39,8 @@ function Assert-TrackedArtifactHygiene {
     $forbidden = @(
         $tracked | Where-Object {
             $_ -match '(^|/)(bin|obj|artifacts|TestResults|\.vs)/' -or
-            $_ -match '\.(pdb|pfx|snk|cer|key|log|db|sqlite)$'
+            $_ -match '\.(pdb|pfx|snk|cer|key|log|db|sqlite|wav|mp3|flac|m4a|ogg|wma)$' -or
+            $_ -match '(?i)(^|/)ggml-[^/]+\.bin$'
         }
     )
     if ($forbidden.Count -gt 0) {
@@ -77,7 +78,8 @@ function Assert-PackagedContents {
     $forbiddenFiles = @(
         Get-ChildItem -LiteralPath $publishDirectory -Recurse -File | Where-Object {
             $_.Extension -in '.pdb','.cs','.csproj','.sln','.user','.log','.db','.sqlite','.pfx','.snk','.key' -or
-            $_.Name -match '(?i)(testhost|OmniBrille\.(Tests|HeadlessTests)|fixture|screenshot)'
+            $_.Extension -in '.wav','.mp3','.flac','.m4a','.ogg','.wma' -or
+            $_.Name -match '(?i)(testhost|OmniBrille\.(Tests|HeadlessTests)|fixture|screenshot|whisper-cli|ggml-.*\.bin)'
         }
     )
     if ($forbiddenFiles.Count -gt 0) {

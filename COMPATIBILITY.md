@@ -4,12 +4,14 @@ OmniBrille uses capability negotiation and Explorer Protocol major-version valid
 
 | OmniBrille | OmniSorSe | Explorer Protocol | Platform | Status |
 |---|---|---|---|---|
-| 0.6.0-preview.3 | committed v2.5 RC `59be07c6cebff12072cbf18701fb16cb11801287` | v1.0 | Windows x64 | Candidate compatibility: installed discovery/handoff, Structure, Search, details, and Context retain the validated v2.5 RC path; exact candidate lifecycle is separately release-gated |
+| 0.7.0-preview.1 | committed v2.5 RC `59be07c6cebff12072cbf18701fb16cb11801287` | v1.0 | Windows x64 | Connected Structure/Search/details/Context compatibility retained; connected voice queries use the same Search operation. Live voice additionally requires a user-provided local whisper.cpp runtime/model |
+| 0.7.0-preview.1 | not installed | n/a | Windows x64 | Standalone Structure/Search supported; optional voice commands and structural voice Search use the same selected-root authority |
+| 0.6.0-preview.3 | committed v2.5 RC `59be07c6cebff12072cbf18701fb16cb11801287` | v1.0 | Windows x64 | Stage 8 exact private-preview candidate validated for installed discovery/handoff, Structure, Search, details, and Context; no voice |
 | 0.6.x preview | 2.4.0 | v1.0 | Windows x64 | Protocol data path validated in Stage 4; normal installed companion launch is unavailable because 2.4.0 has no launcher handoff |
 | 0.6.x preview | not installed | n/a | Windows x64 | Standalone supported and installed-runtime validated |
 | 0.6.x preview | compatible future 2.5.x build | v1.x | Windows x64 | Expected to negotiate by protocol/capability; not claimed until tested |
 | 0.6.x preview | any | incompatible protocol major | any | Connected mode fails closed; standalone remains available |
-| current source | not required | n/a | Ubuntu | Restore/build/tests validated in CI; interactive runtime and packaging are not validated |
+| current source | not required | n/a | Ubuntu | Restore/build and model/microphone-independent tests validated in CI; interactive runtime, microphone capture, and packaging are not validated |
 | current source | not required | n/a | macOS | Architecture intended to remain portable; build/runtime are not validated |
 
 ## Compatibility policy
@@ -20,5 +22,6 @@ OmniBrille uses capability negotiation and Explorer Protocol major-version valid
 - Incompatible major version, malformed limits, or missing required capability: connected mode is rejected without undefined parsing; the UI says the versions are incompatible and keeps Standalone available. Expected/actual protocol values remain in local diagnostics.
 - Minor-version additions: unknown JSON fields are tolerated by the serializer, but OmniBrille consumes only understood fields and negotiated capabilities. Server bounds still apply.
 - Application version labels are informational. Explorer Protocol v1 and capabilities are the compatibility authority.
+- Voice does not change Explorer Protocol compatibility. Deterministic commands are local UI actions; connected voice Search calls the already-negotiated v1 Search capability. A missing speech runtime/model affects Voice only and never blocks standalone or connected startup.
 
 OmniBrille never reads OmniSorSe SQLite, broadens an authorized root, or falls back to direct filesystem access for connected nodes.

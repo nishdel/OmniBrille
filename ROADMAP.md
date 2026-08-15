@@ -63,7 +63,7 @@ Status language is intentionally conservative: checked items exist in the applic
 - [x] Compatibility matrix, changelog, release checklist, security/privacy review, and private-preview support guidance.
 - [x] Clean/isolated install, previous-preview upgrade, installed OmniSorSe companion, artifact, performance, and uninstall gates.
 
-## Stage 8 — Private-preview gate and distribution readiness (in progress)
+## Stage 8 — Private-preview gate and distribution readiness (complete engineering gate)
 
 - [x] Exact-artifact checksum policy, generated tester notes, and 90-day commit-named private artifact retention.
 - [x] User-invoked sanitized diagnostics report and privacy-conscious feedback/rollout guidance.
@@ -74,8 +74,12 @@ Status language is intentionally conservative: checked items exist in the applic
 - [ ] Private tester rollout, support triage, and evidence-driven blocker remediation.
 - [ ] Windows VM matrix expansion and Linux/macOS interactive runtime validation.
 
-## Stage 9 — Voice (future, separately approved)
+## Stage 9 — Local push-to-talk voice Search and navigation (in progress)
 
-- [ ] Push-to-talk local speech recognition.
-- [ ] Deterministic navigation commands and OmniSorSe-backed search queries.
-- [ ] No always-listening microphone.
+- [x] Optional bounded Windows push-to-talk capture with explicit listening/transcribing/cancel states and no background service.
+- [x] Replaceable local speech provider; user-provided whisper.cpp/GGML setup with no mandatory download or bundled model.
+- [x] Deterministic English navigation/mode/theme/UI command grammar with safe ambiguity handling and no LLM.
+- [x] Standalone voice queries use structural Search; connected voice queries use the existing OmniSorSe Search provider and never create relationships.
+- [x] Provider-generation stale-result rejection, temporary-audio cleanup, privacy-safe diagnostics, accessibility, reduced motion/effects, and fake-provider/headless tests.
+- [ ] Real Windows microphone + local model command/Search smoke on available hardware.
+- [ ] Validated Stage 9 installer/private-preview workflow and controlled voice tester rollout.

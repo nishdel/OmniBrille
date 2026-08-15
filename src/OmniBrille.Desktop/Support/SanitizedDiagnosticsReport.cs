@@ -117,6 +117,7 @@ public static class SanitizedDiagnosticsReport
     {
         "None" => "None",
         "Windows microphone" => "Windows microphone",
+        "Windows WaveIn" => "Windows WaveIn",
         "whisper.cpp-cli" => "whisper.cpp-cli",
         _ => "Other",
     };

@@ -4,11 +4,31 @@ namespace OmniBrille.Tests;
 
 public sealed class SanitizedDiagnosticsReportTests
 {
+    [Theory]
+    [InlineData("Windows WaveIn")]
+    [InlineData("whisper.cpp-cli")]
+    public void Create_RetainsOnlyKnownSafeVoiceProviderLabels(string provider)
+    {
+        var report = SanitizedDiagnosticsReport.Create(CreateSnapshot(provider));
+
+        Assert.Contains($"provider {provider}", report, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Create_ReducesUnexpectedTransportAndFailureToSafeCategories()
     {
-        var report = SanitizedDiagnosticsReport.Create(new SanitizedDiagnosticsSnapshot(
-            Version: "0.6.0-preview.3",
+        var report = SanitizedDiagnosticsReport.Create(CreateSnapshot("whisper.cpp-cli"));
+
+        Assert.Contains("Transport: other-local", report, StringComparison.Ordinal);
+        Assert.Contains("Last failure category: Other", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("private-endpoint-value", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("C:\\private\\path", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("C:\\private\\voice-model.bin", report, StringComparison.Ordinal);
+        Assert.Contains("Voice result: Search, 24 characters, error Other", report, StringComparison.Ordinal);
+    }
+
+    private static SanitizedDiagnosticsSnapshot CreateSnapshot(string voiceProvider) => new(
+            Version: "0.7.0-preview.1",
             OperatingSystem: "Windows",
             Framework: ".NET 8",
             RuntimeIdentifier: "win-x64",
@@ -22,7 +42,7 @@ public sealed class SanitizedDiagnosticsReportTests
             ReducedMotion: false,
             ReducedEffects: false,
             VoiceState: "Ready",
-            VoiceProvider: "whisper.cpp-cli",
+            VoiceProvider: voiceProvider,
             VoiceModelState: "Configured ggml-base.en",
             VoiceInitializationDuration: TimeSpan.FromMilliseconds(10),
             VoiceCaptureDuration: TimeSpan.FromSeconds(2),
@@ -49,13 +69,5 @@ public sealed class SanitizedDiagnosticsReportTests
             TextCacheEntries: 1,
             ResourceCacheEntries: 2,
             DataRainTokens: 0,
-            DataRainDuration: TimeSpan.Zero));
-
-        Assert.Contains("Transport: other-local", report, StringComparison.Ordinal);
-        Assert.Contains("Last failure category: Other", report, StringComparison.Ordinal);
-        Assert.DoesNotContain("private-endpoint-value", report, StringComparison.Ordinal);
-        Assert.DoesNotContain("C:\\private\\path", report, StringComparison.Ordinal);
-        Assert.DoesNotContain("C:\\private\\voice-model.bin", report, StringComparison.Ordinal);
-        Assert.Contains("Voice result: Search, 24 characters, error Other", report, StringComparison.Ordinal);
-    }
+            DataRainDuration: TimeSpan.Zero);
 }

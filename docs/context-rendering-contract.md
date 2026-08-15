@@ -94,3 +94,5 @@ If representative sustained render cost exceeds the local 16.7 ms engineering ta
 - Relationship detail interaction is node-centric; keyboard/mouse users select a related node and inspect its focus relationship.
 - Context is unavailable in standalone mode and no filename/content heuristic is substituted.
 - Filters do not request additional results. A relationship omitted by the authoritative bounded snapshot cannot be revealed client-side.
+
+Stage 9 voice does not alter this contract. `Switch to Context` and `Show what is related to this` invoke the same current-focus Context transition; open-ended spoken text first becomes existing OmniSorSe Search, and only a user-selected/focused result can then request its real bounded Context. Transcription and result co-occurrence never create an edge.

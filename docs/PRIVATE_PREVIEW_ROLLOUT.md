@@ -17,7 +17,7 @@
 - checksum/manifest/independent hash disagree;
 - connected mode broadens authority or bypasses the protocol.
 
-Visual imperfections, absent voice/Hybrid, unsigned status consciously accepted by the maintainer, sparse Context on low-intelligence data, and missing Linux/macOS packages are documented limitations rather than automatic blockers.
+Visual imperfections, optional voice requiring a separately supplied local runtime/model, absent Hybrid, unsigned status consciously accepted by the maintainer, sparse Context on low-intelligence data, and missing Linux/macOS packages are documented limitations rather than automatic blockers.
 
 ## Distribution boundary
 

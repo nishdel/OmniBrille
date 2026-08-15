@@ -625,9 +625,6 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
     private void SetThemeFromVoice(string theme)
     {
         ThemePicker.SelectedIndex = theme == "Light" ? 1 : 0;
-        _preferences = (_preferences with { Theme = theme }).Normalize();
-        _preferencesStore.Save(_preferences);
-        ApplyVisualPreferences();
     }
 
     private async Task OpenRootAsync(string path)

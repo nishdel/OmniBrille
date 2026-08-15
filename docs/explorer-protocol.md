@@ -2,7 +2,7 @@
 
 ## Status and authority
 
-Stage 7 consumes the same real read-only protocol introduced in OmniSorSe v2.4.0 and companion workflow committed in the v2.5 release candidate. The authoritative source inspected and run is repository `OpenSorSe-recovered-clean`, commit `59be07c6cebff12072cbf18701fb16cb11801287`, especially `src/OpenSorSe.Application/Explorer/ExplorerCompanionLaunch.cs`, `ExplorerReadService.cs`, and `docs/OMNIBRILLE_COMPANION_HANDOFF_v2.5.md`. Protocol major remains 1 and schema remains 5; OmniSorSe source was not modified.
+Stage 9 consumes the same real read-only protocol introduced in OmniSorSe v2.4.0 and companion workflow committed in the v2.5 release candidate. The authoritative source inspected and run is repository `OpenSorSe-recovered-clean`, commit `59be07c6cebff12072cbf18701fb16cb11801287`, especially `src/OpenSorSe.Application/Explorer/ExplorerCompanionLaunch.cs`, `ExplorerReadService.cs`, and `docs/OMNIBRILLE_COMPANION_HANDOFF_v2.5.md`. Protocol major remains 1 and schema remains 5; OmniSorSe source was not modified.
 
 The earlier OmniBrille document was conceptual. Its core boundary was correct—opaque graph DTOs, bounded reads, capability/version negotiation, cancellation, and no SQLite—but transport and exact fields were undecided. This document records the shipped behavior. OmniSorSe is authoritative when the two differ.
 
@@ -126,4 +126,4 @@ OmniBrille validates protocol major 1, the read-only `OmniSorSe` server identity
 
 ## Next boundary
 
-Stage 7 found no release or compatibility blocker that justifies protocol churn. Relationship IDs, immutable snapshots, session-wide Search/Context scope, presentation-string provenance, lack of pushed disconnect, and lack of exact progress remain known limitations, but all fail safely or have honest bounded UX. Protocol v1 should remain unchanged until durable edge actions, incremental updates, selected-root server filtering, or structured provenance becomes a demonstrated requirement.
+Stage 9 voice introduces no wire operation and found no compatibility reason for protocol churn. Local transcription is classified into deterministic UI commands or the existing `Search` request. A connected spoken query therefore uses the same capability negotiation, scope, cancellation, request identity, and graph presentation as typed Search; `Show what is related to this` only switches the existing focus into Context and still obtains relationships through real `GetNeighborhood`/`GetRelated`. Relationship IDs, immutable snapshots, session-wide Search/Context scope, presentation-string provenance, lack of pushed disconnect, and lack of exact progress remain known limitations, but all fail safely or have honest bounded UX. Protocol v1 should remain unchanged until durable edge actions, incremental updates, selected-root server filtering, or structured provenance becomes a demonstrated requirement.
