@@ -69,6 +69,8 @@ public sealed class ReleaseHardeningTests
         Assert.Contains("Get-FileHash", metadataScript, StringComparison.Ordinal);
         Assert.Contains("explorerProtocol", metadataScript, StringComparison.Ordinal);
         Assert.Contains("commitSha", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("private-preview-notes.md", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("docs\\private-preview-0.6.md", metadataScript, StringComparison.Ordinal);
         Assert.Contains("dependency manifest; not a formal SPDX or CycloneDX SBOM", metadataScript, StringComparison.Ordinal);
         Assert.DoesNotContain("AuthorizationToken", metadataScript, StringComparison.Ordinal);
         Assert.DoesNotContain("UserProfile", metadataScript, StringComparison.Ordinal);
@@ -86,6 +88,15 @@ public sealed class ReleaseHardeningTests
         Assert.DoesNotContain("actions/checkout@v4", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("actions/setup-dotnet@v4", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("actions/upload-artifact@v4", workflow, StringComparison.Ordinal);
+
+        var previewWorkflow = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            ".github",
+            "workflows",
+            "private-preview.yml"));
+        Assert.Contains("actions/download-artifact@v8", previewWorkflow, StringComparison.Ordinal);
+        Assert.Contains("Fresh Windows installer lifecycle", previewWorkflow, StringComparison.Ordinal);
+        Assert.Contains("retention-days: 90", previewWorkflow, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -120,7 +131,10 @@ public sealed class ReleaseHardeningTests
         Assert.True(File.Exists(Path.Combine(root, "CHANGELOG.md")));
         Assert.True(File.Exists(Path.Combine(root, "RELEASE_CHECKLIST.md")));
         Assert.True(File.Exists(Path.Combine(root, "docs", "SECURITY-PRIVACY.md")));
-        Assert.Contains("0.6.0-preview.2", File.ReadAllText(Path.Combine(root, "COMPATIBILITY.md")), StringComparison.Ordinal);
+        Assert.True(File.Exists(Path.Combine(root, "docs", "private-preview-0.6.md")));
+        Assert.True(File.Exists(Path.Combine(root, "docs", "PRIVATE_PREVIEW_FEEDBACK.md")));
+        Assert.True(File.Exists(Path.Combine(root, "docs", "PRIVATE_PREVIEW_ROLLOUT.md")));
+        Assert.Contains("0.6.0-preview.3", File.ReadAllText(Path.Combine(root, "COMPATIBILITY.md")), StringComparison.Ordinal);
         Assert.Contains("- [ ]", File.ReadAllText(Path.Combine(root, "RELEASE_CHECKLIST.md")), StringComparison.Ordinal);
     }
 

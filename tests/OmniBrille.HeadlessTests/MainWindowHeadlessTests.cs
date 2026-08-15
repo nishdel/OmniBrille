@@ -61,6 +61,33 @@ public sealed class MainWindowHeadlessTests
     }
 
     [AvaloniaFact]
+    public async Task SanitizedDiagnosticsSurface_IsAccessibleAndExcludesSessionData()
+    {
+        var session = new ExplorerSession();
+        using var window = new MainWindow(
+            session,
+            new MemoryPreferencesStore(),
+            connection: new FakeConnectedCoordinator(),
+            handoffEndpoint: "one-time-handoff");
+        window.Show();
+        await WaitUntilAsync(() => session.ProviderMode == ExplorerProviderMode.Connected && !session.IsLoading);
+        await session.SearchAsync("private search query");
+
+        var copyButton = window.FindControl<Button>("CopyDiagnosticsButton")!;
+        Assert.Equal("Copy sanitized support diagnostics", AutomationProperties.GetName(copyButton));
+
+        var report = window.CreateSanitizedDiagnosticsReport();
+        Assert.Contains("OmniBrille safe diagnostics", report, StringComparison.Ordinal);
+        Assert.Contains("0.6.0-preview.3", report, StringComparison.Ordinal);
+        Assert.Contains("Provider: Connected", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("one-time-handoff", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("private search query", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("opaque-", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("report.txt", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("secret", report, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [AvaloniaFact]
     public void ThemeSwitching_UsesSharedLightAndDarkVariants()
     {
         using var window = CreateWindow(out _, out var store);

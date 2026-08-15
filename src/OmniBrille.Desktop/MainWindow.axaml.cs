@@ -1,14 +1,18 @@
 using System.Globalization;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using OmniBrille.Core;
 using OmniBrille.Desktop.Presentation;
+using OmniBrille.Desktop.Support;
 using OmniBrille.Infrastructure;
 using OmniBrille.Infrastructure.OmniSorSe;
 using Protocol = OmniSorSe.ExplorerProtocol;
@@ -104,6 +108,51 @@ public sealed partial class MainWindow : Window, IDisposable
     public VisualPreferences Preferences => _preferences;
 
     public IOmniSorSeConnectionCoordinator Connection => _connection;
+
+    public string CreateSanitizedDiagnosticsReport()
+    {
+        var graph = GraphScene.Diagnostics;
+        var rain = DataRain.Diagnostics;
+        var connection = _connection.Diagnostics;
+        var informationalVersion = typeof(MainWindow).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+            .InformationalVersion ?? typeof(MainWindow).Assembly.GetName().Version?.ToString() ?? "Unknown";
+        var capabilities = _connection.ProtocolInfo?.Capabilities.ToString() ?? "None";
+
+        return SanitizedDiagnosticsReport.Create(new SanitizedDiagnosticsSnapshot(
+            informationalVersion,
+            RuntimeInformation.OSDescription.Trim(),
+            RuntimeInformation.FrameworkDescription,
+            RuntimeInformation.RuntimeIdentifier,
+            _session.ProviderDisplayName,
+            connection.State.ToString(),
+            _session.ViewMode.ToString(),
+            connection.ProtocolVersion,
+            connection.Transport,
+            capabilities,
+            _session.IsContextAvailable,
+            _preferences.ReducedMotion,
+            _preferences.ReducedEffects,
+            graph.Nodes,
+            _session.SceneBudget,
+            graph.Edges,
+            graph.Labels,
+            graph.Zoom,
+            graph.LayoutDuration,
+            graph.ScenePreparationDuration,
+            graph.LastRenderDuration,
+            _session.LastLoadDuration,
+            connection.LastRequestDuration,
+            connection.TimeoutCount,
+            connection.ReconnectCount,
+            connection.StaleResponseRejectionCount,
+            connection.LastFailureCategory,
+            graph.RenderAllocatedBytes,
+            graph.TextCacheEntries,
+            graph.ResourceCacheEntries,
+            rain.RenderedTokens,
+            rain.LastRenderDuration));
+    }
 
     private async Task InitializeProviderAsync(string? startupRoot)
     {
@@ -432,6 +481,27 @@ public sealed partial class MainWindow : Window, IDisposable
         else
         {
             SettingsButton.Focus();
+        }
+    }
+
+    private async void OnCopyDiagnosticsClick(object? sender, RoutedEventArgs e)
+    {
+        var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+        if (clipboard is null)
+        {
+            DiagnosticsCopyStatus.Text = "Clipboard unavailable.";
+            return;
+        }
+
+        try
+        {
+            await clipboard.SetTextAsync(CreateSanitizedDiagnosticsReport());
+            DiagnosticsCopyStatus.Text = "Safe diagnostics copied. Review before sharing.";
+        }
+        catch (Exception exception) when (
+            exception is InvalidOperationException or NotSupportedException or COMException)
+        {
+            DiagnosticsCopyStatus.Text = "Could not access the clipboard.";
         }
     }
 

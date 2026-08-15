@@ -46,11 +46,27 @@ $outputDirectory = $package.DirectoryName
 $checksumPath = Join-Path $outputDirectory "$($package.Name).sha256"
 $manifestPath = Join-Path $outputDirectory "$baseName-manifest.json"
 $dependencyPath = Join-Path $outputDirectory "$baseName-dependencies.json"
+$previewNotesPath = Join-Path $outputDirectory "$baseName-private-preview-notes.md"
+
+$workflowRunId = if ($env:GITHUB_RUN_ID -match '^\d+$') { $env:GITHUB_RUN_ID } else { $null }
+$workflowRepository = if ($env:GITHUB_REPOSITORY -match '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$') {
+    $env:GITHUB_REPOSITORY
+} else {
+    $null
+}
+$workflow = if ($null -ne $workflowRunId -and $null -ne $workflowRepository) {
+    [ordered]@{
+        runId = $workflowRunId
+        runUrl = "https://github.com/$workflowRepository/actions/runs/$workflowRunId"
+    }
+} else {
+    $null
+}
 
 Set-Content -LiteralPath $checksumPath -Encoding Ascii -Value "$hash *$($package.Name)"
 
 $manifest = [ordered]@{
-    schemaVersion = 1
+    schemaVersion = 2
     product = 'OmniBrille'
     version = $Version
     fileVersion = $NumericVersion
@@ -70,6 +86,7 @@ $manifest = [ordered]@{
         signatureStatus = [string] $signature.Status
     }
     publishedRuntimeBytes = $PublishedBytes
+    workflow = $workflow
 }
 $manifest | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $manifestPath -Encoding UTF8
 
@@ -116,10 +133,39 @@ $dependencies = [ordered]@{
 }
 $dependencies | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $dependencyPath -Encoding UTF8
 
+$previewTemplatePath = Join-Path $repositoryRoot 'docs\private-preview-0.6.md'
+if (-not (Test-Path -LiteralPath $previewTemplatePath -PathType Leaf)) {
+    throw "Tester-facing preview notes were not found at '$previewTemplatePath'."
+}
+$signingDescription = if ($Signed) {
+    'Authenticode signed; verify the publisher and Valid signature before installation.'
+} else {
+    'Unsigned private preview; Windows may show Unknown Publisher or SmartScreen reputation warnings.'
+}
+$workflowDescription = if ($null -ne $workflow) {
+    "GitHub Actions run: $($workflow.runUrl)"
+} else {
+    'Build workflow: local validated release check'
+}
+$previewBody = Get-Content -Raw -LiteralPath $previewTemplatePath
+$previewNotes = @"
+# OmniBrille $Version private preview
+
+Installer: $($package.Name)
+Commit: $($CommitSha.ToLowerInvariant())
+SHA-256: $hash
+Signing: $signingDescription
+$workflowDescription
+
+$previewBody
+"@
+Set-Content -LiteralPath $previewNotesPath -Encoding UTF8 -Value $previewNotes
+
 [pscustomobject]@{
     Checksum = $checksumPath
     Manifest = $manifestPath
     DependencyManifest = $dependencyPath
+    PreviewNotes = $previewNotesPath
     Sha256 = $hash
     SignatureStatus = [string] $signature.Status
 }

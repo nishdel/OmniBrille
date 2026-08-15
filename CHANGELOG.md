@@ -10,6 +10,24 @@ All notable OmniBrille changes are recorded here. The project uses SemVer-compat
 - Maintainer license decision before any public distribution.
 - Production Authenticode signing when externally managed credentials are available.
 
+## [0.6.0-preview.3] - 2026-08-15
+
+### Added
+
+- Checksum-bound generated tester notes and privacy-conscious feedback/controlled-rollout guidance.
+- User-invoked sanitized diagnostics copy action with explicit exclusion of paths, queries, content, endpoints, grants, tokens, and session/node identifiers.
+- Fresh hosted-Windows artifact-only install, installed-window, integrity, and uninstall lifecycle gate with a retained validation record.
+
+### Changed
+
+- Private-preview candidate artifacts now retain for 90 days and carry optional GitHub workflow identity in schema-v2 release manifests.
+- Exact-artifact policy explicitly treats SHA-256 as identifying one build rather than every rebuild of a commit.
+
+### Security
+
+- Unexpected failure/transport values are reduced to bounded categories before diagnostics export.
+- The hosted lifecycle job starts without a source checkout and independently compares installer, sidecar, and manifest hashes.
+
 ## [0.6.0-preview.2] - 2026-08-14
 
 ### Added

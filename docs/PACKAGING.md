@@ -16,11 +16,11 @@ Inno Setup supplies reliable current-user install, one stable application ID, in
 
 ## Version and deployment model
 
-Stage 7 is `0.6.0-preview.2`. `Directory.Build.props` is the source of truth:
+Stage 8 is `0.6.0-preview.3`. `Directory.Build.props` is the source of truth:
 
-- SemVer/informational version: `0.6.0-preview.2`;
+- SemVer/informational version: `0.6.0-preview.3`;
 - assembly compatibility version: `0.6.0.0`;
-- Windows file/installer version: `0.6.0.2`.
+- Windows file/installer version: `0.6.0.3`.
 
 Patch-like preview increments advance the final numeric file-version component. Pre-release labels progress through `preview.N`, `beta.N`, and `rc.N` before a separately approved stable version. No tag or release is created automatically.
 
@@ -29,13 +29,14 @@ The package remains `win-x64`, self-contained, non-trimmed, and multi-file. This
 Artifact names are:
 
 ```text
-OmniBrille-0.6.0-preview.2-win-x64-setup.exe
-OmniBrille-0.6.0-preview.2-win-x64-setup.exe.sha256
-OmniBrille-0.6.0-preview.2-win-x64-setup-manifest.json
-OmniBrille-0.6.0-preview.2-win-x64-setup-dependencies.json
+OmniBrille-0.6.0-preview.3-win-x64-setup.exe
+OmniBrille-0.6.0-preview.3-win-x64-setup.exe.sha256
+OmniBrille-0.6.0-preview.3-win-x64-setup-manifest.json
+OmniBrille-0.6.0-preview.3-win-x64-setup-dependencies.json
+OmniBrille-0.6.0-preview.3-win-x64-setup-private-preview-notes.md
 ```
 
-The manifest contains product/version, commit SHA, UTC build time, runtime/deployment, Explorer Protocol compatibility, signing status, installer size/hash, and published-runtime size. It contains no username, developer path, token, or user content. The dependency document is a sanitized runtime package inventory, not a formal SPDX/CycloneDX SBOM; a formal SBOM was deferred to avoid adding a release-critical tool dependency before it provides a clear private-preview benefit.
+The manifest contains product/version, commit SHA, UTC build time, runtime/deployment, Explorer Protocol compatibility, signing status, installer size/hash, published-runtime size, and optional private workflow identity. It contains no username, developer path, token, or user content. Generated tester notes bind the exact filename, commit, hash, signing state, and workflow to concise installation/support guidance. The dependency document is a sanitized runtime package inventory, not a formal SPDX/CycloneDX SBOM; a formal SBOM was deferred to avoid adding a release-critical tool dependency before it provides a clear private-preview benefit.
 
 ## Reproducible commands
 
@@ -56,7 +57,7 @@ The complete technical preview gate is:
 
 It requires a clean checkout by default and performs version/stale-brand/tracked-artifact checks, restore, formatting, analyzer-enabled Release build, all tests, NuGet vulnerability audit, an informational outdated-package review, package build, publish-content audit, checksum/manifest validation, and `git diff --check`. `-AllowDirty` exists only for developing the release machinery; it is not a release gate. The script never publishes, tags, or creates a GitHub Release.
 
-Outputs are below ignored `artifacts/publish/win-x64` and `artifacts/packages`. The publish directory is safely recreated for each build so removed runtime files cannot accumulate. Exact installer bytes can differ across machines because executable/installer timestamps and signing timestamps are not normalized; inputs, process, naming, version, content policy, and tool version are reproducible.
+Outputs are below ignored `artifacts/publish/win-x64` and `artifacts/packages`. The publish directory is safely recreated for each build so removed runtime files cannot accumulate. Exact installer bytes can differ across machines because executable/installer timestamps and signing timestamps are not normalized; inputs, process, naming, version, content policy, and tool version are reproducible. A checksum therefore identifies one exact retained installer. Its `.sha256`, manifest, generated tester notes, and independent verification must agree; a hash from another rebuild is invalid for it.
 
 ## Signing architecture
 
@@ -71,13 +72,13 @@ The package script signs and validates `OmniBrille.exe` before installer compila
 
 The manual private-preview workflow accepts `unsigned` or `signed`. In signed mode it requires repository secrets `OMNIBRILLE_SIGNING_PFX_BASE64` and `OMNIBRILLE_SIGNING_PFX_PASSWORD`, imports the certificate into the ephemeral runner user's certificate store, supplies only the thumbprint to the build, and removes both temporary PFX and imported certificate. Private keys/passwords are never source, command-line inputs, logs, or artifacts. A future signing service can replace certificate import without changing package semantics.
 
-No production signing certificate is currently available. Stage 7 local artifacts are therefore unsigned. Private testers should expect Windows reputation/unknown-publisher warnings and should verify the SHA-256 from the separately retained sidecar. Hash verification detects corruption; it does not authenticate an unsigned publisher. Testers should follow their organization's security policy rather than casually bypass protections.
+No production signing certificate is currently available. Stage 8 candidates are therefore unsigned unless externally managed credentials are supplied. Private testers should expect Windows reputation/unknown-publisher warnings and should verify the SHA-256 from the separately retained sidecar. Hash verification detects corruption; it does not authenticate an unsigned publisher. Testers should follow their organization's security policy rather than casually bypass protections.
 
 ## CI and private-preview workflow
 
 Normal CI restores, formats, builds, tests, and audits NuGet packages on Windows and Ubuntu. The Windows leg also creates an unsigned installer plus its manifests/checksum and retains them privately for 14 days.
 
-`.github/workflows/private-preview.yml` is `workflow_dispatch` only. It runs the full release check on Windows and retains one private artifact for 30 days. It does not create tags, GitHub Releases, or feed publications. Selecting signed mode without valid secrets is an intentional hard failure.
+`.github/workflows/private-preview.yml` is `workflow_dispatch` only. It runs the full release check on Windows and retains one commit-named private candidate for 90 days. A second fresh hosted-Windows job has no source checkout: it downloads only that candidate, independently verifies installer/sidecar/manifest hashes, performs a per-user silent install, verifies registration and an installed OmniBrille window, then uninstalls and records the exact gate result. This hosted gate does not replace manual interaction, upgrade, or OmniSorSe companion testing. The workflow creates no tag, GitHub Release, or feed publication. Selecting signed mode without valid secrets is an intentional hard failure.
 
 ## Install, upgrade, and uninstall
 
@@ -97,4 +98,4 @@ The maintainer checklist in [`RELEASE_CHECKLIST.md`](../RELEASE_CHECKLIST.md) re
 
 The executable, window, Start Menu entry, installer, and uninstall metadata use `OmniBrille`. The Stage 7 mark is a release-quality provisional blue/cyan spatial-navigation asset with transparent PNG source and complete Windows icon sizes; see [`assets/branding/README.md`](../assets/branding/README.md). It can later be professionally refined without changing resource names.
 
-This private repository currently has no selected license. Stage 7 does not choose one. Public distribution should not proceed until the maintainer makes and records that decision.
+This private repository currently has no selected license. Stage 8 does not choose one. Public distribution should not proceed until the maintainer makes and records that decision.

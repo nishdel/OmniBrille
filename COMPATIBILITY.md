@@ -4,7 +4,7 @@ OmniBrille uses capability negotiation and Explorer Protocol major-version valid
 
 | OmniBrille | OmniSorSe | Explorer Protocol | Platform | Status |
 |---|---|---|---|---|
-| 0.6.0-preview.2 | committed v2.5 RC `59be07c6cebff12072cbf18701fb16cb11801287` | v1.0 | Windows x64 | Supported and validated: installed discovery/handoff, Structure, Search, details, and Context |
+| 0.6.0-preview.3 | committed v2.5 RC `59be07c6cebff12072cbf18701fb16cb11801287` | v1.0 | Windows x64 | Candidate compatibility: installed discovery/handoff, Structure, Search, details, and Context retain the validated v2.5 RC path; exact candidate lifecycle is separately release-gated |
 | 0.6.x preview | 2.4.0 | v1.0 | Windows x64 | Protocol data path validated in Stage 4; normal installed companion launch is unavailable because 2.4.0 has no launcher handoff |
 | 0.6.x preview | not installed | n/a | Windows x64 | Standalone supported and installed-runtime validated |
 | 0.6.x preview | compatible future 2.5.x build | v1.x | Windows x64 | Expected to negotiate by protocol/capability; not claimed until tested |

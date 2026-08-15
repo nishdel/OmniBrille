@@ -176,4 +176,5 @@ $releaseArtifacts = & (Join-Path $PSScriptRoot 'New-ReleaseArtifacts.ps1') `
     Checksum = $releaseArtifacts.Checksum
     Manifest = $releaseArtifacts.Manifest
     DependencyManifest = $releaseArtifacts.DependencyManifest
+    PreviewNotes = $releaseArtifacts.PreviewNotes
 }

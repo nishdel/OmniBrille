@@ -63,8 +63,12 @@ Status language is intentionally conservative: checked items exist in the applic
 - [x] Compatibility matrix, changelog, release checklist, security/privacy review, and private-preview support guidance.
 - [x] Clean/isolated install, previous-preview upgrade, installed OmniSorSe companion, artifact, performance, and uninstall gates.
 
-## Stage 8 — Private-preview distribution and support
+## Stage 8 — Private-preview gate and distribution readiness (in progress)
 
+- [x] Exact-artifact checksum policy, generated tester notes, and 90-day commit-named private artifact retention.
+- [x] User-invoked sanitized diagnostics report and privacy-conscious feedback/rollout guidance.
+- [x] Artifact-only fresh hosted-Windows hash/install/window/uninstall gate with retained validation metadata.
+- [ ] Genuine clean interactive Windows VM validation of Standalone and normal OmniSorSe companion workflow.
 - [ ] Maintainer license decision before any public distribution.
 - [ ] Production Authenticode certificate and signed preview validation.
 - [ ] Private tester rollout, support triage, and evidence-driven blocker remediation.

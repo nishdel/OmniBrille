@@ -500,6 +500,17 @@
                     Content="Developer diagnostics"
                     IsCheckedChanged="OnVisualPreferenceChanged"
                     AutomationProperties.Name="Developer diagnostics" />
+          <Button x:Name="CopyDiagnosticsButton"
+                  Classes="hud"
+                  Content="Copy safe diagnostics"
+                  Click="OnCopyDiagnosticsClick"
+                  AutomationProperties.Name="Copy sanitized support diagnostics"
+                  AutomationProperties.HelpText="Copies product, runtime, connection state, bounded counts, and timings without paths, queries, content, endpoints, or session secrets." />
+          <TextBlock x:Name="DiagnosticsCopyStatus"
+                     FontSize="10"
+                     TextWrapping="Wrap"
+                     Foreground="{DynamicResource SecondaryTextBrush}"
+                     AutomationProperties.LiveSetting="Polite" />
         </StackPanel>
       </Border>
 

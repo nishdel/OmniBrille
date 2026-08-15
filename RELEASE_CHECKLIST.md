@@ -16,7 +16,9 @@ Checkboxes are maintainer gates. Automated verification does not mark manual che
 - [ ] Restore, format, Release build, analyzers, all tests, and NuGet vulnerability audit pass.
 - [ ] The private-preview GitHub Actions workflow succeeds for the intended signing mode.
 - [ ] Installer, release manifest, dependency manifest, and `.sha256` sidecar are retained together.
+- [ ] Generated tester notes name the exact installer, commit, signing state, and SHA-256.
 - [ ] SHA-256 verification succeeds after artifact download.
+- [ ] The artifact-only fresh hosted-Windows install/window/uninstall job succeeds and its validation record is retained.
 
 ## Signing
 
@@ -28,6 +30,7 @@ Checkboxes are maintainer gates. Automated verification does not mark manual che
 ## Clean Windows environment
 
 - [ ] Test environment contains no OmniBrille checkout or developer locator override.
+- [ ] Record whether the environment is a genuine clean VM, hosted artifact-only runner, or an isolated development host; do not conflate them.
 - [ ] Fresh install succeeds as a normal current user.
 - [ ] Start Menu launch opens Standalone.
 - [ ] Folder selection, Structure, Search, Light/Dark, reduced motion/effects, and accessible list are smoke-tested.
@@ -44,3 +47,5 @@ Checkboxes are maintainer gates. Automated verification does not mark manual che
 - [ ] No telemetry, cloud upload, microphone, background service, or auto-start behavior is present.
 - [ ] Runtime performance regression samples are recorded.
 - [ ] Known limitations and safe support-data instructions are included in preview notes.
+- [ ] `Copy safe diagnostics` output is reviewed and contains no paths, queries, content, endpoint, grant, token, or session/node identity.
+- [ ] The controlled-rollout boundary and private-preview blocker policy are reviewed.

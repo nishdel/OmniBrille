@@ -127,6 +127,20 @@ function Assert-PackagedContents {
     if ($dependencyManifest.product -ne 'OmniBrille' -or $dependencyManifest.version -ne $Version) {
         throw 'Runtime dependency manifest identity/version is inconsistent.'
     }
+
+    if (-not (Test-Path -LiteralPath $PackageResult.PreviewNotes -PathType Leaf)) {
+        throw 'Tester-facing private-preview notes were not generated.'
+    }
+    $previewNotes = Get-Content -Raw -LiteralPath $PackageResult.PreviewNotes
+    foreach ($requiredValue in @($Version, [string] $manifest.commitSha, [string] $manifest.installer.fileName, $expectedHash)) {
+        if ($previewNotes.IndexOf($requiredValue, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+            throw "Tester-facing private-preview notes do not contain '$requiredValue'."
+        }
+    }
+    if (-not $manifest.installer.signed -and
+        $previewNotes.IndexOf('Unsigned private preview', [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+        throw 'Unsigned tester notes do not disclose the signing state.'
+    }
 }
 
 Push-Location $repositoryRoot
@@ -185,12 +199,14 @@ try {
     $manifestPath = $null
     $checksumPath = $null
     $dependencyManifestPath = $null
+    $previewNotesPath = $null
     $signed = $false
     if ($null -ne $packageResult) {
         $packagePath = $packageResult.Package
         $manifestPath = $packageResult.Manifest
         $checksumPath = $packageResult.Checksum
         $dependencyManifestPath = $packageResult.DependencyManifest
+        $previewNotesPath = $packageResult.PreviewNotes
         $signed = [bool] $packageResult.Signed
     }
     [pscustomobject]@{
@@ -201,6 +217,7 @@ try {
         Manifest = $manifestPath
         Checksum = $checksumPath
         DependencyManifest = $dependencyManifestPath
+        PreviewNotes = $previewNotesPath
         Signed = $signed
     }
 }
