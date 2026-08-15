@@ -21,6 +21,16 @@ public sealed class SanitizedDiagnosticsReportTests
             ContextAvailable: true,
             ReducedMotion: false,
             ReducedEffects: false,
+            VoiceState: "Ready",
+            VoiceProvider: "whisper.cpp-cli",
+            VoiceModelState: "Configured ggml-base.en",
+            VoiceInitializationDuration: TimeSpan.FromMilliseconds(10),
+            VoiceCaptureDuration: TimeSpan.FromSeconds(2),
+            VoiceTranscriptionDuration: TimeSpan.FromMilliseconds(300),
+            VoiceExecutionDuration: TimeSpan.FromMilliseconds(20),
+            VoiceTranscriptLength: 24,
+            VoiceClassification: "Search",
+            VoiceErrorCategory: "C:\\private\\voice-model.bin",
             Nodes: 3,
             NodeBudget: 48,
             Edges: 2,
@@ -45,5 +55,7 @@ public sealed class SanitizedDiagnosticsReportTests
         Assert.Contains("Last failure category: Other", report, StringComparison.Ordinal);
         Assert.DoesNotContain("private-endpoint-value", report, StringComparison.Ordinal);
         Assert.DoesNotContain("C:\\private\\path", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("C:\\private\\voice-model.bin", report, StringComparison.Ordinal);
+        Assert.Contains("Voice result: Search, 24 characters, error Other", report, StringComparison.Ordinal);
     }
 }

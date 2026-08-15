@@ -663,6 +663,132 @@ public sealed class MainWindowHeadlessTests
             $"load={session.LastLoadDuration.TotalMilliseconds:0.000} ms");
     }
 
+    [AvaloniaFact]
+    public async Task VoiceHud_IsKeyboardAccessibleAndExecutesDeterministicCommand()
+    {
+        var session = new ExplorerSession();
+        var store = new MemoryPreferencesStore();
+        store.Save(new VisualPreferences(VoiceEnabled: true));
+        using var capture = new FakeVoiceCapture();
+        using var speech = new FakeSpeechRecognition("use light mode");
+        using var window = new MainWindow(
+            session,
+            store,
+            audioCapture: capture,
+            speechRecognition: speech);
+        window.Show();
+
+        var voiceButton = window.FindControl<Button>("VoiceButton")!;
+        Assert.Contains("Push to talk", AutomationProperties.GetName(voiceButton), StringComparison.Ordinal);
+        Assert.Equal("Enable local push-to-talk voice", AutomationProperties.GetName(
+            window.FindControl<CheckBox>("VoiceEnabledToggle")!));
+
+        window.KeyPress(
+            Key.Space,
+            RawInputModifiers.Control | RawInputModifiers.Shift,
+            PhysicalKey.Space,
+            " ");
+        await WaitUntilAsync(() => window.Voice.State == VoiceCapabilityState.Listening);
+        Assert.Contains("Listening", window.FindControl<TextBlock>("VoiceStateText")!.Text);
+
+        voiceButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await WaitUntilAsync(() => window.Voice.State == VoiceCapabilityState.Ready);
+
+        Assert.Equal(ThemeVariant.Light, Application.Current!.RequestedThemeVariant);
+        Assert.Contains("use light mode", window.FindControl<TextBlock>("VoiceTranscriptText")!.Text);
+        Assert.False(window.FindControl<Button>("VoiceCancelButton")!.IsVisible);
+    }
+
+    [AvaloniaFact]
+    public async Task VoiceSearch_UsesExistingSessionSearchAndShowsTranscript()
+    {
+        var session = new ExplorerSession();
+        var store = new MemoryPreferencesStore();
+        store.Save(new VisualPreferences(VoiceEnabled: true, ReducedMotion: true, ReducedEffects: true));
+        using var capture = new FakeVoiceCapture();
+        using var speech = new FakeSpeechRecognition("find match");
+        using var window = new MainWindow(
+            session,
+            store,
+            audioCapture: capture,
+            speechRecognition: speech);
+        window.Show();
+        var root = Path.Combine(Path.GetTempPath(), "OmniBrilleVoiceSearch");
+        var match = Entry(Path.Combine(root, "match.txt"), ExplorerNodeKind.File);
+        var provider = new ImmediateProvider(root, match);
+        await session.OpenRootAsync(provider, provider);
+
+        var voiceButton = window.FindControl<Button>("VoiceButton")!;
+        voiceButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await WaitUntilAsync(() => window.Voice.State == VoiceCapabilityState.Listening);
+        Assert.Equal(1, window.FindControl<Border>("VoiceListeningRing")!.Opacity);
+        voiceButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await WaitUntilAsync(() => window.Voice.State == VoiceCapabilityState.Ready);
+
+        Assert.Equal("match", session.SearchQuery);
+        Assert.Single(session.SearchResult!.Hits);
+        Assert.Equal("match", window.FindControl<TextBox>("SearchBox")!.Text);
+        Assert.Equal(1, window.Voice.Diagnostics.TranscriptLength > 0 ? 1 : 0);
+    }
+
+    [AvaloniaFact]
+    public async Task VoiceUnavailableState_DoesNotRequireRuntimeModelOrMicrophoneAtStartup()
+    {
+        var session = new ExplorerSession();
+        var store = new MemoryPreferencesStore();
+        store.Save(new VisualPreferences(VoiceEnabled: true));
+        using var capture = new FakeVoiceCapture();
+        using var speech = new FakeSpeechRecognition("ignored")
+        {
+            CapabilityState = VoiceCapabilityState.RuntimeMissing,
+        };
+        using var window = new MainWindow(
+            session,
+            store,
+            audioCapture: capture,
+            speechRecognition: speech);
+        window.Show();
+
+        window.FindControl<Button>("VoiceButton")!
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await WaitUntilAsync(() => window.Voice.State == VoiceCapabilityState.RuntimeMissing);
+
+        Assert.Contains("RuntimeMissing", AutomationProperties.GetName(
+            window.FindControl<Button>("VoiceButton")!), StringComparison.Ordinal);
+        Assert.Equal(0, capture.StartCount);
+        Assert.Equal("OmniBrille — Structure", window.Title);
+    }
+
+    [AvaloniaFact]
+    public async Task ConnectedVoiceSearch_RoutesThroughExistingOmniSorSeProtocolClient()
+    {
+        var session = new ExplorerSession();
+        var store = new MemoryPreferencesStore();
+        store.Save(new VisualPreferences(VoiceEnabled: true));
+        var connection = new FakeConnectedCoordinator();
+        using var capture = new FakeVoiceCapture();
+        using var speech = new FakeSpeechRecognition("show me report");
+        using var window = new MainWindow(
+            session,
+            store,
+            connection: connection,
+            handoffEndpoint: "one-time-handoff",
+            audioCapture: capture,
+            speechRecognition: speech);
+        window.Show();
+        await WaitUntilAsync(() => session.ProviderMode == ExplorerProviderMode.Connected && !session.IsLoading);
+
+        var voiceButton = window.FindControl<Button>("VoiceButton")!;
+        voiceButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await WaitUntilAsync(() => window.Voice.State == VoiceCapabilityState.Listening);
+        voiceButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await WaitUntilAsync(() => window.Voice.State == VoiceCapabilityState.Ready);
+
+        Assert.Equal("report", connection.LastSearchQuery);
+        Assert.Equal("opaque-file", Assert.Single(session.SearchResult!.Hits).Target);
+        Assert.Contains("OmniSorSe Search", window.Voice.Status, StringComparison.Ordinal);
+    }
+
     private static MainWindow CreateWindow(out ExplorerSession session, out MemoryPreferencesStore store)
     {
         session = new ExplorerSession();
@@ -764,6 +890,60 @@ public sealed class MainWindowHeadlessTests
                 1));
     }
 
+    private sealed class FakeVoiceCapture : IAudioCaptureService
+    {
+        public event Action<double>? LevelChanged;
+
+        public int StartCount { get; private set; }
+
+        public VoiceCapability GetCapability() => new(
+            VoiceCapabilityState.Ready,
+            "Microphone ready",
+            "Fake microphone");
+
+        public Task StartAsync(VoiceRecognitionOptions options, CancellationToken cancellationToken)
+        {
+            StartCount++;
+            LevelChanged?.Invoke(0.7);
+            return Task.CompletedTask;
+        }
+
+        public Task<VoiceAudioClip> StopAsync(CancellationToken cancellationToken) => Task.FromResult(
+            new VoiceAudioClip(new byte[32_000], 16_000, TimeSpan.FromSeconds(1)));
+
+        public Task CancelAsync() => Task.CompletedTask;
+
+        public void Dispose()
+        {
+        }
+    }
+
+    private sealed class FakeSpeechRecognition(string transcript) : ISpeechRecognitionProvider
+    {
+        public VoiceCapabilityState CapabilityState { get; init; } = VoiceCapabilityState.Ready;
+
+        public Task<VoiceCapability> GetCapabilityAsync(
+            VoiceRecognitionOptions options,
+            CancellationToken cancellationToken) => Task.FromResult(new VoiceCapability(
+                CapabilityState,
+                CapabilityState == VoiceCapabilityState.Ready ? "Voice ready" : "Runtime missing",
+                "Fake speech",
+                "Configured"));
+
+        public Task<SpeechRecognitionResult> TranscribeAsync(
+            VoiceAudioClip clip,
+            VoiceRecognitionOptions options,
+            CancellationToken cancellationToken) => Task.FromResult(new SpeechRecognitionResult(
+                transcript,
+                null,
+                TimeSpan.FromMilliseconds(1),
+                "Fake speech"));
+
+        public void Dispose()
+        {
+        }
+    }
+
     private sealed class FakeConnectedCoordinator : IOmniSorSeConnectionCoordinator
     {
         private readonly FakeConnectedClient _client = new();
@@ -784,6 +964,8 @@ public sealed class MainWindowHeadlessTests
         public IReadOnlyList<Protocol.ExplorerNode> AccessibleRoots => [_client.Root];
 
         public IExplorerProtocolClient? Client => _client;
+
+        public string? LastSearchQuery => _client.LastSearchQuery;
 
         public OmniSorSeConnectionDiagnostics Diagnostics => _client.Diagnostics with { State = State };
 
@@ -838,6 +1020,8 @@ public sealed class MainWindowHeadlessTests
             OmniSorSeConnectionState.Connected, "named-pipe", "1.0", TimeSpan.Zero,
             0, 0, 0, 0, 0, null);
 
+        public string? LastSearchQuery { get; private set; }
+
         public Protocol.ExplorerProtocolInfo Info { get; } = new(
             1, 0, "OmniSorSe", "2.4.0",
             Protocol.ExplorerCapability.Structure |
@@ -886,11 +1070,15 @@ public sealed class MainWindowHeadlessTests
 
         public Task<Protocol.ExplorerSearchResult> SearchAsync(
             Protocol.ExplorerSearchRequest request,
-            CancellationToken cancellationToken) => Task.FromResult(new Protocol.ExplorerSearchResult(
+            CancellationToken cancellationToken)
+        {
+            LastSearchQuery = request.Query;
+            return Task.FromResult(new Protocol.ExplorerSearchResult(
                 [new Protocol.ExplorerSearchHit(File, 1, 1, "Indexed name match", null, "Name")],
                 false,
                 "Authorized indexed scope",
                 false));
+        }
 
         public Task<Protocol.ExplorerNodeDetails> GetNodeDetailsAsync(
             Protocol.ExplorerNodeDetailsRequest request,

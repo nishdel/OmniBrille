@@ -15,17 +15,21 @@ using OmniBrille.Desktop.Presentation;
 using OmniBrille.Desktop.Support;
 using OmniBrille.Infrastructure;
 using OmniBrille.Infrastructure.OmniSorSe;
+using OmniBrille.Infrastructure.Voice;
 using Protocol = OmniSorSe.ExplorerProtocol;
 
 namespace OmniBrille.Desktop;
 
-public sealed partial class MainWindow : Window, IDisposable
+public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
 {
     private readonly ExplorerSession _session;
     private readonly IVisualPreferencesStore _preferencesStore;
     private readonly IOmniSorSeConnectionCoordinator _connection;
     private readonly string? _handoffEndpoint;
     private readonly DispatcherTimer _diagnosticsTimer;
+    private readonly DispatcherTimer _voiceVisualTimer;
+    private readonly DispatcherTimer _voiceTranscriptTimer;
+    private readonly VoiceInteractionCoordinator _voice;
     private VisualPreferences _preferences;
     private ExplorerNeighborhood? _lastRenderedNeighborhood;
     private bool _detailsDismissed;
@@ -33,6 +37,7 @@ public sealed partial class MainWindow : Window, IDisposable
     private bool _isSwitchingViewMode;
     private bool _isApplyingContextFilters;
     private bool _isSynchronizingAccessibleList;
+    private bool _voicePulseHigh;
     private bool _isDisposed;
 
     public MainWindow()
@@ -57,13 +62,19 @@ public sealed partial class MainWindow : Window, IDisposable
         string? startupRoot = null,
         string? startupTheme = null,
         IOmniSorSeConnectionCoordinator? connection = null,
-        string? handoffEndpoint = null)
+        string? handoffEndpoint = null,
+        IAudioCaptureService? audioCapture = null,
+        ISpeechRecognitionProvider? speechRecognition = null)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _preferencesStore = preferencesStore ?? throw new ArgumentNullException(nameof(preferencesStore));
         _connection = connection ?? new OmniSorSeConnectionCoordinator();
         _handoffEndpoint = handoffEndpoint;
         _preferences = _preferencesStore.Load().Normalize();
+        _voice = new VoiceInteractionCoordinator(
+            audioCapture ?? new WindowsWaveInAudioCaptureService(),
+            speechRecognition ?? new WhisperCliSpeechRecognitionProvider(),
+            this);
         if (!string.IsNullOrWhiteSpace(startupTheme))
         {
             _preferences = (_preferences with { Theme = startupTheme }).Normalize();
@@ -82,6 +93,7 @@ public sealed partial class MainWindow : Window, IDisposable
         _session.StateChanged += OnSessionStateChanged;
         _session.ProviderFailed += OnProviderFailed;
         _connection.StateChanged += OnConnectionStateChanged;
+        _voice.StateChanged += OnVoiceStateChanged;
         AccessibleNodesList.AddHandler(
             InputElement.KeyDownEvent,
             OnAccessibleNodesKeyDown,
@@ -98,7 +110,17 @@ public sealed partial class MainWindow : Window, IDisposable
         _diagnosticsTimer.Tick += (_, _) => UpdateDiagnostics();
         _diagnosticsTimer.Start();
 
+        _voiceVisualTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(180) };
+        _voiceVisualTimer.Tick += (_, _) => UpdateVoiceListeningVisual();
+        _voiceTranscriptTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(12) };
+        _voiceTranscriptTimer.Tick += (_, _) =>
+        {
+            _voiceTranscriptTimer.Stop();
+            _voice.DismissTranscript();
+        };
+
         ApplyPreferencesToControls();
+        UpdateVoiceView();
         UpdateView();
 
         Opened += async (_, _) => await InitializeProviderAsync(startupRoot);
@@ -110,11 +132,48 @@ public sealed partial class MainWindow : Window, IDisposable
 
     public IOmniSorSeConnectionCoordinator Connection => _connection;
 
+    public VoiceInteractionCoordinator Voice => _voice;
+
+    public VoiceActionContext CaptureVoiceContext() => new(_session.ProviderGeneration);
+
+    public bool IsVoiceContextCurrent(VoiceActionContext context) =>
+        context.ProviderGeneration == _session.ProviderGeneration;
+
+    public Task<VoiceActionResult> ExecuteVoiceIntentAsync(
+        VoiceIntent intent,
+        CancellationToken cancellationToken)
+    {
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            return ExecuteVoiceIntentCoreAsync(intent, cancellationToken);
+        }
+
+        var completion = new TaskCompletionSource<VoiceActionResult>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        Dispatcher.UIThread.Post(async () =>
+        {
+            try
+            {
+                completion.TrySetResult(await ExecuteVoiceIntentCoreAsync(intent, cancellationToken));
+            }
+            catch (OperationCanceledException)
+            {
+                completion.TrySetCanceled(cancellationToken);
+            }
+            catch (Exception exception)
+            {
+                completion.TrySetException(exception);
+            }
+        });
+        return completion.Task;
+    }
+
     public string CreateSanitizedDiagnosticsReport()
     {
         var graph = GraphScene.Diagnostics;
         var rain = DataRain.Diagnostics;
         var connection = _connection.Diagnostics;
+        var voice = _voice.Diagnostics;
         var informationalVersion = typeof(MainWindow).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
             .InformationalVersion ?? typeof(MainWindow).Assembly.GetName().Version?.ToString() ?? "Unknown";
@@ -134,6 +193,16 @@ public sealed partial class MainWindow : Window, IDisposable
             _session.IsContextAvailable,
             _preferences.ReducedMotion,
             _preferences.ReducedEffects,
+            voice.State.ToString(),
+            voice.Provider,
+            voice.ModelState,
+            voice.InitializationDuration,
+            voice.CaptureDuration,
+            voice.TranscriptionDuration,
+            voice.ExecutionDuration,
+            voice.TranscriptLength,
+            voice.Classification,
+            voice.LastErrorCategory,
             graph.Nodes,
             _session.SceneBudget,
             graph.Edges,
@@ -405,6 +474,162 @@ public sealed partial class MainWindow : Window, IDisposable
         await _session.SearchAsync(SearchBox.Text ?? string.Empty);
     }
 
+    private async Task<VoiceActionResult> ExecuteVoiceIntentCoreAsync(
+        VoiceIntent intent,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        switch (intent.Kind)
+        {
+            case VoiceIntentKind.GoBack:
+                if (!_session.CanGoBack)
+                {
+                    return VoiceActionResult.Rejected("There is no previous graph focus.");
+                }
+
+                await _session.GoBackAsync(cancellationToken);
+                return VoiceActionResult.Completed("Moved back.");
+
+            case VoiceIntentKind.OpenVisibleNode:
+            case VoiceIntentKind.FocusVisibleNode:
+                return await ExecuteVisibleNodeVoiceIntentAsync(intent, cancellationToken);
+
+            case VoiceIntentKind.ZoomIn:
+                GraphScene.ZoomIn();
+                return VoiceActionResult.Completed("Zoomed in.");
+
+            case VoiceIntentKind.ZoomOut:
+                GraphScene.ZoomOut();
+                return VoiceActionResult.Completed("Zoomed out.");
+
+            case VoiceIntentKind.ResetView:
+                GraphScene.ResetView();
+                return VoiceActionResult.Completed("View reset.");
+
+            case VoiceIntentKind.SwitchToStructure:
+                await SwitchToStructureAsync();
+                return VoiceActionResult.Completed("Structure mode active.");
+
+            case VoiceIntentKind.SwitchToContext:
+            case VoiceIntentKind.ShowRelatedToFocus:
+                if (!_session.IsContextAvailable)
+                {
+                    return VoiceActionResult.Rejected("Context exploration requires a connected OmniSorSe session.");
+                }
+
+                await SwitchToContextAsync();
+                return VoiceActionResult.Completed("Context mode active.");
+
+            case VoiceIntentKind.UseDarkTheme:
+                SetThemeFromVoice("Dark");
+                return VoiceActionResult.Completed("Dark mode active.");
+
+            case VoiceIntentKind.UseLightTheme:
+                SetThemeFromVoice("Light");
+                return VoiceActionResult.Completed("Light mode active.");
+
+            case VoiceIntentKind.OpenDetails:
+                if (_session.SelectedNode is null)
+                {
+                    return VoiceActionResult.Rejected("Select a visible node before opening details.");
+                }
+
+                _detailsDismissed = false;
+                UpdateView();
+                DetailsPanel.Focus();
+                return VoiceActionResult.Completed("Details opened.");
+
+            case VoiceIntentKind.CloseDetails:
+                _detailsDismissed = true;
+                DetailsPanel.IsVisible = false;
+                GraphScene.Focus();
+                return VoiceActionResult.Completed("Details closed.");
+
+            case VoiceIntentKind.ShowAccessibleList:
+                ShowAccessibleList();
+                return VoiceActionResult.Completed("Accessible list opened.");
+
+            case VoiceIntentKind.HideAccessibleList:
+                HideAccessibleList();
+                return VoiceActionResult.Completed("Accessible list closed.");
+
+            case VoiceIntentKind.ClearSearch:
+                ClearSearch();
+                return VoiceActionResult.Completed("Search cleared.");
+
+            case VoiceIntentKind.Cancel:
+                _session.CancelOperations();
+                return VoiceActionResult.Completed("Current operation cancelled.");
+
+            case VoiceIntentKind.Search:
+            default:
+                return await ExecuteVoiceSearchAsync(intent.Argument, cancellationToken);
+        }
+    }
+
+    private async Task<VoiceActionResult> ExecuteVisibleNodeVoiceIntentAsync(
+        VoiceIntent intent,
+        CancellationToken cancellationToken)
+    {
+        var argument = intent.Argument?.Trim() ?? string.Empty;
+        if (argument.Length == 0)
+        {
+            return VoiceActionResult.Rejected("No visible node name was recognized.");
+        }
+
+        var normalizedArgument = VoiceCommandParser.NormalizeForComparison(argument);
+        var matches = _session.Neighborhood?.Nodes
+            .Where(node => VoiceCommandParser.NormalizeForComparison(node.Name) == normalizedArgument)
+            .ToArray() ?? [];
+        if (matches.Length != 1)
+        {
+            return await ExecuteVoiceSearchAsync(argument, cancellationToken);
+        }
+
+        var node = matches[0];
+        _detailsDismissed = false;
+        _session.SelectNode(node.Id);
+        if (intent.Kind == VoiceIntentKind.OpenVisibleNode &&
+            (node.Kind is ExplorerNodeKind.Folder or ExplorerNodeKind.Context or ExplorerNodeKind.Aggregate))
+        {
+            await ActivateNodeAsync(node.Id);
+            return VoiceActionResult.Completed($"Opened {node.Name}.");
+        }
+
+        return VoiceActionResult.Completed($"Focused {node.Name}.");
+    }
+
+    private async Task<VoiceActionResult> ExecuteVoiceSearchAsync(
+        string? query,
+        CancellationToken cancellationToken)
+    {
+        query = query?.Trim();
+        if (string.IsNullOrEmpty(query))
+        {
+            return VoiceActionResult.Rejected("No Search query was recognized.");
+        }
+
+        if (string.IsNullOrEmpty(_session.AccessRoot))
+        {
+            return VoiceActionResult.Rejected("Choose a standalone root or connect to OmniSorSe before searching.");
+        }
+
+        SearchBox.Text = query;
+        await _session.SearchAsync(query, cancellationToken);
+        return VoiceActionResult.Completed(
+            _session.ProviderMode == ExplorerProviderMode.Connected
+                ? "OmniSorSe Search results are ready."
+                : "Standalone structural Search results are ready.");
+    }
+
+    private void SetThemeFromVoice(string theme)
+    {
+        ThemePicker.SelectedIndex = theme == "Light" ? 1 : 0;
+        _preferences = (_preferences with { Theme = theme }).Normalize();
+        _preferencesStore.Save(_preferences);
+        ApplyVisualPreferences();
+    }
+
     private async Task OpenRootAsync(string path)
     {
         try
@@ -561,21 +786,213 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private void OnAccessibleListClick(object? sender, RoutedEventArgs e)
     {
-        AccessibleListPanel.IsVisible = !AccessibleListPanel.IsVisible;
         if (AccessibleListPanel.IsVisible)
         {
-            ConnectionPanel.IsVisible = false;
-            SettingsPanel.IsVisible = false;
-            SearchResultsPanel.IsVisible = false;
-            ContextFilterPanel.IsVisible = false;
-            SynchronizeAccessibleList();
-            AccessibleNodesList.Focus();
+            HideAccessibleList();
+            return;
+        }
+
+        ShowAccessibleList();
+    }
+
+    private void ShowAccessibleList()
+    {
+        AccessibleListPanel.IsVisible = true;
+        ConnectionPanel.IsVisible = false;
+        SettingsPanel.IsVisible = false;
+        SearchResultsPanel.IsVisible = false;
+        ContextFilterPanel.IsVisible = false;
+        SynchronizeAccessibleList();
+        AccessibleNodesList.Focus();
+    }
+
+    private void HideAccessibleList()
+    {
+        AccessibleListPanel.IsVisible = false;
+        GraphScene.Focus();
+        UpdateView();
+    }
+
+    private async void OnVoicePreferenceChanged(object? sender, RoutedEventArgs e)
+    {
+        if (_isApplyingPreferences)
+        {
+            return;
+        }
+
+        SaveVoicePreferences();
+        if (!_preferences.VoiceEnabled)
+        {
+            _voice.Disable();
+            UpdateVoiceView();
+            return;
+        }
+
+        await RefreshVoiceCapabilityAsync();
+    }
+
+    private async void OnVoiceConfigurationChanged(object? sender, RoutedEventArgs e)
+    {
+        if (_isApplyingPreferences)
+        {
+            return;
+        }
+
+        SaveVoicePreferences();
+        if (_preferences.VoiceEnabled && !_voice.IsActive)
+        {
+            await RefreshVoiceCapabilityAsync();
+        }
+    }
+
+    private async void OnVoiceLanguageChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_isApplyingPreferences)
+        {
+            return;
+        }
+
+        SaveVoicePreferences();
+        if (_preferences.VoiceEnabled && !_voice.IsActive)
+        {
+            await RefreshVoiceCapabilityAsync();
+        }
+    }
+
+    private void SaveVoicePreferences()
+    {
+        _preferences = (_preferences with
+        {
+            VoiceEnabled = VoiceEnabledToggle.IsChecked == true,
+            VoiceRuntimePath = VoiceRuntimePathBox.Text,
+            VoiceModelPath = VoiceModelPathBox.Text,
+            VoiceLanguage = VoiceLanguagePicker.SelectedIndex == 1 ? "auto" : "en",
+        }).Normalize();
+        _preferencesStore.Save(_preferences);
+    }
+
+    private async Task RefreshVoiceCapabilityAsync()
+    {
+        try
+        {
+            await _voice.RefreshCapabilityAsync(_preferences.ToVoiceOptions());
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async void OnVoiceButtonClick(object? sender, RoutedEventArgs e) =>
+        await ToggleVoiceAsync();
+
+    private async Task ToggleVoiceAsync()
+    {
+        if (!_preferences.VoiceEnabled)
+        {
+            SettingsPanel.IsVisible = true;
+            VoiceEnabledToggle.Focus();
+            SetTransientStatus("Enable Voice in Settings and configure a local whisper.cpp runtime and model.");
+            return;
+        }
+
+        try
+        {
+            if (_voice.State == VoiceCapabilityState.Listening)
+            {
+                await _voice.StopAsync(_preferences.ToVoiceOptions());
+            }
+            else if (_voice.IsActive)
+            {
+                await _voice.CancelAsync();
+            }
+            else
+            {
+                await _voice.StartAsync(_preferences.ToVoiceOptions());
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async void OnVoiceCancelClick(object? sender, RoutedEventArgs e) =>
+        await _voice.CancelAsync();
+
+    private void OnVoiceStateChanged(object? sender, EventArgs e)
+    {
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            UpdateVoiceView();
         }
         else
         {
-            GraphScene.Focus();
-            UpdateView();
+            Dispatcher.UIThread.Post(UpdateVoiceView);
         }
+    }
+
+    private void UpdateVoiceView()
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        VoiceStateText.Text = _voice.Status;
+        VoiceLevelIndicator.Value = _voice.InputLevel;
+        VoiceTranscriptText.Text = string.IsNullOrWhiteSpace(_voice.TranscriptPreview)
+            ? string.Empty
+            : $"â€œ{_voice.TranscriptPreview}â€";
+        VoiceTranscriptText.IsVisible = VoiceTranscriptText.Text.Length > 0;
+        if (VoiceTranscriptText.IsVisible)
+        {
+            _voiceTranscriptTimer.Start();
+        }
+        else
+        {
+            _voiceTranscriptTimer.Stop();
+        }
+        VoiceCancelButton.IsVisible = _voice.IsActive;
+        VoiceButton.Content = _voice.State switch
+        {
+            VoiceCapabilityState.Listening => "Stop & transcribe",
+            VoiceCapabilityState.Loading or VoiceCapabilityState.Transcribing or VoiceCapabilityState.Executing => "Cancel voice",
+            VoiceCapabilityState.Disabled => "Voice off",
+            _ => "Push to talk",
+        };
+        var stateName = _voice.State.ToString();
+        AutomationProperties.SetName(VoiceButton, $"Push to talk. Voice state: {stateName}");
+        AutomationProperties.SetHelpText(
+            VoiceButton,
+            "Press once to begin bounded microphone capture and again to stop and transcribe locally. Keyboard shortcut Control Shift Space.");
+        AutomationProperties.SetName(VoiceHud, $"Voice input. {_voice.Status}");
+
+        var shouldAnimate = _voice.State == VoiceCapabilityState.Listening &&
+            !_preferences.ReducedMotion &&
+            !_preferences.ReducedEffects;
+        if (shouldAnimate)
+        {
+            _voiceVisualTimer.Start();
+        }
+        else
+        {
+            _voiceVisualTimer.Stop();
+            VoiceListeningRing.Opacity = _voice.State == VoiceCapabilityState.Listening ? 1 : 0.55;
+        }
+    }
+
+    private void UpdateVoiceListeningVisual()
+    {
+        if (_voice.State != VoiceCapabilityState.Listening ||
+            _preferences.ReducedMotion ||
+            _preferences.ReducedEffects)
+        {
+            _voiceVisualTimer.Stop();
+            VoiceListeningRing.Opacity = _voice.State == VoiceCapabilityState.Listening ? 1 : 0.55;
+            return;
+        }
+
+        _voicePulseHigh = !_voicePulseHigh;
+        VoiceListeningRing.Opacity = _voicePulseHigh ? 1 : 0.55;
     }
 
     private void OnContextFilterClick(object? sender, RoutedEventArgs e)
@@ -730,7 +1147,14 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key == Key.F &&
+        if (e.Key == Key.Space &&
+            e.KeyModifiers.HasFlag(KeyModifiers.Control) &&
+            e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+        {
+            _ = ToggleVoiceAsync();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.F &&
             e.KeyModifiers.HasFlag(KeyModifiers.Control) &&
             e.KeyModifiers.HasFlag(KeyModifiers.Shift))
         {
@@ -771,7 +1195,15 @@ public sealed partial class MainWindow : Window, IDisposable
         }
         else if (e.Key == Key.Escape)
         {
-            DismissTransientSurfaces();
+            if (_voice.IsActive)
+            {
+                _ = _voice.CancelAsync();
+            }
+            else
+            {
+                DismissTransientSurfaces();
+            }
+
             e.Handled = true;
         }
     }
@@ -993,6 +1425,10 @@ public sealed partial class MainWindow : Window, IDisposable
             ReducedMotionToggle.IsChecked = _preferences.ReducedMotion;
             ReducedEffectsToggle.IsChecked = _preferences.ReducedEffects;
             DiagnosticsToggle.IsChecked = _preferences.DiagnosticsVisible;
+            VoiceEnabledToggle.IsChecked = _preferences.VoiceEnabled;
+            VoiceRuntimePathBox.Text = _preferences.VoiceRuntimePath ?? string.Empty;
+            VoiceModelPathBox.Text = _preferences.VoiceModelPath ?? string.Empty;
+            VoiceLanguagePicker.SelectedIndex = _preferences.VoiceLanguage == "auto" ? 1 : 0;
         }
         finally
         {
@@ -1016,6 +1452,7 @@ public sealed partial class MainWindow : Window, IDisposable
         DataRain.ReducedMotion = _preferences.ReducedMotion;
         DataRain.ReducedEffects = _preferences.ReducedEffects;
         DiagnosticsPanel.IsVisible = _preferences.DiagnosticsVisible;
+        UpdateVoiceView();
         GraphScene.InvalidateVisual();
         DataRain.InvalidateVisual();
     }
@@ -1030,6 +1467,7 @@ public sealed partial class MainWindow : Window, IDisposable
         var diagnostics = GraphScene.Diagnostics;
         var rainDiagnostics = DataRain.Diagnostics;
         var connectionDiagnostics = _connection.Diagnostics;
+        var voiceDiagnostics = _voice.Diagnostics;
         DiagnosticsText.Text = string.Create(
             CultureInfo.InvariantCulture,
             $"provider {_session.ProviderDisplayName}  connection {connectionDiagnostics.State}  protocol {connectionDiagnostics.ProtocolVersion}  transport {connectionDiagnostics.Transport}\n" +
@@ -1037,7 +1475,8 @@ public sealed partial class MainWindow : Window, IDisposable
             $"layout {diagnostics.LayoutDuration.TotalMilliseconds:0.00} ms  prep {diagnostics.ScenePreparationDuration.TotalMilliseconds:0.00} ms  render {diagnostics.LastRenderDuration.TotalMilliseconds:0.00} ms  load {_session.LastLoadDuration.TotalMilliseconds:0.0} ms\n" +
             $"bg {diagnostics.BackgroundDuration.TotalMilliseconds:0.00}  edge {diagnostics.EdgeDuration.TotalMilliseconds:0.00}  glyph {diagnostics.GlyphDuration.TotalMilliseconds:0.00}  label {diagnostics.LabelPreparationDuration.TotalMilliseconds + diagnostics.LabelDrawDuration.TotalMilliseconds:0.00} ms\n" +
             $"ipc {connectionDiagnostics.LastRequestDuration.TotalMilliseconds:0.0} ms  response {connectionDiagnostics.LastResponseNodeCount} nodes  search {connectionDiagnostics.LastSearchResultCount}  timeouts {connectionDiagnostics.TimeoutCount}  reconnects {connectionDiagnostics.ReconnectCount}  stale {connectionDiagnostics.StaleResponseRejectionCount}\n" +
-            $"alloc {diagnostics.RenderAllocatedBytes / 1024d:0.0} KiB  caches text {diagnostics.TextCacheEntries}/256 resources {diagnostics.ResourceCacheEntries}/576  rain {rainDiagnostics.RenderedTokens} @ {rainDiagnostics.LastRenderDuration.TotalMilliseconds:0.00} ms");
+            $"alloc {diagnostics.RenderAllocatedBytes / 1024d:0.0} KiB  caches text {diagnostics.TextCacheEntries}/256 resources {diagnostics.ResourceCacheEntries}/576  rain {rainDiagnostics.RenderedTokens} @ {rainDiagnostics.LastRenderDuration.TotalMilliseconds:0.00} ms\n" +
+            $"voice {voiceDiagnostics.State}  provider {voiceDiagnostics.Provider}  init {voiceDiagnostics.InitializationDuration.TotalMilliseconds:0.0} ms  capture {voiceDiagnostics.CaptureDuration.TotalMilliseconds:0.0} ms  transcribe {voiceDiagnostics.TranscriptionDuration.TotalMilliseconds:0.0} ms  execute {voiceDiagnostics.ExecutionDuration.TotalMilliseconds:0.0} ms  chars {voiceDiagnostics.TranscriptLength}  class {voiceDiagnostics.Classification}");
     }
 
     private void ClearSearch()
@@ -1111,6 +1550,11 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private void DismissTransientSurfaces()
     {
+        if (_voice.IsActive)
+        {
+            _ = _voice.CancelAsync();
+        }
+
         if (_session.IsLoading || _session.IsSearching)
         {
             _session.CancelOperations();
@@ -1140,6 +1584,10 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         _diagnosticsTimer.Stop();
+        _voiceVisualTimer.Stop();
+        _voiceTranscriptTimer.Stop();
+        _voice.StateChanged -= OnVoiceStateChanged;
+        _voice.Dispose();
         _connection.StateChanged -= OnConnectionStateChanged;
         _session.ProviderFailed -= OnProviderFailed;
         _session.Dispose();

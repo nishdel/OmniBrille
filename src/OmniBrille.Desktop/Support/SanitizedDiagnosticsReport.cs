@@ -14,6 +14,16 @@ public sealed record SanitizedDiagnosticsSnapshot(
     bool ContextAvailable,
     bool ReducedMotion,
     bool ReducedEffects,
+    string VoiceState,
+    string VoiceProvider,
+    string VoiceModelState,
+    TimeSpan VoiceInitializationDuration,
+    TimeSpan VoiceCaptureDuration,
+    TimeSpan VoiceTranscriptionDuration,
+    TimeSpan VoiceExecutionDuration,
+    int VoiceTranscriptLength,
+    string VoiceClassification,
+    string? VoiceErrorCategory,
     int Nodes,
     int NodeBudget,
     int Edges,
@@ -77,6 +87,9 @@ public static class SanitizedDiagnosticsReport
                 $"Capabilities: {snapshot.Capabilities}",
                 $"Context available: {snapshot.ContextAvailable}",
                 $"Reduced motion/effects: {snapshot.ReducedMotion}/{snapshot.ReducedEffects}",
+                $"Voice: {snapshot.VoiceState}, provider {SafeVoiceProvider(snapshot.VoiceProvider)}, model {SafeVoiceModelState(snapshot.VoiceModelState)}",
+                FormattableString.Invariant($"Voice timings ms: initialize {snapshot.VoiceInitializationDuration.TotalMilliseconds:0.0}, capture {snapshot.VoiceCaptureDuration.TotalMilliseconds:0.0}, transcribe {snapshot.VoiceTranscriptionDuration.TotalMilliseconds:0.0}, execute {snapshot.VoiceExecutionDuration.TotalMilliseconds:0.0}"),
+                $"Voice result: {snapshot.VoiceClassification}, {snapshot.VoiceTranscriptLength} characters, error {SafeVoiceCategory(snapshot.VoiceErrorCategory)}",
                 FormattableString.Invariant($"Scene: {snapshot.Nodes}/{snapshot.NodeBudget} nodes, {snapshot.Edges} edges, {snapshot.Labels} labels, zoom {snapshot.Zoom:0.00}"),
                 FormattableString.Invariant($"Timings ms: layout {snapshot.LayoutDuration.TotalMilliseconds:0.00}, prepare {snapshot.PreparationDuration.TotalMilliseconds:0.00}, render {snapshot.RenderDuration.TotalMilliseconds:0.00}, load {snapshot.LoadDuration.TotalMilliseconds:0.0}, IPC {snapshot.RequestDuration.TotalMilliseconds:0.0}"),
                 $"Counters: timeouts {snapshot.TimeoutCount}, reconnects {snapshot.ReconnectCount}, stale responses {snapshot.StaleResponseCount}",
@@ -86,4 +99,28 @@ public static class SanitizedDiagnosticsReport
                 "Privacy: excludes paths, filenames, queries, content, endpoints, grants, tokens, and session/node identifiers.",
             ]);
     }
+
+    private static string SafeVoiceCategory(string? category)
+    {
+        if (category is null)
+        {
+            return "None";
+        }
+
+        return Enum.TryParse<OmniBrille.Core.VoiceCapabilityState>(category, out _) ||
+            string.Equals(category, "ActionRejected", StringComparison.Ordinal)
+                ? category
+                : "Other";
+    }
+
+    private static string SafeVoiceProvider(string provider) => provider switch
+    {
+        "None" => "None",
+        "Windows microphone" => "Windows microphone",
+        "whisper.cpp-cli" => "whisper.cpp-cli",
+        _ => "Other",
+    };
+
+    private static string SafeVoiceModelState(string modelState) =>
+        modelState.StartsWith("Configured ", StringComparison.Ordinal) ? "Configured" : "Not configured";
 }

@@ -175,6 +175,66 @@
         </StackPanel>
       </Border>
 
+      <Border x:Name="VoiceHud"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Bottom"
+              Margin="0,0,0,18"
+              Padding="9,6"
+              MaxWidth="760"
+              Background="{DynamicResource SurfaceStrongBrush}"
+              BorderBrush="{DynamicResource BorderBrush}"
+              BorderThickness="1"
+              CornerRadius="4"
+              AutomationProperties.Name="Voice input">
+        <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="8" VerticalAlignment="Center">
+          <Border x:Name="VoiceListeningRing"
+                  Width="12"
+                  Height="12"
+                  CornerRadius="6"
+                  BorderBrush="{DynamicResource AccentBrush}"
+                  BorderThickness="2"
+                  Background="{DynamicResource AccentSoftBrush}"
+                  AutomationProperties.Name="Microphone activity indicator" />
+          <Button x:Name="VoiceButton"
+                  Grid.Column="1"
+                  Classes="hud compact"
+                  Content="Voice off"
+                  Click="OnVoiceButtonClick"
+                  AutomationProperties.Name="Push to talk"
+                  AutomationProperties.HelpText="Configure local voice in Settings. Control Shift Space toggles push to talk." />
+          <ProgressBar x:Name="VoiceLevelIndicator"
+                       Grid.Column="2"
+                       Width="54"
+                       Height="3"
+                       Minimum="0"
+                       Maximum="1"
+                       Value="0"
+                       Foreground="{DynamicResource AccentBrush}"
+                       AutomationProperties.Name="Microphone level" />
+          <StackPanel Grid.Column="3" MaxWidth="430" VerticalAlignment="Center">
+            <TextBlock x:Name="VoiceStateText"
+                       Text="Voice is off."
+                       FontSize="10"
+                       TextTrimming="CharacterEllipsis"
+                       AutomationProperties.LiveSetting="Polite" />
+            <TextBlock x:Name="VoiceTranscriptText"
+                       IsVisible="False"
+                       FontSize="10"
+                       Foreground="{DynamicResource AccentBrush}"
+                       TextTrimming="CharacterEllipsis"
+                       AutomationProperties.Name="Recognized voice transcript"
+                       AutomationProperties.LiveSetting="Polite" />
+          </StackPanel>
+          <Button x:Name="VoiceCancelButton"
+                  Grid.Column="4"
+                  IsVisible="False"
+                  Classes="hud compact"
+                  Content="Cancel"
+                  Click="OnVoiceCancelClick"
+                  AutomationProperties.Name="Cancel voice capture or transcription" />
+        </Grid>
+      </Border>
+
       <Border x:Name="ConnectionPanel"
               IsVisible="False"
               Width="360"
@@ -472,7 +532,8 @@
 
       <Border x:Name="SettingsPanel"
               IsVisible="False"
-              Width="280"
+              Width="380"
+              MaxHeight="560"
               HorizontalAlignment="Right"
               VerticalAlignment="Top"
               Margin="0,82,16,0"
@@ -481,10 +542,11 @@
               BorderBrush="{DynamicResource BorderBrush}"
               BorderThickness="1"
               CornerRadius="4">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Spacing="10">
           <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Text="VISUAL SETTINGS" FontSize="10" LetterSpacing="1.5" Foreground="{DynamicResource AccentBrush}" />
-            <Button Grid.Column="1" Classes="hud compact" Content="×" Click="OnSettingsClick" AutomationProperties.Name="Close visual settings" />
+            <TextBlock Text="SETTINGS" FontSize="10" LetterSpacing="1.5" Foreground="{DynamicResource AccentBrush}" />
+            <Button Grid.Column="1" Classes="hud compact" Content="×" Click="OnSettingsClick" AutomationProperties.Name="Close settings" />
           </Grid>
           <CheckBox x:Name="ReducedMotionToggle"
                     Content="Reduced motion"
@@ -513,7 +575,41 @@
                      TextWrapping="Wrap"
                      Foreground="{DynamicResource SecondaryTextBrush}"
                      AutomationProperties.LiveSetting="Polite" />
+          <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,6" />
+          <TextBlock Text="LOCAL VOICE" FontSize="10" LetterSpacing="1.5" Foreground="{DynamicResource AccentBrush}" />
+          <CheckBox x:Name="VoiceEnabledToggle"
+                    Content="Voice enabled"
+                    IsCheckedChanged="OnVoicePreferenceChanged"
+                    AutomationProperties.Name="Enable local push-to-talk voice"
+                    AutomationProperties.HelpText="Voice remains optional and records only after explicit activation." />
+          <TextBlock Text="Push-to-talk only. Audio is processed locally and is not retained. A user-provided whisper.cpp runtime and GGML model are required."
+                     FontSize="10"
+                     TextWrapping="Wrap"
+                     Foreground="{DynamicResource SecondaryTextBrush}" />
+          <TextBlock Text="whisper.cpp executable" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
+          <TextBox x:Name="VoiceRuntimePathBox"
+                   PlaceholderText="Path to whisper-cli.exe"
+                   LostFocus="OnVoiceConfigurationChanged"
+                   AutomationProperties.Name="Local speech runtime path" />
+          <TextBlock Text="Speech model" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
+          <TextBox x:Name="VoiceModelPathBox"
+                   PlaceholderText="Path to a GGML model file"
+                   LostFocus="OnVoiceConfigurationChanged"
+                   AutomationProperties.Name="Local speech model path" />
+          <TextBlock Text="Transcription language" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
+          <ComboBox x:Name="VoiceLanguagePicker"
+                    Classes="hud"
+                    SelectionChanged="OnVoiceLanguageChanged"
+                    AutomationProperties.Name="Voice transcription language">
+            <ComboBoxItem Content="English" />
+            <ComboBoxItem Content="Auto-detect (Search only; commands remain English)" />
+          </ComboBox>
+          <TextBlock Text="Recommended: whisper.cpp base.en for accuracy or tiny.en for lower latency. Models are never downloaded automatically or bundled into the standard installer."
+                     FontSize="10"
+                     TextWrapping="Wrap"
+                     Foreground="{DynamicResource SecondaryTextBrush}" />
         </StackPanel>
+        </ScrollViewer>
       </Border>
 
       <Border x:Name="DiagnosticsPanel"
@@ -553,7 +649,7 @@
               Padding="20"
               HorizontalAlignment="Center"
               VerticalAlignment="Bottom"
-              Margin="0,0,0,32"
+              Margin="0,0,0,86"
               Background="{DynamicResource SurfaceStrongBrush}"
               BorderBrush="{DynamicResource BorderBrush}"
               BorderThickness="1"
@@ -597,7 +693,7 @@
                    Foreground="{DynamicResource AccentBrush}" />
         <TextBlock x:Name="StatusText" Grid.Column="1" Margin="18,0" Text="Choose a folder to begin. Only that location will be accessible."
                    TextTrimming="CharacterEllipsis" Foreground="{DynamicResource SecondaryTextBrush}" AutomationProperties.LiveSetting="Polite" />
-        <TextBlock Grid.Column="2" Text="Enter open · Backspace back · Ctrl+F search · Ctrl+Shift+F filters · Ctrl+Shift+L list" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
+        <TextBlock Grid.Column="2" Text="Enter open · Backspace back · Ctrl+F search · Ctrl+Shift+L list · Ctrl+Shift+Space voice" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
       </Grid>
     </Border>
   </Grid>
