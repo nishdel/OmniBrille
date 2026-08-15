@@ -25,6 +25,7 @@ public sealed class ExplorerSession : IDisposable
     private long _loadRequestVersion;
     private long _searchRequestVersion;
     private long _detailsRequestVersion;
+    private long _providerGeneration;
 
     public ExplorerSession(
         GraphNeighborhoodBuilder? neighborhoodBuilder = null,
@@ -96,6 +97,12 @@ public sealed class ExplorerSession : IDisposable
 
     public bool IsAggregateRefined => _aggregatePage is not null;
 
+    /// <summary>
+    /// Changes whenever provider-specific identities are replaced or cleared. Voice and other
+    /// deferred inputs use this value to reject work that completed for an obsolete authority.
+    /// </summary>
+    public long ProviderGeneration => Volatile.Read(ref _providerGeneration);
+
     public ExplorerFailureKind CurrentFailure => _currentSnapshot?.Failure ?? ExplorerFailureKind.None;
 
     public async Task OpenRootAsync(
@@ -107,6 +114,7 @@ public sealed class ExplorerSession : IDisposable
         ArgumentNullException.ThrowIfNull(searchProvider);
 
         CancelActiveOperations(reportCancellation: false);
+        Interlocked.Increment(ref _providerGeneration);
         _provider = provider;
         _searchProvider = searchProvider;
         _navigation.SetRoot(provider.AccessRoot, provider.Mode);
@@ -473,6 +481,7 @@ public sealed class ExplorerSession : IDisposable
     public void Reset(string status = "Choose a folder to begin. Only that location will be accessible.")
     {
         CancelActiveOperations(reportCancellation: false);
+        Interlocked.Increment(ref _providerGeneration);
         _provider = null;
         _searchProvider = null;
         _navigation.Clear();

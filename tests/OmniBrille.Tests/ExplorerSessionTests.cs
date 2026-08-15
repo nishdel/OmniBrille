@@ -6,6 +6,22 @@ namespace OmniBrille.Tests;
 public sealed class ExplorerSessionTests
 {
     [Fact]
+    public async Task ProviderGeneration_ChangesWhenAuthorityIsOpenedOrReset()
+    {
+        var root = Normalize("voice-generation-root");
+        var provider = new FakeProvider(root, [Snapshot(root)]);
+        using var session = new ExplorerSession();
+        var initial = session.ProviderGeneration;
+
+        await session.OpenRootAsync(provider, provider);
+        var opened = session.ProviderGeneration;
+        session.Reset();
+
+        Assert.True(opened > initial);
+        Assert.True(session.ProviderGeneration > opened);
+    }
+
+    [Fact]
     public async Task NavigateAndBack_ChangeFocusAndPreserveContext()
     {
         var root = Normalize("root");

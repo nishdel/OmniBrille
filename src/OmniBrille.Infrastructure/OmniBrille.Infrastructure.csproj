@@ -5,6 +5,10 @@
     <ProjectReference Include="..\OmniSorSe.ExplorerProtocol\OmniSorSe.ExplorerProtocol.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="NAudio.WinMM" Version="2.3.0" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>OmniBrille.Infrastructure</AssemblyName>
