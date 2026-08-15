@@ -62,6 +62,7 @@
                        GroupName="ExplorerMode"
                        IsChecked="True"
                        Click="OnStructureModeClick"
+                       IsCheckedChanged="OnStructureModeCheckedChanged"
                        AutomationProperties.Name="Structure mode"
                        AutomationProperties.HelpText="Shows indexed filesystem containment." />
           <RadioButton x:Name="ContextModeButton"
@@ -69,6 +70,7 @@
                        Content="Context"
                        GroupName="ExplorerMode"
                        Click="OnContextModeClick"
+                       IsCheckedChanged="OnContextModeCheckedChanged"
                        AutomationProperties.Name="Context mode"
                        AutomationProperties.HelpText="Shows bounded relationships authored by OmniSorSe. Requires a connected session." />
           <Button x:Name="ContextFilterButton"

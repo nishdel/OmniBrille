@@ -198,6 +198,8 @@ public sealed record ExplorerSearchHit(
     string? Snippet = null)
 {
     public string Target => NavigationTarget ?? Path;
+
+    public override string ToString() => $"{Name}, {Kind}, {Path}";
 }
 
 public sealed record ExplorerSearchResult(

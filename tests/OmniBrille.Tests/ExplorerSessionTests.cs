@@ -71,6 +71,23 @@ public sealed class ExplorerSessionTests
     }
 
     [Fact]
+    public void SearchHit_AccessibleTextOmitsOpaqueSessionIdentifiers()
+    {
+        var hit = new ExplorerSearchHit(
+            "opaque-result-id",
+            "report.txt",
+            "Authorized root / report.txt",
+            ExplorerNodeKind.File,
+            "opaque-navigation-id",
+            "opaque-parent-id");
+
+        var accessibleText = hit.ToString();
+
+        Assert.Equal("report.txt, File, Authorized root / report.txt", accessibleText);
+        Assert.DoesNotContain("opaque", accessibleText, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task FileSearchFocus_PinsMatchIntoBoundedGraph()
     {
         var root = Normalize("root");

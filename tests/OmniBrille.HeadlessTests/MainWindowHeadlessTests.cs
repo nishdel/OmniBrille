@@ -312,8 +312,7 @@ public sealed class MainWindowHeadlessTests
         await WaitUntilAsync(() => session.ProviderMode == ExplorerProviderMode.Connected && !session.IsLoading);
 
         session.SelectNode("opaque-file");
-        window.FindControl<RadioButton>("ContextModeButton")!
-            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        window.FindControl<RadioButton>("ContextModeButton")!.IsChecked = true;
         await WaitUntilAsync(() => session.ViewMode == ExplorerViewMode.Context && !session.IsLoading);
 
         Assert.Equal("OmniBrille — Context", window.Title);
@@ -345,8 +344,7 @@ public sealed class MainWindowHeadlessTests
         await WaitUntilAsync(() => session.Neighborhood?.Focus.Id == "opaque-related");
         Assert.True(session.CanGoBack);
 
-        window.FindControl<RadioButton>("StructureModeButton")!
-            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        window.FindControl<RadioButton>("StructureModeButton")!.IsChecked = true;
         await WaitUntilAsync(() => session.ViewMode == ExplorerViewMode.Structure);
         Assert.Equal("Spatial Structure graph", AutomationProperties.GetName(graph));
         Assert.Equal("STRUCTURE", window.FindControl<TextBlock>("ViewModeStatusText")!.Text);

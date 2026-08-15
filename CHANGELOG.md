@@ -22,6 +22,7 @@ All notable OmniBrille changes are recorded here. The project uses SemVer-compat
 
 - Private-preview candidate artifacts now retain for 90 days and carry optional GitHub workflow identity in schema-v2 release manifests.
 - Exact-artifact policy explicitly treats SHA-256 as identifying one build rather than every rebuild of a commit.
+- Structure/Context radio automation now performs the same mode transition as pointer and keyboard input, and Search result automation labels no longer expose opaque session identifiers.
 
 ### Security
 

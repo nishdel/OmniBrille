@@ -30,6 +30,7 @@ public sealed partial class MainWindow : Window, IDisposable
     private ExplorerNeighborhood? _lastRenderedNeighborhood;
     private bool _detailsDismissed;
     private bool _isApplyingPreferences;
+    private bool _isSwitchingViewMode;
     private bool _isApplyingContextFilters;
     private bool _isSynchronizingAccessibleList;
     private bool _isDisposed;
@@ -259,13 +260,25 @@ public sealed partial class MainWindow : Window, IDisposable
         await OpenConnectedRootAsync(item.Node);
     }
 
-    private async void OnStructureModeClick(object? sender, RoutedEventArgs e)
+    private async void OnStructureModeCheckedChanged(object? sender, RoutedEventArgs e)
     {
-        if (_isApplyingPreferences || string.IsNullOrEmpty(_session.AccessRoot))
+        if (sender is RadioButton { IsChecked: true })
+        {
+            await SwitchToStructureAsync();
+        }
+    }
+
+    private async void OnStructureModeClick(object? sender, RoutedEventArgs e) =>
+        await SwitchToStructureAsync();
+
+    private async Task SwitchToStructureAsync()
+    {
+        if (_isApplyingPreferences || _isSwitchingViewMode || string.IsNullOrEmpty(_session.AccessRoot))
         {
             return;
         }
 
+        _isSwitchingViewMode = true;
         try
         {
             await _session.SwitchToStructureAsync();
@@ -273,11 +286,26 @@ public sealed partial class MainWindow : Window, IDisposable
         catch (OperationCanceledException)
         {
         }
+        finally
+        {
+            _isSwitchingViewMode = false;
+        }
     }
 
-    private async void OnContextModeClick(object? sender, RoutedEventArgs e)
+    private async void OnContextModeCheckedChanged(object? sender, RoutedEventArgs e)
     {
-        if (_isApplyingPreferences)
+        if (sender is RadioButton { IsChecked: true })
+        {
+            await SwitchToContextAsync();
+        }
+    }
+
+    private async void OnContextModeClick(object? sender, RoutedEventArgs e) =>
+        await SwitchToContextAsync();
+
+    private async Task SwitchToContextAsync()
+    {
+        if (_isApplyingPreferences || _isSwitchingViewMode)
         {
             return;
         }
@@ -289,12 +317,17 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
+        _isSwitchingViewMode = true;
         try
         {
             await _session.SwitchToContextAsync();
         }
         catch (OperationCanceledException)
         {
+        }
+        finally
+        {
+            _isSwitchingViewMode = false;
         }
     }
 
