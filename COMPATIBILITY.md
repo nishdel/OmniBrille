@@ -4,6 +4,8 @@ OmniBrille uses capability negotiation and Explorer Protocol major-version valid
 
 | OmniBrille | OmniSorSe | Explorer Protocol | Platform | Status |
 |---|---|---|---|---|
+| 0.8.0-preview.1 | committed v2.5 RC `59be07c6cebff12072cbf18701fb16cb11801287` | v1.0 | Windows x64 | Connected Structure/Search/details/Context/Hybrid compatibility; Hybrid composes the existing bounded neighborhood and Related response without a new protocol operation |
+| 0.8.0-preview.1 | not installed | n/a | Windows x64 | Standalone Structure/Search supported; Context and Hybrid fail closed because no authoritative relationship provider exists |
 | 0.7.0-preview.1 | committed v2.5 RC `59be07c6cebff12072cbf18701fb16cb11801287` | v1.0 | Windows x64 | Connected Structure/Search/details/Context compatibility retained; connected voice queries use the same Search operation. Live voice additionally requires a user-provided local whisper.cpp runtime/model |
 | 0.7.0-preview.1 | not installed | n/a | Windows x64 | Standalone Structure/Search supported; optional voice commands and structural voice Search use the same selected-root authority |
 | 0.6.0-preview.3 | committed v2.5 RC `59be07c6cebff12072cbf18701fb16cb11801287` | v1.0 | Windows x64 | Stage 8 exact private-preview candidate validated for installed discovery/handoff, Structure, Search, details, and Context; no voice |
@@ -18,10 +20,11 @@ OmniBrille uses capability negotiation and Explorer Protocol major-version valid
 
 - OmniSorSe absent: OmniBrille starts in Standalone and accesses only an explicitly selected root.
 - Protocol v1-compatible OmniSorSe: the client validates the grant, major version, read-only server identity, hard limits, and required `Structure` and `Search` capabilities before accepting the session.
-- Missing optional capability: only the dependent feature is unavailable. In particular, Context requires server-advertised Context/Related capability and is never simulated locally.
+- Missing optional capability: only the dependent feature is unavailable. Context and Hybrid require server-advertised Context/Related capability and are never simulated locally.
 - Incompatible major version, malformed limits, or missing required capability: connected mode is rejected without undefined parsing; the UI says the versions are incompatible and keeps Standalone available. Expected/actual protocol values remain in local diagnostics.
 - Minor-version additions: unknown JSON fields are tolerated by the serializer, but OmniBrille consumes only understood fields and negotiated capabilities. Server bounds still apply.
 - Application version labels are informational. Explorer Protocol v1 and capabilities are the compatibility authority.
 - Voice does not change Explorer Protocol compatibility. Deterministic commands are local UI actions; connected voice Search calls the already-negotiated v1 Search capability. A missing speech runtime/model affects Voice only and never blocks standalone or connected startup.
+- Hybrid does not change Explorer Protocol compatibility. It composes the same authorized `GetNeighborhood(IncludeContext: true)` and focus-local `GetRelated` snapshot already used by Context, with one client-side budget and no `Hybrid` wire request.
 
 OmniBrille never reads OmniSorSe SQLite, broadens an authorized root, or falls back to direct filesystem access for connected nodes.

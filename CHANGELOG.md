@@ -10,6 +10,27 @@ All notable OmniBrille changes are recorded here. The project uses SemVer-compat
 - Maintainer license decision before any public distribution.
 - Production Authenticode signing when externally managed credentials are available.
 
+## [0.8.0-preview.1] - 2026-08-16
+
+### Added
+
+- A deliberate connected `Structure | Context | Hybrid` exploration surface that shows structural location and server-authored relationships in one bounded scene.
+- Provider-independent Hybrid composition with shared-node deduplication, explicit structural/contextual/both roles, deterministic budget allocation, and a dedicated stable layout.
+- Hybrid-aware Back/refocus history, Context filters that leave Structure intact, `Ctrl+3`, accessible graph/list role descriptions, and compact combined details.
+- Maximum-density Hybrid domain/headless fixtures plus full/reduced/search renderer diagnostics.
+
+### Changed
+
+- The primary connected navigation model now shares one mode/history/search/details authority across Structure, Context, and Hybrid.
+- Hybrid retains one bounded same-session Structure snapshot and performs at most one parent read for an external related-node refocus, preserving real structural orientation when a file-centered Context response omits containment edges.
+- Relationship reason, ranking strength, evidence, and provenance are exposed together on the top-level accessible details surface.
+- Preview metadata advances to `0.8.0-preview.1` because Hybrid is a material user-facing capability.
+
+### Security
+
+- Hybrid composes existing Explorer Protocol v1 snapshots only. It adds no protocol operation, filesystem fallback, semantic inference, persistent identity, bearer-token storage, or telemetry.
+- Standalone Hybrid fails closed with an OmniSorSe-required explanation. Session replacement invalidates Hybrid nodes, relationships, and Back entries.
+
 ## [0.7.0-preview.1] - 2026-08-15
 
 ### Added

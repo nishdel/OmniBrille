@@ -1,6 +1,6 @@
 ## What OmniBrille is
 
-OmniBrille is an optional spatial navigation companion for exploring files as a bounded graph. It can run by itself in Structure mode or connect to a compatible OmniSorSe session for authorized Structure, Search, details, and server-authored Context relationships. This is a private pre-release, not a stable production release.
+OmniBrille is an optional spatial navigation companion for exploring files as a bounded graph. It can run by itself in Structure mode or connect to a compatible OmniSorSe session for authorized Structure, Search, details, server-authored Context, and a combined Hybrid view. This is a private pre-release, not a stable production release.
 
 ## Windows installation
 
@@ -31,6 +31,7 @@ If the header identifies an unsigned preview, Windows may show **Unknown Publish
 - Standalone selected-folder Structure navigation, bounded aggregation, Search, details, Light/Dark, reduced motion/effects, and accessible list.
 - Compatible OmniSorSe discovery and one-time handoff, authorized Structure, Search, details, and bounded server-authored Context.
 - Context filters, relationship reason/evidence/provenance, refocus, Back, keyboard navigation, and disconnect-safe stale orientation.
+- Hybrid combines structural location with bounded server-authored relationships, deduplicates nodes that serve both roles, and preserves the same filters, details, Search, Back, and accessible list.
 - Optional local push-to-talk commands and Search on Windows. Voice is off by default and requires a separately obtained `whisper-cli` plus compatible GGML model configured in Settings; neither is downloaded or bundled.
 - Per-user install, in-place preview upgrade, and uninstall that retains only safe UI preferences by policy. User-provided models outside the install directory are untouched.
 
@@ -39,9 +40,9 @@ If the header identifies an unsigned preview, Windows may show **Unknown Publish
 - Windows x64 is the only installed/runtime-validated platform. Ubuntu is build/test-only; macOS runtime is unvalidated.
 - Context density depends on OmniSorSe's indexed intelligence. OmniBrille does not invent relationships.
 - Voice commands are English-only, use the default Windows input device, and have process-per-utterance model-load latency. Linux/macOS microphone capture is not validated.
-- Hybrid mode, destructive file operations, automatic updating, cloud services, always-listening audio, and telemetry are absent.
+- Destructive file operations, automatic updating, cloud services, always-listening audio, and telemetry are absent. Real microphone hardware validation remains outstanding and is not claimed.
 - The repository has no selected public-distribution license.
 
 ## Safe feedback
 
-Use the settings HUD's **Copy safe diagnostics** action and review the text before sharing. It excludes audio, transcript text, runtime/model paths, filesystem paths, filenames, queries, content, endpoints, grants, tokens, and session/node identifiers. Include the OmniBrille/OmniSorSe versions, Windows version, Standalone or Connected, Structure or Context, voice state/model family where relevant, the action attempted, actual behavior, and whether it reproduces. Do not attach microphone audio, spoken text, private content, or databases unless separately reviewed and requested.
+Use the settings HUD's **Copy safe diagnostics** action and review the text before sharing. It excludes audio, transcript text, runtime/model paths, filesystem paths, filenames, queries, content, endpoints, grants, tokens, and session/node identifiers. Include the OmniBrille/OmniSorSe versions, Windows version, Standalone or Connected, Structure, Context, or Hybrid, voice state/model family where relevant, the action attempted, actual behavior, and whether it reproduces. Do not attach microphone audio, spoken text, private content, or databases unless separately reviewed and requested.

@@ -39,7 +39,8 @@ Checkboxes are maintainer gates. Automated verification does not mark manual che
 - [ ] Standalone spoken Search uses only the selected-root structural provider; connected spoken Search reaches the existing OmniSorSe Search capability.
 - [ ] Missing runtime/model, microphone unavailable, and permission denial remain non-fatal and leave typed Search available.
 - [ ] Compatible OmniSorSe discovers the installed executable without `OMNISORSE_OMNIBRILLE_PATH`.
-- [ ] Handoff reaches `Connected · OmniSorSe`; authorized roots, Structure, Search, details, Context, filters, refocus, and Back work.
+- [ ] Handoff reaches `Connected · OmniSorSe`; authorized roots, Structure, Search, details, Context, Hybrid, filters, refocus, and Back work.
+- [ ] Hybrid deduplicates shared nodes, preserves structural orientation while filtering Context, and remains bounded in sparse and maximum synthetic scenes.
 - [ ] In-place upgrade from the previous preview preserves safe preferences and creates no duplicate registration or stale PDBs.
 - [ ] Uninstall removes installer-owned files, shortcut, and registration without touching user content or OmniSorSe.
 

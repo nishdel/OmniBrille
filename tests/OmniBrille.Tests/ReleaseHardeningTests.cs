@@ -135,7 +135,7 @@ public sealed class ReleaseHardeningTests
         Assert.True(File.Exists(Path.Combine(root, "docs", "PRIVATE_PREVIEW_FEEDBACK.md")));
         Assert.True(File.Exists(Path.Combine(root, "docs", "PRIVATE_PREVIEW_ROLLOUT.md")));
         Assert.True(File.Exists(Path.Combine(root, "docs", "voice.md")));
-        Assert.Contains("0.7.0-preview.1", File.ReadAllText(Path.Combine(root, "COMPATIBILITY.md")), StringComparison.Ordinal);
+        Assert.Contains("0.8.0-preview.1", File.ReadAllText(Path.Combine(root, "COMPATIBILITY.md")), StringComparison.Ordinal);
         Assert.Contains("always-listening mode", File.ReadAllText(Path.Combine(root, "docs", "voice.md")), StringComparison.OrdinalIgnoreCase);
         Assert.Contains("whisper-cli", File.ReadAllText(Path.Combine(root, "docs", "SECURITY-PRIVACY.md")), StringComparison.Ordinal);
         Assert.Contains("- [ ]", File.ReadAllText(Path.Combine(root, "RELEASE_CHECKLIST.md")), StringComparison.Ordinal);

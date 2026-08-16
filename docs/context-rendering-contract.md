@@ -2,7 +2,7 @@
 
 ## Status
 
-This is the renderer-facing contract implemented through Stage 6 and regression-gated unchanged for the Stage 7 private preview. OmniSorSe remains authoritative for every contextual node, relationship, score, reason, and provenance record; OmniBrille does not infer semantic relationships or read OmniSorSe storage directly. Synthetic pressure fixtures remain test-only and never appear in the production UI.
+This is the renderer-facing contract implemented through Stage 10. OmniSorSe remains authoritative for every contextual node, relationship, score, reason, and provenance record; OmniBrille does not infer semantic relationships or read OmniSorSe storage directly. Synthetic pressure fixtures remain test-only and never appear in the production UI. Hybrid is a provider-independent composition of existing Structure and Context data, not a wire capability or semantic engine.
 
 Stage 5 consumes bounded contextual neighborhoods and Related Files through `GetNeighborhood(IncludeContext: true)` and focus-local `GetRelated`, with edge kind, strength, reason, evidence class, and provenance. The shipped `ExplorerEdge` does **not** contain a stable relationship ID. OmniBrille therefore derives an ephemeral session-local SHA-256 scene key from source, target, kind, reason, and provenance. That key only deduplicates and selects immutable snapshots; it is not persisted or treated as durable across refresh/session restart.
 
@@ -20,7 +20,9 @@ Stage 3 profiling keeps one conservative combined scene envelope:
 
 These are engineering defaults, not wire constants or universal hardware guarantees. Candidate 32/48/64 Structure scenes were profiled; 48 remains the readability default. A synthetic 48-node scene with 72 contextual edges was rejected because its density and cold-frame cost were disproportionate. The accepted 47-structural/36-context fixture produced 83 combined edges and a comfortable warmed local headless sample. Changing a limit requires new representative profiling, label-pressure review, keyboard/list review, and documentation.
 
-Context does not add 48 nodes beside 48 Structure nodes. Structure and Context share the 48-node cap. Stage 6 retains an immutable provider snapshot separately from its filtered/rendered projection, and renders only endpoints of accepted relationships and accepted structural edges; omitted server nodes remain honestly truncated. Client semantic clustering is forbidden. Presentation filtering/summary may group only exact server fields and never creates a relationship.
+Context and Hybrid never add 48 nodes beside 48 Structure nodes. All modes share the 48-node cap. Stage 10 retains an immutable provider snapshot separately from its filtered/rendered projection, and renders only endpoints of accepted relationships and accepted structural edges; omitted server nodes remain honestly truncated. Client semantic clustering is forbidden. Presentation filtering/summary may group only exact server fields and never creates a relationship.
+
+Hybrid allocation is deterministic. It keeps focus, structural parent/orientation, and immediate structural edges before lower-priority content; when matching Context exists it reserves at most 18 node slots for strongest authoritative relationship endpoints, then fills unused capacity with Structure. Shared structural/contextual IDs become one node with combined roles. The resulting structural and contextual edges still pass through their independent caps and the 84 combined cap.
 
 ## Relationship priority
 
@@ -68,11 +70,11 @@ Cancellation, unavailable provenance, permission changes, disconnected OmniSorSe
 
 Only the current bounded visible nodes and selectable relationships belong in automation/list projections. Context nodes require name, type, selected/focused state, openability, aggregate status, and action. A selected relationship requires source, target, relationship type, reason/provenance summary, and an accessible action to inspect it.
 
-The synchronized list/tree remains a view of the one session, not a second provider/browser. Graph selection, list selection, relationship details, Back, search, progressive replacement, and cancellation must remain synchronized. Color, glow, animation, and spatial position may reinforce Context state but may not be the sole carrier of meaning.
+The synchronized list/tree remains a view of the one session, not a second provider/browser. Graph selection, list selection, relationship details, Back, search, progressive replacement, and cancellation must remain synchronized. Hybrid nodes appear once and announce structural, contextual, or both roles. Color, glow, animation, and spatial position may reinforce Context state but may not be the sole carrier of meaning.
 
 ## Performance and test gate
 
-Stage 7 retains the Stage 6 validation coverage:
+Stage 10 retains the established validation coverage and adds Hybrid-specific gates:
 
 - 48 combined nodes with 47 structural and 36 contextual edges;
 - focus/selected relationship emphasis;
@@ -82,6 +84,8 @@ Stage 7 retains the Stage 6 validation coverage:
 - 100/125/150/200% text scale;
 - graph automation and accessible-list parity;
 - filter automation, keyboard opening/reset, and shared graph/list state;
+- shared-node deduplication, structural/contextual role merging, `Ctrl+3`, mode-aware Back, and filter isolation in Hybrid;
+- deterministic sparse, representative, maximum-density, search-emphasized, Full-effects, and Reduced-effects Hybrid diagnostics;
 - GPU-backed Windows runtime plus Windows/Ubuntu build/tests.
 
 If representative sustained render cost exceeds the local 16.7 ms engineering target, contextual/decorative effects must be reduced before structural correctness or accessibility. Node counts never adapt continuously during navigation. Normal CI uses fake protocol fixtures; the real installed desktop handoff is a documented Windows integration gate.
@@ -96,3 +100,5 @@ If representative sustained render cost exceeds the local 16.7 ms engineering ta
 - Filters do not request additional results. A relationship omitted by the authoritative bounded snapshot cannot be revealed client-side.
 
 Stage 9 voice does not alter this contract. `Switch to Context` and `Show what is related to this` invoke the same current-focus Context transition; open-ended spoken text first becomes existing OmniSorSe Search, and only a user-selected/focused result can then request its real bounded Context. Transcription and result co-occurrence never create an edge.
+
+Stage 10 Hybrid also does not alter the protocol contract. It uses the existing bounded `GetNeighborhood(IncludeContext: true)` plus focus-local `GetRelated` snapshot, reuses the eight-entry session-scoped provider cache, and adds no `Hybrid` request. Because a real file-centered Context response may omit parent containment, the session composes it with one retained bounded Structure snapshot for the same session; an external related-node refocus may perform one bounded parent/directory read. This never becomes filesystem crawling, per-node fan-out, or durable identity storage. Context filters affect only contextual presentation, while structural containment remains visible. A stale component request cannot overwrite a newer mode/focus because one session request generation guards the complete scene replacement.

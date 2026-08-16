@@ -74,7 +74,7 @@ Status language is intentionally conservative: checked items exist in the applic
 - [ ] Private tester rollout, support triage, and evidence-driven blocker remediation.
 - [ ] Windows VM matrix expansion and Linux/macOS interactive runtime validation.
 
-## Stage 9 — Local push-to-talk voice Search and navigation (in progress)
+## Stage 9 — Local push-to-talk voice Search and navigation (architecture complete; hardware gate outstanding)
 
 - [x] Optional bounded Windows push-to-talk capture with explicit listening/transcribing/cancel states and no background service.
 - [x] Replaceable local speech provider; user-provided whisper.cpp/GGML setup with no mandatory download or bundled model.
@@ -82,4 +82,13 @@ Status language is intentionally conservative: checked items exist in the applic
 - [x] Standalone voice queries use structural Search; connected voice queries use the existing OmniSorSe Search provider and never create relationships.
 - [x] Provider-generation stale-result rejection, temporary-audio cleanup, privacy-safe diagnostics, accessibility, reduced motion/effects, and fake-provider/headless tests.
 - [ ] Real Windows microphone + local model command/Search smoke on available hardware.
-- [ ] Validated Stage 9 installer/private-preview workflow and controlled voice tester rollout.
+- [x] Validated Stage 9 installer/private-preview workflow; controlled voice tester rollout remains deferred until real microphone hardware validation.
+
+## Stage 10 — Hybrid mode and graph exploration maturation (complete)
+
+- [x] Add the primary `Structure | Context | Hybrid` mode model without changing Explorer Protocol v1 or introducing client semantic inference.
+- [x] Compose authorized structural and contextual snapshots into one deduplicated 48-node scene with the existing 47/36/84 edge limits and maximum three contextual edges per node.
+- [x] Add deterministic structural/contextual planes, stable mode transitions, focus/refocus, shared Back history, Search emphasis, relationship inspection, and Context-only filtering.
+- [x] Extend bounded graph automation, the synchronized accessible list, keyboard navigation, and `Ctrl+3` for Hybrid.
+- [x] Validate sparse connected and maximum synthetic Hybrid scenes, themes, reduced motion/effects, renderer diagnostics, packaging, and voice regression without claiming microphone hardware validation.
+- [x] Validate the installed normal OmniSorSe RC handoff with a sparse five-node Hybrid scene containing five structural roles and three real Context roles; preserve structural orientation when the Context response omits containment.

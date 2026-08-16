@@ -1,10 +1,10 @@
 # OmniBrille
 
-OmniBrille is an optional, standalone-capable spatial navigation application for graph-based filesystem exploration. It presents standalone Structure and real OmniSorSe-backed Structure and Context. This repository is an independent application: users who never install OmniBrille incur no renderer, asset, package-size, runtime, dependency, or startup cost in OmniSorSe.
+OmniBrille is an optional, standalone-capable spatial navigation application for graph-based filesystem exploration. It presents standalone Structure and real OmniSorSe-backed Structure, Context, and Hybrid. This repository is an independent application: users who never install OmniBrille incur no renderer, asset, package-size, runtime, dependency, or startup cost in OmniSorSe.
 
 Conceptually, OmniSorSe is the brain. OmniBrille is the visual lens and spatial navigation interface.
 
-OmniBrille is currently a **Private Preview / Pre-release**. Stage 9 adds optional local push-to-talk voice as another input for the existing navigation and Search model. Deterministic commands require no LLM; standalone utterances use structural Search, while connected utterances use the existing OmniSorSe Search provider over unchanged Explorer Protocol v1. Voice is off by default and requires a user-provided local whisper.cpp runtime/model. Always-listening audio, destructive file operations, Hybrid mode, and automatic updating remain intentionally absent.
+OmniBrille is currently a **Private Preview / Pre-release**. Stage 10 adds a deliberate Hybrid view that answers where an item lives and what it is related to in one bounded scene. Optional local push-to-talk remains an independent, disabled-by-default input path; real microphone hardware validation is still outstanding and is not claimed. Explorer Protocol v1 is unchanged. Always-listening audio, destructive file operations, and automatic updating remain intentionally absent.
 
 ## What works now
 
@@ -27,7 +27,8 @@ OmniBrille is currently a **Private Preview / Pre-release**. Stage 9 adds option
 - A strict Explorer Protocol v1 named-pipe client, explicit version/capability validation, opaque session-bound node identity, and defensive payload bounds.
 - A connected provider that adapts real OmniSorSe authorized roots, paged Structure children, unified Search, and bounded details into the same graph/session/list model as standalone mode.
 - The real v2.5 release-candidate installed-companion flow: an explicit OmniSorSe action discovers and launches OmniBrille, transfers a short-lived scoped grant through a one-time current-user-only pipe, and authenticates the session without putting a bearer token on the command line.
-- A primary `Structure | Context` switch. Context requests only real `GetNeighborhood(IncludeContext: true)` and focus-local `GetRelated` evidence supplied by OmniSorSe; standalone Context explains that OmniSorSe is required and never fabricates relationships.
+- A primary `Structure | Context | Hybrid` switch. Context and Hybrid use only real `GetNeighborhood(IncludeContext: true)` and focus-local `GetRelated` evidence supplied by OmniSorSe; standalone Context/Hybrid explain that OmniSorSe is required and never fabricate relationships.
+- Hybrid composes one provider-independent bounded snapshot: shared nodes are deduplicated, solid Structure remains the navigational skeleton, dashed Context remains server-authored, and one 48-node/84-edge envelope applies to the complete scene.
 - A deterministic focus-centered Context layout, solid structural edges, distinct cyan dashed Context edges, 48 combined nodes, at most 36 Context edges, and at most three Context edges touching a node.
 - Context refocus and Back, real OmniSorSe Search-to-Context focus, compact reason/evidence/provenance details, Context-aware graph automation peers, and synchronized keyboard/list navigation.
 - Reversible, local presentation filters for server-authored relationship kind, minimum ranking strength, and evidence class. The HUD reports visible, matching, and authorized counts and never alters OmniSorSe state.
@@ -64,21 +65,21 @@ Build the pinned, unsigned Windows installer with:
 .\build\Package-Windows.ps1 -BootstrapInnoSetup
 ```
 
-The Stage 9 package is `OmniBrille-0.7.0-preview.1-win-x64-setup.exe`. It remains self-contained, non-trimmed, and multi-file for reliable Avalonia/XAML behavior. It includes only the small Windows capture dependency—not whisper.cpp or a speech model. The build also emits a release manifest, sanitized dependency manifest, SHA-256 sidecar, and tester notes containing that exact artifact's hash. See [PACKAGING.md](docs/PACKAGING.md) for prerequisites, install/upgrade/uninstall semantics, signing, private-preview automation, and alternatives considered.
+The Stage 10 package is `OmniBrille-0.8.0-preview.1-win-x64-setup.exe`. The minor preview increment reflects the new Hybrid exploration surface. It remains self-contained, non-trimmed, and multi-file for reliable Avalonia/XAML behavior, and includes only the small Windows capture dependency—not whisper.cpp or a speech model. The build also emits a release manifest, sanitized dependency manifest, SHA-256 sidecar, and tester notes containing that exact artifact's hash. See [PACKAGING.md](docs/PACKAGING.md) for prerequisites, install/upgrade/uninstall semantics, signing, private-preview automation, and alternatives considered.
 
 The application initially shows no filesystem content. Choose a folder to establish the access root. For an explicit command-line launch (useful for local smoke testing), append `-- --root "C:\path\you\chose" --theme Light`. The theme value may be `Light` or `Dark`.
 
 The committed OmniSorSe v2.5 release candidate can start OmniBrille with `--omnisorse-handoff <one-time-pipe-name>`. The pipe name has the fixed product prefix and a 128-bit random suffix; the pipe transfers a strict, bounded, short-lived grant over a current-user-only channel. The secret is never a command-line value, file, preference, UI string, or normal diagnostic. OmniBrille performs no background discovery. Direct launch remains standalone.
 
-Open the HUD settings control to select `Reduced motion`, `Reduced visual effects`, local Voice configuration, the diagnostics overlay, or `Copy safe diagnostics` for a user-reviewed support snapshot. Open the accessible list from the `List` HUD control or `Ctrl+Shift+L`. Keyboard essentials are `Ctrl+1` for Structure, `Ctrl+2` for Context, `Ctrl+Shift+F` for Context filters, `Ctrl+F` for Search, `Ctrl+Shift+Space` for push-to-talk, `Backspace` or `Alt+Left` for Back, arrows to change selection, `Enter` to activate/refocus, `Escape` to dismiss/cancel, `+`/`-` to zoom, and `0` to reset the graph view. See [local push-to-talk voice](docs/voice.md) for setup, commands, privacy, and limitations.
+Open the HUD settings control to select `Reduced motion`, `Reduced visual effects`, local Voice configuration, the diagnostics overlay, or `Copy safe diagnostics` for a user-reviewed support snapshot. Open the accessible list from the `List` HUD control or `Ctrl+Shift+L`. Keyboard essentials are `Ctrl+1` for Structure, `Ctrl+2` for Context, `Ctrl+3` for Hybrid, `Ctrl+Shift+F` for Context/Hybrid relationship filters, `Ctrl+F` for Search, `Ctrl+Shift+Space` for push-to-talk, `Backspace` or `Alt+Left` for Back, arrows to change selection, `Enter` to activate/refocus, `Escape` to dismiss/cancel, `+`/`-` to zoom, and `0` to reset the graph view. See [local push-to-talk voice](docs/voice.md) for setup, commands, privacy, and limitations.
 
 ## Repository structure
 
 ```text
 src/
-  OmniBrille.Core/            explorer/Context/voice contracts, bounded builders, layouts, caches, command coordinator
+  OmniBrille.Core/            explorer/Context/Hybrid/voice contracts, bounded builders, layouts, caches, command coordinator
   OmniBrille.Infrastructure/  standalone/Protocol adapters, preferences, bounded local audio/whisper.cpp provider
-  OmniBrille.Desktop/         Avalonia shell/session, Structure/Context renderer, accessible push-to-talk HUD, themes
+  OmniBrille.Desktop/         Avalonia shell/session, Structure/Context/Hybrid renderer, accessible push-to-talk HUD, themes
   OmniSorSe.ExplorerProtocol/ exact dependency-free v1 wire contracts mirrored from OmniSorSe
 tests/
   OmniBrille.Tests/           domain, session, filesystem, failure, and persistence tests
@@ -109,7 +110,7 @@ CI is defined in `.github/workflows/ci.yml`. It restores, verifies formatting, b
 
 OmniSorSe is the primary local-first file intelligence application. It is responsible for scanning, indexing, Search, Content Intelligence, Media Intelligence, OCR, transcripts, Related Files, organization, safe file operations, and persistent intelligence/index state.
 
-OmniBrille is the optional spatial navigation companion. It is responsible for graph-based filesystem navigation, Structure mode, spatial Search presentation, visual navigation, real server-authored Context presentation, and optional local voice input. Context relationships are supplied exclusively by OmniSorSe; voice Search routes through the same existing standalone/connected providers, so OmniBrille does not duplicate its intelligence.
+OmniBrille is the optional spatial navigation companion. It is responsible for graph-based filesystem navigation, Structure/Context/Hybrid presentation, spatial Search presentation, visual navigation, and optional local voice input. Context relationships are supplied exclusively by OmniSorSe; Hybrid only composes existing bounded Structure and Context snapshots, and voice Search routes through the same existing standalone/connected providers, so OmniBrille does not duplicate intelligence.
 
 OmniBrille consumes OmniSorSe Explorer Protocol v1 through a narrow named-pipe client and will never read OmniSorSe's SQLite schema or reuse its application/indexing implementations. Only the small dependency-free wire contract is mirrored locally. Standalone and connected providers remain separate authorities: connected mode uses only roots and opaque nodes authorized by OmniSorSe, with no direct-filesystem fallback.
 
