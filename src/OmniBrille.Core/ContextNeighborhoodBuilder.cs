@@ -80,13 +80,6 @@ public sealed class ContextNeighborhoodBuilder
             .ToHashSet(ExplorerIdentity.Comparer);
         prioritizedNodeIds.Add(snapshot.Focus.Id);
 
-        var nodes = sourceNodes.Values
-            .Where(node => prioritizedNodeIds.Contains(node.Id))
-            .OrderBy(node => ExplorerIdentity.Equals(node.Id, snapshot.Focus.Id) ? 0 : 1)
-            .ThenBy(node => node.Name, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(node => node.Id, ExplorerIdentity.Comparer)
-            .Select(entry => ExplorerNode.FromEntry(entry) with { IsNavigable = true })
-            .ToArray();
         var structuralEdges = candidateStructuralEdges
             .Where(edge =>
                 prioritizedNodeIds.Contains(edge.SourceId) &&
@@ -101,6 +94,22 @@ public sealed class ContextNeighborhoodBuilder
                 relationship.TargetId,
                 ExplorerGraphEdgeKind.Contextual,
                 relationship))
+            .ToArray();
+        var structuralNodeIds = structuralEdges
+            .SelectMany(edge => new[] { edge.SourceId, edge.TargetId })
+            .ToHashSet(ExplorerIdentity.Comparer);
+        var contextualNodeIds = contextualEdges
+            .SelectMany(edge => new[] { edge.SourceId, edge.TargetId })
+            .ToHashSet(ExplorerIdentity.Comparer);
+        var nodes = sourceNodes.Values
+            .Where(node => prioritizedNodeIds.Contains(node.Id))
+            .OrderBy(node => ExplorerIdentity.Equals(node.Id, snapshot.Focus.Id) ? 0 : 1)
+            .ThenBy(node => node.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(node => node.Id, ExplorerIdentity.Comparer)
+            .Select(entry => ExplorerNode.FromEntry(entry, RolesFor(entry.Id, structuralNodeIds, contextualNodeIds)) with
+            {
+                IsNavigable = true,
+            })
             .ToArray();
 
         var hiddenNodes = Math.Max(0, sourceNodes.Count - nodes.Length);
@@ -142,4 +151,23 @@ public sealed class ContextNeighborhoodBuilder
     private static bool TouchesFocus(ExplorerRelationship relationship, string focusId) =>
         ExplorerIdentity.Equals(relationship.SourceId, focusId) ||
         ExplorerIdentity.Equals(relationship.TargetId, focusId);
+
+    private static ExplorerNodeRole RolesFor(
+        string nodeId,
+        HashSet<string> structuralNodeIds,
+        HashSet<string> contextualNodeIds)
+    {
+        var roles = ExplorerNodeRole.None;
+        if (structuralNodeIds.Contains(nodeId))
+        {
+            roles |= ExplorerNodeRole.Structural;
+        }
+
+        if (contextualNodeIds.Contains(nodeId))
+        {
+            roles |= ExplorerNodeRole.Contextual;
+        }
+
+        return roles == ExplorerNodeRole.None ? ExplorerNodeRole.Contextual : roles;
+    }
 }

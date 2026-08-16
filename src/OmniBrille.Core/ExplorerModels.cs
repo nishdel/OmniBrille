@@ -25,6 +25,15 @@ public enum ExplorerViewMode
 {
     Structure,
     Context,
+    Hybrid,
+}
+
+[Flags]
+public enum ExplorerNodeRole
+{
+    None = 0,
+    Structural = 1,
+    Contextual = 2,
 }
 
 public enum ExplorerGraphEdgeKind
@@ -116,11 +125,14 @@ public sealed record ExplorerNode(
     int AggregatedItemCount = 0,
     AggregateAction? AggregateAction = null,
     string? NavigationTarget = null,
-    string? ParentNavigationTarget = null)
+    string? ParentNavigationTarget = null,
+    ExplorerNodeRole Roles = ExplorerNodeRole.None)
 {
     public string Target => NavigationTarget ?? Path;
 
-    public static ExplorerNode FromEntry(ExplorerEntry entry) => new(
+    public static ExplorerNode FromEntry(
+        ExplorerEntry entry,
+        ExplorerNodeRole roles = ExplorerNodeRole.Structural) => new(
         entry.Id,
         entry.Name,
         entry.Path,
@@ -129,7 +141,8 @@ public sealed record ExplorerNode(
         entry.LastModified,
         entry.IsNavigable,
         NavigationTarget: entry.NavigationTarget,
-        ParentNavigationTarget: entry.ParentNavigationTarget);
+        ParentNavigationTarget: entry.ParentNavigationTarget,
+        Roles: roles);
 }
 
 public sealed record ExplorerRelationship(

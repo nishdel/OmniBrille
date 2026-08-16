@@ -39,6 +39,7 @@ public sealed class GraphNeighborhoodBuilder
             {
                 Kind = ExplorerNodeKind.Context,
                 IsNavigable = true,
+                Roles = ExplorerNodeRole.Structural,
             };
             nodes.Add(context);
             edges.Add(new ExplorerEdge(context.Id, snapshot.Focus.Id));
@@ -242,7 +243,8 @@ public sealed class GraphNeighborhoodBuilder
             null,
             action is not null,
             itemCount,
-            action));
+            action,
+            Roles: ExplorerNodeRole.Structural));
         edges.Add(new ExplorerEdge(focus.Id, id));
     }
 

@@ -9,6 +9,7 @@ public sealed class ExplorerSession : IDisposable
 
     private readonly GraphNeighborhoodBuilder _neighborhoodBuilder;
     private readonly ContextNeighborhoodBuilder _contextBuilder;
+    private readonly HybridNeighborhoodBuilder _hybridBuilder;
     private readonly NavigationState _navigation = new();
     private IExplorerProvider? _provider;
     private IExplorerSearchProvider? _searchProvider;
@@ -17,9 +18,10 @@ public sealed class ExplorerSession : IDisposable
     private CancellationTokenSource? _detailsCancellation;
     private ExplorerDirectorySnapshot? _currentSnapshot;
     private ExplorerContextSnapshot? _currentContextSnapshot;
+    private ExplorerDirectorySnapshot? _hybridStructureSnapshot;
     private ExplorerEntry? _previousContext;
     private AggregatePage? _aggregatePage;
-    private readonly List<string> _contextHistory = [];
+    private readonly List<ConnectedHistoryEntry> _connectedHistory = [];
     private string? _structureReturnTarget;
     private string? _structureReturnSelectionId;
     private long _loadRequestVersion;
@@ -29,10 +31,12 @@ public sealed class ExplorerSession : IDisposable
 
     public ExplorerSession(
         GraphNeighborhoodBuilder? neighborhoodBuilder = null,
-        ContextNeighborhoodBuilder? contextBuilder = null)
+        ContextNeighborhoodBuilder? contextBuilder = null,
+        HybridNeighborhoodBuilder? hybridBuilder = null)
     {
         _neighborhoodBuilder = neighborhoodBuilder ?? new GraphNeighborhoodBuilder();
         _contextBuilder = contextBuilder ?? new ContextNeighborhoodBuilder();
+        _hybridBuilder = hybridBuilder ?? new HybridNeighborhoodBuilder();
     }
 
     public event EventHandler? StateChanged;
@@ -93,7 +97,7 @@ public sealed class ExplorerSession : IDisposable
         ? "Connected · OmniSorSe"
         : "Standalone";
 
-    public bool CanGoBack => ViewMode == ExplorerViewMode.Context || _aggregatePage is not null || _navigation.CanGoBack;
+    public bool CanGoBack => ViewMode != ExplorerViewMode.Structure || _aggregatePage is not null || _navigation.CanGoBack;
 
     public bool IsAggregateRefined => _aggregatePage is not null;
 
@@ -126,10 +130,11 @@ public sealed class ExplorerSession : IDisposable
         Neighborhood = null;
         _currentSnapshot = null;
         _currentContextSnapshot = null;
+        _hybridStructureSnapshot = null;
         _previousContext = null;
         _aggregatePage = null;
         ViewMode = ExplorerViewMode.Structure;
-        _contextHistory.Clear();
+        _connectedHistory.Clear();
         _structureReturnTarget = null;
         _structureReturnSelectionId = null;
         ContextFilter = ContextFilter.None;
@@ -164,16 +169,20 @@ public sealed class ExplorerSession : IDisposable
     public async Task<bool> GoBackAsync(CancellationToken cancellationToken = default)
     {
         EnsureProvider();
-        if (ViewMode == ExplorerViewMode.Context)
+        if (ViewMode != ExplorerViewMode.Structure)
         {
-            if (_contextHistory.Count > 0)
+            if (_connectedHistory.Count > 0)
             {
-                var index = _contextHistory.Count - 1;
-                var contextTarget = _contextHistory[index];
-                var restored = await LoadContextAsync(contextTarget, pushHistory: false, cancellationToken);
+                var index = _connectedHistory.Count - 1;
+                var previous = _connectedHistory[index];
+                var restored = await LoadConnectedSceneAsync(
+                    previous.FocusNodeId,
+                    previous.ViewMode,
+                    pushHistory: false,
+                    cancellationToken);
                 if (restored)
                 {
-                    _contextHistory.RemoveAt(index);
+                    _connectedHistory.RemoveAt(index);
                 }
 
                 return restored;
@@ -267,7 +276,7 @@ public sealed class ExplorerSession : IDisposable
                 new SearchRequest(
                     AccessRoot,
                     SearchQuery,
-                    IncludeContext: ViewMode == ExplorerViewMode.Context && ProviderMode == ExplorerProviderMode.Connected),
+                    IncludeContext: ViewMode != ExplorerViewMode.Structure && ProviderMode == ExplorerProviderMode.Connected),
                 _searchCancellation.Token);
             if (requestVersion != Volatile.Read(ref _searchRequestVersion))
             {
@@ -313,9 +322,9 @@ public sealed class ExplorerSession : IDisposable
     {
         ArgumentNullException.ThrowIfNull(hit);
 
-        if (ViewMode == ExplorerViewMode.Context && ProviderMode == ExplorerProviderMode.Connected)
+        if (ViewMode != ExplorerViewMode.Structure && ProviderMode == ExplorerProviderMode.Connected)
         {
-            return await FocusContextNodeAsync(hit.Target, cancellationToken);
+            return await FocusConnectedNodeAsync(hit.Target, ViewMode, cancellationToken);
         }
 
         if (hit.Kind == ExplorerNodeKind.Folder)
@@ -341,33 +350,82 @@ public sealed class ExplorerSession : IDisposable
 
     public async Task<bool> SwitchToContextAsync(
         string? preferredFocusId = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        await SwitchToConnectedModeAsync(ExplorerViewMode.Context, preferredFocusId, cancellationToken);
+
+    public async Task<bool> SwitchToHybridAsync(
+        string? preferredFocusId = null,
+        CancellationToken cancellationToken = default) =>
+        await SwitchToConnectedModeAsync(ExplorerViewMode.Hybrid, preferredFocusId, cancellationToken);
+
+    private async Task<bool> SwitchToConnectedModeAsync(
+        ExplorerViewMode targetMode,
+        string? preferredFocusId,
+        CancellationToken cancellationToken)
     {
         EnsureProvider();
         if (_provider is not IExplorerContextProvider)
         {
-            Status = "Context exploration requires OmniSorSe.";
+            Status = targetMode == ExplorerViewMode.Hybrid
+                ? "Hybrid exploration requires OmniSorSe."
+                : "Context exploration requires OmniSorSe.";
             NotifyChanged();
             return false;
         }
 
         var target = preferredFocusId ??
-            (SelectedNode?.Kind == ExplorerNodeKind.File ? SelectedNode.Target : Neighborhood?.Focus.Target);
+            (ViewMode == ExplorerViewMode.Structure && SelectedNode?.Kind == ExplorerNodeKind.File
+                ? SelectedNode.Target
+                : Neighborhood?.Focus.Target);
         if (string.IsNullOrWhiteSpace(target))
         {
-            Status = "Select an indexed file or folder before opening Context.";
+            Status = $"Select an indexed file or folder before opening {targetMode}.";
             NotifyChanged();
             return false;
+        }
+
+        if (ViewMode == targetMode && ExplorerIdentity.Equals(Neighborhood?.FocusNodeId, target))
+        {
+            return true;
         }
 
         if (ViewMode == ExplorerViewMode.Structure)
         {
             _structureReturnTarget = _navigation.CurrentPath;
             _structureReturnSelectionId = SelectedNode?.Id;
-            _contextHistory.Clear();
+            _hybridStructureSnapshot = _currentSnapshot;
+            _connectedHistory.Clear();
         }
 
-        return await LoadContextAsync(target, pushHistory: false, cancellationToken);
+        if (_currentContextSnapshot is not null &&
+            ViewMode != ExplorerViewMode.Structure &&
+            ExplorerIdentity.Equals(_currentContextSnapshot.Focus.Id, target))
+        {
+            if (targetMode == ExplorerViewMode.Hybrid &&
+                !StructureContainsFocus(_hybridStructureSnapshot, target))
+            {
+                return await LoadConnectedSceneAsync(
+                    target,
+                    targetMode,
+                    pushHistory: true,
+                    cancellationToken);
+            }
+
+            var previous = new ConnectedHistoryEntry(ViewMode, Neighborhood!.FocusNodeId);
+            var retainedSnapshot = targetMode == ExplorerViewMode.Hybrid
+                ? MergeHybridStructure(_currentContextSnapshot, _hybridStructureSnapshot!)
+                : _currentContextSnapshot;
+            ApplyConnectedSnapshot(retainedSnapshot, targetMode);
+            _connectedHistory.Add(previous);
+            NotifyChanged();
+            return true;
+        }
+
+        return await LoadConnectedSceneAsync(
+            target,
+            targetMode,
+            pushHistory: ViewMode != ExplorerViewMode.Structure,
+            cancellationToken);
     }
 
     public async Task<bool> SwitchToStructureAsync(CancellationToken cancellationToken = default)
@@ -382,7 +440,7 @@ public sealed class ExplorerSession : IDisposable
         var selection = _structureReturnSelectionId;
         var previousMode = ViewMode;
         ViewMode = ExplorerViewMode.Structure;
-        _contextHistory.Clear();
+        _connectedHistory.Clear();
         var outcome = await LoadDirectoryAsync(
             target,
             previousContext: null,
@@ -408,18 +466,29 @@ public sealed class ExplorerSession : IDisposable
     public Task<bool> FocusContextNodeAsync(
         string nodeId,
         CancellationToken cancellationToken = default) =>
-        LoadContextAsync(nodeId, pushHistory: true, cancellationToken);
+        FocusConnectedNodeAsync(nodeId, ExplorerViewMode.Context, cancellationToken);
+
+    public Task<bool> FocusHybridNodeAsync(
+        string nodeId,
+        CancellationToken cancellationToken = default) =>
+        FocusConnectedNodeAsync(nodeId, ExplorerViewMode.Hybrid, cancellationToken);
+
+    private Task<bool> FocusConnectedNodeAsync(
+        string nodeId,
+        ExplorerViewMode targetMode,
+        CancellationToken cancellationToken) =>
+        LoadConnectedSceneAsync(nodeId, targetMode, pushHistory: true, cancellationToken);
 
     public bool ApplyContextFilter(ContextFilter filter)
     {
         ArgumentNullException.ThrowIfNull(filter);
-        if (ViewMode != ExplorerViewMode.Context || _currentContextSnapshot is null)
+        if (ViewMode == ExplorerViewMode.Structure || _currentContextSnapshot is null)
         {
             return false;
         }
 
         ContextFilter = filter.Normalize();
-        var result = _contextBuilder.BuildDetailed(_currentContextSnapshot, ContextFilter);
+        var result = BuildConnectedNeighborhood(_currentContextSnapshot, ViewMode);
         Neighborhood = result.Neighborhood;
         ContextFilterSummary = result.Summary;
         if (SelectedNode is null ||
@@ -432,7 +501,7 @@ public sealed class ExplorerSession : IDisposable
         }
 
         UpdateHighlights(notify: false);
-        UpdateContextStatus();
+        UpdateConnectedStatus();
         NotifyChanged();
         return true;
     }
@@ -493,9 +562,10 @@ public sealed class ExplorerSession : IDisposable
         HighlightedNodeIds = new HashSet<string>();
         _currentSnapshot = null;
         _currentContextSnapshot = null;
+        _hybridStructureSnapshot = null;
         _previousContext = null;
         _aggregatePage = null;
-        _contextHistory.Clear();
+        _connectedHistory.Clear();
         _structureReturnTarget = null;
         _structureReturnSelectionId = null;
         ContextFilter = ContextFilter.None;
@@ -530,14 +600,17 @@ public sealed class ExplorerSession : IDisposable
         _detailsCancellation?.Dispose();
     }
 
-    private async Task<bool> LoadContextAsync(
+    private async Task<bool> LoadConnectedSceneAsync(
         string nodeId,
+        ExplorerViewMode targetMode,
         bool pushHistory,
         CancellationToken cancellationToken)
     {
         if (_provider is not IExplorerContextProvider contextProvider)
         {
-            Status = "Context exploration requires OmniSorSe.";
+            Status = targetMode == ExplorerViewMode.Hybrid
+                ? "Hybrid exploration requires OmniSorSe."
+                : "Context exploration requires OmniSorSe.";
             NotifyChanged();
             return false;
         }
@@ -559,29 +632,35 @@ public sealed class ExplorerSession : IDisposable
         var stopwatch = Stopwatch.StartNew();
         LoadState = ExplorerLoadState.Loading;
         LoadedItemCount = 0;
-        Status = "Requesting bounded OmniSorSe Context…";
+        Status = $"Requesting bounded OmniSorSe {targetMode} data…";
         NotifyChanged();
 
         try
         {
             var snapshot = await contextProvider.GetContextAsync(nodeId, _loadCancellation.Token);
+            if (targetMode == ExplorerViewMode.Hybrid)
+            {
+                snapshot = await PrepareHybridSnapshotAsync(snapshot, _loadCancellation.Token);
+            }
+
             if (requestVersion != Volatile.Read(ref _loadRequestVersion))
             {
                 (_provider as IExplorerProviderDiagnostics)?.ReportStaleResponseRejected();
                 return false;
             }
 
-            var result = _contextBuilder.BuildDetailed(snapshot, ContextFilter);
+            var result = BuildConnectedNeighborhood(snapshot, targetMode);
             var neighborhood = result.Neighborhood;
             if (pushHistory &&
-                previousMode == ExplorerViewMode.Context &&
+                previousMode != ExplorerViewMode.Structure &&
                 previousFocusId is not null &&
-                !ExplorerIdentity.Equals(previousFocusId, neighborhood.FocusNodeId))
+                (previousMode != targetMode ||
+                 !ExplorerIdentity.Equals(previousFocusId, neighborhood.FocusNodeId)))
             {
-                _contextHistory.Add(previousFocusId);
+                _connectedHistory.Add(new ConnectedHistoryEntry(previousMode, previousFocusId));
             }
 
-            ViewMode = ExplorerViewMode.Context;
+            ViewMode = targetMode;
             Neighborhood = neighborhood;
             _currentContextSnapshot = snapshot;
             ContextFilterSummary = result.Summary;
@@ -592,7 +671,7 @@ public sealed class ExplorerSession : IDisposable
             _aggregatePage = null;
             LoadedItemCount = Math.Max(0, neighborhood.Nodes.Count - 1);
             LoadState = ExplorerLoadState.Ready;
-            UpdateContextStatus();
+            UpdateConnectedStatus();
 
             _detailsCancellation?.Cancel();
             _ = RefreshSelectedNodeDetailsAsync(CancellationToken.None);
@@ -603,7 +682,7 @@ public sealed class ExplorerSession : IDisposable
         catch (OperationCanceledException) when (requestVersion == Volatile.Read(ref _loadRequestVersion))
         {
             LoadState = ExplorerLoadState.Cancelled;
-            Status = "Context loading cancelled.";
+            Status = $"{targetMode} loading cancelled.";
             NotifyChanged();
             throw;
         }
@@ -612,7 +691,9 @@ public sealed class ExplorerSession : IDisposable
             RestoreScene(backup);
             ViewMode = previousMode;
             LoadState = ExplorerLoadState.Failed;
-            Status = "OmniSorSe could not complete the Context request. The previous graph is retained.";
+            Status = targetMode == ExplorerViewMode.Hybrid && previousMode == ExplorerViewMode.Structure
+                ? "OmniSorSe could not load the Context layer. The structural graph is retained."
+                : $"OmniSorSe could not complete the {targetMode} request. The previous graph is retained.";
             ProviderFailed?.Invoke(exception);
             NotifyChanged();
             return false;
@@ -771,6 +852,7 @@ public sealed class ExplorerSession : IDisposable
     {
         _currentSnapshot = snapshot;
         _currentContextSnapshot = null;
+        _hybridStructureSnapshot = snapshot;
         ContextFilterSummary = null;
         _previousContext = previousContext;
         Neighborhood = _neighborhoodBuilder.Build(snapshot, previousContext, preferredSelectionId, _aggregatePage);
@@ -833,7 +915,118 @@ public sealed class ExplorerSession : IDisposable
         }
     }
 
-    private void UpdateContextStatus()
+    private async Task<ExplorerContextSnapshot> PrepareHybridSnapshotAsync(
+        ExplorerContextSnapshot contextSnapshot,
+        CancellationToken cancellationToken)
+    {
+        var structureSnapshot = _hybridStructureSnapshot;
+        if (!StructureContainsFocus(structureSnapshot, contextSnapshot.Focus.Id))
+        {
+            var structureTarget = contextSnapshot.Focus.ParentNavigationTarget ?? contextSnapshot.Focus.Target;
+            try
+            {
+                structureSnapshot = await _provider!.GetDirectoryAsync(structureTarget, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception exception) when (IsProviderFailure(exception))
+            {
+                ProviderFailed?.Invoke(exception);
+                return AppendHybridWarning(
+                    contextSnapshot,
+                    "Structural orientation could not be refreshed; the authoritative Context layer remains available.");
+            }
+
+            if (structureSnapshot.Failure != ExplorerFailureKind.None)
+            {
+                return AppendHybridWarning(
+                    contextSnapshot,
+                    structureSnapshot.Warning ??
+                    "Structural orientation could not be refreshed; the authoritative Context layer remains available.");
+            }
+
+            _hybridStructureSnapshot = structureSnapshot;
+        }
+
+        return MergeHybridStructure(contextSnapshot, structureSnapshot!);
+    }
+
+    private static bool StructureContainsFocus(
+        ExplorerDirectorySnapshot? structureSnapshot,
+        string focusId) => structureSnapshot is not null &&
+        (ExplorerIdentity.Equals(structureSnapshot.Focus.Id, focusId) ||
+         structureSnapshot.Children.Any(child => ExplorerIdentity.Equals(child.Id, focusId)));
+
+    private static ExplorerContextSnapshot MergeHybridStructure(
+        ExplorerContextSnapshot contextSnapshot,
+        ExplorerDirectorySnapshot structureSnapshot)
+    {
+        var nodes = contextSnapshot.Nodes
+            .Concat([structureSnapshot.Focus])
+            .Concat(structureSnapshot.Children)
+            .Prepend(contextSnapshot.Focus)
+            .GroupBy(node => node.Id, ExplorerIdentity.Comparer)
+            .Select(group => group.First())
+            .ToArray();
+        var structuralEdges = contextSnapshot.StructuralEdges
+            .Concat(structureSnapshot.Children.Select(child => new ExplorerEdge(
+                structureSnapshot.Focus.Id,
+                child.Id,
+                ExplorerGraphEdgeKind.Structural)))
+            .GroupBy(edge => $"{edge.SourceId}\u001f{edge.TargetId}", ExplorerIdentity.Comparer)
+            .Select(group => group.First())
+            .ToArray();
+        var warning = string.Join(
+            " ",
+            new[] { contextSnapshot.Warning, structureSnapshot.Warning }
+                .Where(value => !string.IsNullOrWhiteSpace(value)));
+        return contextSnapshot with
+        {
+            Nodes = nodes,
+            StructuralEdges = structuralEdges,
+            WasTruncated = contextSnapshot.WasTruncated || structureSnapshot.WasTruncated,
+            Warning = string.IsNullOrWhiteSpace(warning) ? null : warning,
+        };
+    }
+
+    private static ExplorerContextSnapshot AppendHybridWarning(
+        ExplorerContextSnapshot snapshot,
+        string warning) => snapshot with
+        {
+            Warning = string.IsNullOrWhiteSpace(snapshot.Warning)
+            ? warning
+            : $"{snapshot.Warning} {warning}",
+        };
+
+    private ContextNeighborhoodBuildResult BuildConnectedNeighborhood(
+        ExplorerContextSnapshot snapshot,
+        ExplorerViewMode viewMode) => viewMode == ExplorerViewMode.Hybrid
+        ? _hybridBuilder.BuildDetailed(snapshot, ContextFilter)
+        : _contextBuilder.BuildDetailed(snapshot, ContextFilter);
+
+    private void ApplyConnectedSnapshot(ExplorerContextSnapshot snapshot, ExplorerViewMode viewMode)
+    {
+        var result = BuildConnectedNeighborhood(snapshot, viewMode);
+        ViewMode = viewMode;
+        Neighborhood = result.Neighborhood;
+        _currentContextSnapshot = snapshot;
+        ContextFilterSummary = result.Summary;
+        SelectedNode = Neighborhood.Focus;
+        SelectedNodeDetails = null;
+        _currentSnapshot = null;
+        _previousContext = null;
+        _aggregatePage = null;
+        LoadedItemCount = Math.Max(0, Neighborhood.Nodes.Count - 1);
+        LoadState = ExplorerLoadState.Ready;
+        _detailsCancellation?.Cancel();
+        _ = RefreshSelectedNodeDetailsAsync(CancellationToken.None);
+        UpdateHighlights(notify: false);
+        UpdateConnectedStatus();
+    }
+
+    private void UpdateConnectedStatus()
     {
         if (Neighborhood is null || ContextFilterSummary is null)
         {
@@ -844,12 +1037,19 @@ public sealed class ExplorerSession : IDisposable
         if (summary.MatchingRelationshipCount == 0)
         {
             Status = ContextFilter.IsActive
-                ? "No relationships match the current Context filters. Clear filters to restore the authoritative neighborhood."
-                : "No contextual relationships found for this item.";
+                ? ViewMode == ExplorerViewMode.Hybrid
+                    ? "No relationships match the current Context filters. Structural orientation remains available; clear filters to restore the authoritative Context layer."
+                    : "No relationships match the current Context filters. Clear filters to restore the authoritative neighborhood."
+                : ViewMode == ExplorerViewMode.Hybrid
+                    ? "No contextual relationships found for this item. Structural orientation remains available."
+                    : "No contextual relationships found for this item.";
             return;
         }
 
-        Status = $"{summary.VisibleRelationshipCount:N0} of {summary.MatchingRelationshipCount:N0} matching relationships visible · {Neighborhood.Nodes.Count:N0} Context nodes";
+        var modeDescription = ViewMode == ExplorerViewMode.Hybrid
+            ? $"{Neighborhood.Nodes.Count(node => (node.Roles & ExplorerNodeRole.Structural) != 0):N0} structural / {Neighborhood.Nodes.Count(node => (node.Roles & ExplorerNodeRole.Contextual) != 0):N0} contextual nodes"
+            : $"{Neighborhood.Nodes.Count:N0} Context nodes";
+        Status = $"{summary.VisibleRelationshipCount:N0} of {summary.MatchingRelationshipCount:N0} matching relationships visible · {modeDescription}";
         if (summary.HiddenMatchingRelationshipCount > 0)
         {
             Status += " · bounded by the focus-local Context budget";
@@ -969,4 +1169,6 @@ public sealed class ExplorerSession : IDisposable
         ContextFilterSummary? FilterSummary,
         ExplorerEntry? PreviousContext,
         AggregatePage? AggregatePage);
+
+    private sealed record ConnectedHistoryEntry(ExplorerViewMode ViewMode, string FocusNodeId);
 }
