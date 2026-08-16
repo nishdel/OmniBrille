@@ -104,9 +104,7 @@ internal sealed class GraphNodeAutomationPeer : ControlAutomationPeer, IInvokePr
             return "Unavailable graph node";
         }
 
-        return Relationship is null
-            ? $"{node.Name}, {DescribeKind(node.Kind)}"
-            : $"{node.Name}, contextually related {DescribeKind(node.Kind)}";
+        return $"{node.Name}, {DescribeKind(node.Kind)}, {DescribeRole(node)}";
     }
 
     protected override string? GetHelpTextCore()
@@ -148,6 +146,11 @@ internal sealed class GraphNodeAutomationPeer : ControlAutomationPeer, IInvokePr
             states.Add("Contextually related");
         }
 
+        if ((Node?.Roles & ExplorerNodeRole.Structural) != 0)
+        {
+            states.Add("Structural");
+        }
+
         return states.Count == 0 ? "Visible" : string.Join(", ", states);
     }
 
@@ -183,4 +186,17 @@ internal sealed class GraphNodeAutomationPeer : ControlAutomationPeer, IInvokePr
         ExplorerNodeKind.File => "file",
         _ => "node",
     };
+
+    private static string DescribeRole(ExplorerNode node)
+    {
+        var structural = (node.Roles & ExplorerNodeRole.Structural) != 0;
+        var contextual = (node.Roles & ExplorerNodeRole.Contextual) != 0;
+        return (structural, contextual) switch
+        {
+            (true, true) => "structural and contextually related",
+            (true, false) => "structural",
+            (false, true) => "contextually related",
+            _ => "visible graph item",
+        };
+    }
 }

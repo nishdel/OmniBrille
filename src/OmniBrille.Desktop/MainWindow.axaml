@@ -73,6 +73,14 @@
                        IsCheckedChanged="OnContextModeCheckedChanged"
                        AutomationProperties.Name="Context mode"
                        AutomationProperties.HelpText="Shows bounded relationships authored by OmniSorSe. Requires a connected session." />
+          <RadioButton x:Name="HybridModeButton"
+                       Classes="hud"
+                       Content="Hybrid"
+                       GroupName="ExplorerMode"
+                       Click="OnHybridModeClick"
+                       IsCheckedChanged="OnHybridModeCheckedChanged"
+                       AutomationProperties.Name="Hybrid mode"
+                       AutomationProperties.HelpText="Combines bounded structural orientation with relationships authored by OmniSorSe. Requires a connected session. Control 3." />
           <Button x:Name="ContextFilterButton"
                   Classes="hud compact"
                   IsVisible="False"
@@ -693,7 +701,7 @@
                    Foreground="{DynamicResource AccentBrush}" />
         <TextBlock x:Name="StatusText" Grid.Column="1" Margin="18,0" Text="Choose a folder to begin. Only that location will be accessible."
                    TextTrimming="CharacterEllipsis" Foreground="{DynamicResource SecondaryTextBrush}" AutomationProperties.LiveSetting="Polite" />
-        <TextBlock Grid.Column="2" Text="Enter open · Backspace back · Ctrl+F search · Ctrl+Shift+L list · Ctrl+Shift+Space voice" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
+        <TextBlock Grid.Column="2" Text="Enter open · Backspace back · Ctrl+1/2/3 modes · Ctrl+F search · Ctrl+Shift+L list · Ctrl+Shift+Space voice" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
       </Grid>
     </Border>
   </Grid>

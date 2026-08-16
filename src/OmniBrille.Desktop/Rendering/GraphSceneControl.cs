@@ -39,6 +39,7 @@ public sealed class GraphSceneControl : Control
 
     private readonly RadialGraphLayout _structureLayoutEngine = new();
     private readonly ContextGraphLayout _contextLayoutEngine = new();
+    private readonly HybridGraphLayout _hybridLayoutEngine = new();
     private readonly DispatcherTimer _animationTimer;
     private readonly Stopwatch _animationClock = new();
     private readonly Dictionary<string, Rect> _hitTargets = new(ExplorerIdentity.Comparer);
@@ -153,11 +154,13 @@ public sealed class GraphSceneControl : Control
         _highlights = highlights ?? new HashSet<string>();
 
         var layoutClock = Stopwatch.StartNew();
-        _targetLayout = neighborhood is null
-            ? new Dictionary<string, GraphLayoutNode>()
-            : (neighborhood.ViewMode == ExplorerViewMode.Context
-                ? _contextLayoutEngine.Layout(neighborhood, previousLayout)
-                : _structureLayoutEngine.Layout(neighborhood, previousLayout));
+        _targetLayout = neighborhood?.ViewMode switch
+        {
+            ExplorerViewMode.Context => _contextLayoutEngine.Layout(neighborhood, previousLayout),
+            ExplorerViewMode.Hybrid => _hybridLayoutEngine.Layout(neighborhood, previousLayout),
+            null => new Dictionary<string, GraphLayoutNode>(),
+            _ => _structureLayoutEngine.Layout(neighborhood, previousLayout),
+        };
         layoutClock.Stop();
         _layoutDuration = layoutClock.Elapsed;
 
@@ -627,7 +630,8 @@ public sealed class GraphSceneControl : Control
             ? palette.Search
             : isFocus
                 ? palette.Focus
-                : _neighborhood.ViewMode == ExplorerViewMode.Context
+                : _neighborhood.ViewMode == ExplorerViewMode.Context ||
+                  (_neighborhood.ViewMode == ExplorerViewMode.Hybrid && HasRole(node, ExplorerNodeRole.Contextual) && !HasRole(node, ExplorerNodeRole.Structural))
                     ? palette.ContextEdge
                 : node.Kind == ExplorerNodeKind.Context
                     ? palette.Context
@@ -676,6 +680,19 @@ public sealed class GraphSceneControl : Control
             case ExplorerNodeKind.Aggregate:
                 DrawAggregate(context, center, halfHeight, stroke, Brush(color, 185), node.IsNavigable);
                 break;
+        }
+
+        if (_neighborhood.ViewMode == ExplorerViewMode.Hybrid &&
+            HasRole(node, ExplorerNodeRole.Structural) &&
+            HasRole(node, ExplorerNodeRole.Contextual))
+        {
+            var marker = new Point(center.X + halfWidth - 2, center.Y - halfHeight + 1);
+            context.DrawEllipse(
+                Brush(palette.ContextEdgeGlow, ToByte(235 * opacity)),
+                Pen(palette.Background, ToByte(210 * opacity), 1),
+                marker,
+                3.1,
+                3.1);
         }
 
         if (presentation.LevelOfDetail < GraphLevelOfDetail.Labeled)
@@ -811,9 +828,12 @@ public sealed class GraphSceneControl : Control
         var selected = _neighborhood?.Nodes.FirstOrDefault(node =>
             ExplorerIdentity.Equals(node.Id, _selectedNodeId));
         var description = selected is null
-            ? _neighborhood?.ViewMode == ExplorerViewMode.Context
-                ? "Spatial Context graph. Use arrows to select related nodes and Enter to refocus."
-                : "Spatial folder graph. Use arrows to select nodes and Enter to activate."
+            ? _neighborhood?.ViewMode switch
+            {
+                ExplorerViewMode.Context => "Spatial Context graph. Use arrows to select related nodes and Enter to refocus.",
+                ExplorerViewMode.Hybrid => "Spatial Hybrid graph. Structure forms the navigation skeleton and Context shows authoritative relationships. Use arrows to select nodes and Enter to refocus.",
+                _ => "Spatial folder graph. Use arrows to select nodes and Enter to activate.",
+            }
             : $"Selected {selected.Kind}: {selected.Name}. Use Enter to activate.";
         SetValue(AutomationProperties.HelpTextProperty, description);
     }
@@ -858,6 +878,8 @@ public sealed class GraphSceneControl : Control
     private static byte ToByte(double value) => (byte)Math.Clamp(value, 0, 255);
 
     private static Color WithAlpha(Color color, byte alpha) => Color.FromArgb(alpha, color.R, color.G, color.B);
+
+    private static bool HasRole(ExplorerNode node, ExplorerNodeRole role) => (node.Roles & role) == role;
 
     private sealed record PreparedLabel(LabelCandidate Candidate, FormattedText Text, Point Origin, double Opacity);
 

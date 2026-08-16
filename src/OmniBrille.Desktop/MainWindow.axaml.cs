@@ -400,6 +400,45 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         }
     }
 
+    private async void OnHybridModeCheckedChanged(object? sender, RoutedEventArgs e)
+    {
+        if (sender is RadioButton { IsChecked: true })
+        {
+            await SwitchToHybridAsync();
+        }
+    }
+
+    private async void OnHybridModeClick(object? sender, RoutedEventArgs e) =>
+        await SwitchToHybridAsync();
+
+    private async Task SwitchToHybridAsync()
+    {
+        if (_isApplyingPreferences || _isSwitchingViewMode)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(_session.AccessRoot))
+        {
+            SetTransientStatus("Connect to OmniSorSe and open an authorized root before exploring Hybrid.");
+            UpdateView();
+            return;
+        }
+
+        _isSwitchingViewMode = true;
+        try
+        {
+            await _session.SwitchToHybridAsync();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            _isSwitchingViewMode = false;
+        }
+    }
+
     private async Task OpenConnectedRootAsync(Protocol.ExplorerNode root)
     {
         if (_connection.Client is null || _connection.ProtocolInfo is null)
@@ -994,7 +1033,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
 
     private void OnContextFilterClick(object? sender, RoutedEventArgs e)
     {
-        if (_session.ViewMode != ExplorerViewMode.Context)
+        if (!IsContextualMode(_session.ViewMode))
         {
             return;
         }
@@ -1020,7 +1059,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
 
     private void OnContextFilterChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (_isApplyingContextFilters || _session.ViewMode != ExplorerViewMode.Context)
+        if (_isApplyingContextFilters || !IsContextualMode(_session.ViewMode))
         {
             return;
         }
@@ -1116,12 +1155,19 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             return;
         }
 
-        if (_session.ViewMode == ExplorerViewMode.Context &&
+        if (IsContextualMode(_session.ViewMode) &&
             !ExplorerIdentity.Equals(node.Id, _session.Neighborhood?.FocusNodeId))
         {
             try
             {
-                await _session.FocusContextNodeAsync(node.Target);
+                if (_session.ViewMode == ExplorerViewMode.Hybrid)
+                {
+                    await _session.FocusHybridNodeAsync(node.Target);
+                }
+                else
+                {
+                    await _session.FocusContextNodeAsync(node.Target);
+                }
             }
             catch (OperationCanceledException)
             {
@@ -1155,7 +1201,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             e.KeyModifiers.HasFlag(KeyModifiers.Control) &&
             e.KeyModifiers.HasFlag(KeyModifiers.Shift))
         {
-            if (_session.ViewMode == ExplorerViewMode.Context)
+            if (IsContextualMode(_session.ViewMode))
             {
                 OnContextFilterClick(ContextFilterButton, new RoutedEventArgs());
             }
@@ -1188,6 +1234,11 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         else if (e.Key == Key.D2 && e.KeyModifiers.HasFlag(KeyModifiers.Control))
         {
             OnContextModeClick(ContextModeButton, new RoutedEventArgs());
+            e.Handled = true;
+        }
+        else if (e.Key == Key.D3 && e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        {
+            OnHybridModeClick(HybridModeButton, new RoutedEventArgs());
             e.Handled = true;
         }
         else if (e.Key == Key.Escape)
@@ -1228,13 +1279,14 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             ? "No folder selected"
             : _session.CurrentPath;
         StatusText.Text = _session.Status;
-        ViewModeStatusText.Text = _session.ViewMode == ExplorerViewMode.Context ? "CONTEXT" : "STRUCTURE";
+        ViewModeStatusText.Text = _session.ViewMode.ToString().ToUpperInvariant();
         Title = $"OmniBrille — {_session.ViewMode}";
         _isApplyingPreferences = true;
         try
         {
             StructureModeButton.IsChecked = _session.ViewMode == ExplorerViewMode.Structure;
             ContextModeButton.IsChecked = _session.ViewMode == ExplorerViewMode.Context;
+            HybridModeButton.IsChecked = _session.ViewMode == ExplorerViewMode.Hybrid;
         }
         finally
         {
@@ -1246,20 +1298,25 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             : "Search selected root";
         AutomationProperties.SetName(
             SearchBox,
-            _session.ViewMode == ExplorerViewMode.Context ? "Context search" : "Structural search");
+            _session.ViewMode switch
+            {
+                ExplorerViewMode.Context => "Context search",
+                ExplorerViewMode.Hybrid => "Hybrid search",
+                _ => "Structural search",
+            });
         AutomationProperties.SetName(
             GraphScene,
-            _session.ViewMode == ExplorerViewMode.Context ? "Spatial Context graph" : "Spatial Structure graph");
+            $"Spatial {_session.ViewMode} graph");
         AutomationProperties.SetName(
             AccessibleNodesList,
-            _session.ViewMode == ExplorerViewMode.Context ? "Visible Context graph nodes" : "Visible Structure graph nodes");
+            $"Visible {_session.ViewMode} graph nodes");
         AutomationProperties.SetName(
             AccessibleOpenButton,
-            _session.ViewMode == ExplorerViewMode.Context ? "Focus selected related node" : "Open selected structural node");
+            IsContextualMode(_session.ViewMode) ? "Focus selected graph node" : "Open selected structural node");
         BackButton.IsEnabled = _session.CanGoBack && !_session.IsLoading;
         WelcomePanel.IsVisible = neighborhood is null && !_session.IsLoading;
-        ContextFilterButton.IsVisible = _session.ViewMode == ExplorerViewMode.Context;
-        if (_session.ViewMode != ExplorerViewMode.Context)
+        ContextFilterButton.IsVisible = IsContextualMode(_session.ViewMode);
+        if (!IsContextualMode(_session.ViewMode))
         {
             ContextFilterPanel.IsVisible = false;
         }
@@ -1280,6 +1337,8 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
                 : "Searching selected root…"
             : _session.ViewMode == ExplorerViewMode.Context
                 ? "Reading authoritative Context…"
+            : _session.ViewMode == ExplorerViewMode.Hybrid
+                ? "Composing bounded Structure and Context…"
             : _session.LoadState == ExplorerLoadState.PartiallyLoaded
                 ? $"Graph interactive · {_session.LoadedItemCount:N0} items streamed"
                 : _session.ProviderMode == ExplorerProviderMode.Connected
@@ -1305,14 +1364,16 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         SearchSummaryText.Text = results is null
             ? "Search results"
             : $"{results.Hits.Count:N0} MATCHES{(results.WasTruncated ? " · BOUNDED" : string.Empty)}";
-        var emptyContext = _session.ViewMode == ExplorerViewMode.Context &&
+        var emptyContext = IsContextualMode(_session.ViewMode) &&
             !_session.IsLoading &&
             _session.ContextFilterSummary?.MatchingRelationshipCount == 0;
         ContextEmptyPanel.IsVisible = emptyContext && !ContextFilterPanel.IsVisible;
         ContextEmptyClearButton.IsVisible = _session.ContextFilter.IsActive;
         ContextEmptyText.Text = _session.ContextFilter.IsActive
             ? "No relationships match these filters. Clear them to restore the authorized Context neighborhood."
-            : "No contextual relationships found for this item. OmniBrille does not invent nearby relationships.";
+            : _session.ViewMode == ExplorerViewMode.Hybrid
+                ? "No contextual relationships found for this item. Structural orientation remains available; OmniBrille does not invent nearby relationships."
+                : "No contextual relationships found for this item. OmniBrille does not invent nearby relationships.";
 
         GraphScene.ReducedMotion = _preferences.ReducedMotion;
         GraphScene.ReducedEffects = _preferences.ReducedEffects;
@@ -1384,7 +1445,9 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         DetailsModifiedText.Text = (connectedDetails?.ModifiedAt ?? selected.LastModified)
             ?.ToLocalTime().ToString("g", CultureInfo.CurrentCulture) ?? "—";
         DetailsAccessText.Text = selected.IsNavigable
-            ? "Navigable"
+            ? _session.ViewMode == ExplorerViewMode.Hybrid
+                ? $"Navigable · {DescribeRoles(selected)}"
+                : "Navigable"
             : selected.Kind == ExplorerNodeKind.File
                 ? "Read-only metadata"
                 : "Bounded / informational";
@@ -1392,7 +1455,9 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         DetailsHintText.Text = selected.Kind == ExplorerNodeKind.Aggregate
             ? selected.AggregateAction?.Description ?? "Enumeration was bounded before this aggregate could be refined."
             : _session.ProviderMode == ExplorerProviderMode.Connected
-                ? "Read-only indexed data supplied by OmniSorSe Explorer Protocol v1."
+                ? _session.ViewMode == ExplorerViewMode.Hybrid
+                    ? "Read-only indexed data. Solid edges show Structure; dashed edges show OmniSorSe-authored Context."
+                    : "Read-only indexed data supplied by OmniSorSe Explorer Protocol v1."
                 : "Double-click a folder to move it into focus. Reparse-point folders are shown but never traversed.";
         DetailsIndexText.Text = connectedDetails is null
             ? _session.ProviderMode == ExplorerProviderMode.Connected ? "Loading…" : "Not applicable"
@@ -1400,6 +1465,12 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         DetailsSummaryText.Text = connectedDetails?.Summary ?? string.Empty;
         var relationship = _session.SelectedRelationship;
         RelationshipDetailsSection.IsVisible = relationship is not null;
+        AutomationProperties.SetHelpText(RelationshipDetailsSection, null);
+        AutomationProperties.SetHelpText(DetailsPanel, null);
+        AutomationProperties.SetName(DetailsRelationshipText, "Relationship reason");
+        AutomationProperties.SetName(DetailsRelationshipStrengthText, "Relationship ranking strength");
+        AutomationProperties.SetName(DetailsRelationshipEvidenceText, "Relationship evidence class");
+        AutomationProperties.SetName(DetailsProvenanceText, "Relationship provenance");
         if (relationship is not null)
         {
             DetailsRelationshipText.Text = string.IsNullOrWhiteSpace(relationship.Reason)
@@ -1410,6 +1481,25 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             DetailsProvenanceText.Text = string.IsNullOrWhiteSpace(relationship.Provenance)
                 ? "Not supplied"
                 : FriendlyProvenance(relationship.Provenance);
+            AutomationProperties.SetName(
+                DetailsRelationshipText,
+                $"Relationship reason: {DetailsRelationshipText.Text}");
+            AutomationProperties.SetName(
+                DetailsRelationshipStrengthText,
+                $"Relationship ranking strength: {DetailsRelationshipStrengthText.Text}");
+            AutomationProperties.SetName(
+                DetailsRelationshipEvidenceText,
+                $"Relationship evidence class: {DetailsRelationshipEvidenceText.Text}");
+            AutomationProperties.SetName(
+                DetailsProvenanceText,
+                $"Relationship provenance: {DetailsProvenanceText.Text}");
+            var accessibleRelationshipSummary =
+                $"Related because {DetailsRelationshipText.Text}. " +
+                $"Strength {DetailsRelationshipStrengthText.Text}. " +
+                $"Evidence {DetailsRelationshipEvidenceText.Text}. " +
+                $"Source {DetailsProvenanceText.Text}.";
+            AutomationProperties.SetHelpText(RelationshipDetailsSection, accessibleRelationshipSummary);
+            AutomationProperties.SetHelpText(DetailsPanel, accessibleRelationshipSummary);
         }
     }
 
@@ -1519,6 +1609,10 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             var accessibleState = state.Length == 0
                 ? string.Empty
                 : $", {string.Join(", ", stateParts).ToLowerInvariant()}";
+            var role = DescribeRoles(node);
+            var roleDescription = neighborhood.ViewMode == ExplorerViewMode.Hybrid
+                ? $", {role}"
+                : string.Empty;
             var relationDescription = relationship is null
                 ? string.Empty
                 : string.IsNullOrWhiteSpace(relationship.Reason)
@@ -1527,9 +1621,11 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             return new AccessibleNodeItem(
                 node.Id,
                 node.Name,
-                $"{kind} · {node.Path}",
+                neighborhood.ViewMode == ExplorerViewMode.Hybrid
+                    ? $"{kind} · {role} · {node.Path}"
+                    : $"{kind} · {node.Path}",
                 state,
-                $"{node.Name}, {kind}{accessibleState}{relationDescription}");
+                $"{node.Name}, {kind}{roleDescription}{accessibleState}{relationDescription}");
         }).ToArray() ?? [];
 
         _isSynchronizingAccessibleList = true;
@@ -1683,6 +1779,21 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         ExplorerRelationshipEvidenceClass.Derived => 2,
         _ => 0,
     };
+
+    private static bool IsContextualMode(ExplorerViewMode viewMode) =>
+        viewMode is ExplorerViewMode.Context or ExplorerViewMode.Hybrid;
+
+    private static string DescribeRoles(ExplorerNode node)
+    {
+        var structural = (node.Roles & ExplorerNodeRole.Structural) != 0;
+        var contextual = (node.Roles & ExplorerNodeRole.Contextual) != 0;
+        return (structural, contextual) switch
+        {
+            (true, true) => "Structure and Context",
+            (false, true) => "Context",
+            _ => "Structure",
+        };
+    }
 
     private static string StrengthLabel(int strength) => strength switch
     {
