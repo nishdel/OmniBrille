@@ -10,6 +10,24 @@ All notable OmniBrille changes are recorded here. The project uses SemVer-compat
 - Maintainer license decision before any public distribution.
 - Production Authenticode signing when externally managed credentials are available.
 
+## [0.8.0-preview.2] - 2026-08-17
+
+### Changed
+
+- Replaced the overflowing single-row desktop header with a responsive two-row HUD that preserves practical access to provider, mode, graph, accessibility, and settings controls at the supported minimum window size.
+- Refined first run into a concise selected-root Standalone explanation with a clear `Choose folder to explore` action and an honest OmniSorSe requirement for Context and Hybrid.
+- Added distinct Structure-empty and Search-no-match states. Search no longer offers an invalid focus action, and item details recede while the compact Search result surface is active.
+- Moved sparse-scene guidance away from the focused node so empty Structure, Context, and Hybrid scenes retain a deliberate graph-first composition.
+
+### Accessibility
+
+- Search names and help now describe the active authority accurately: selected-root Standalone Search or session-scoped OmniSorSe Search.
+- First-run guidance, empty states, recovery controls, and the revised HUD remain keyboard reachable and have concise automation metadata.
+
+### Security
+
+- Explorer Protocol v1, provider authority, handoff security, session identity, voice architecture, graph budgets, and privacy behavior are unchanged.
+
 ## [0.8.0-preview.1] - 2026-08-16
 
 ### Added

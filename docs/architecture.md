@@ -2,7 +2,7 @@
 
 ## Status and goals
 
-This document describes the Stage 10 private-preview architecture: an independently packaged standalone Structure explorer and connected Structure/Context/Hybrid explorer, plus optional local push-to-talk input. Stage 10 retains the committed OmniSorSe v2.5 release-candidate handoff and unchanged Explorer Protocol v1; renderer, accessibility, packaging, diagnostics, signing, and voice surfaces remain independent of OmniSorSe internals.
+This document describes the Stage 11 private-preview architecture: an independently packaged standalone Structure explorer and connected Structure/Context/Hybrid explorer, plus optional local push-to-talk input. Stage 11 refines the presentation layer without changing the committed OmniSorSe v2.5 release-candidate handoff or Explorer Protocol v1; renderer, accessibility, packaging, diagnostics, signing, and voice surfaces remain independent of OmniSorSe internals.
 
 OmniSorSe owns scanning, indexing, Search, Content Intelligence, Media Intelligence, OCR, transcripts, Related Files, organization, safe file operations, and persistent intelligence/index state. OmniBrille owns standalone spatial navigation, provider-independent Structure/Context/Hybrid presentation, and optional local speech transcription as an input method. Hybrid composes existing authorized snapshots; it does not create intelligence. Voice queries still use the current standalone/OmniSorSe Search provider. In short, OmniSorSe is the brain; OmniBrille is the visual lens and spatial navigation interface.
 
@@ -205,6 +205,8 @@ The primary Windows package is an Inno Setup 6.7.3 current-user installer. It pu
 
 `Directory.Build.props` is the version/product source of truth. Packaging emits a SHA-256 sidecar, non-sensitive JSON release manifest, and sanitized runtime dependency inventory. Unsigned development packaging is normal. Signed mode accepts only a certificate thumbprint already imported into a Windows certificate store, signs the application and installer, validates both signatures, and fails closed when credentials or validation are unavailable. CI imports any PFX from encrypted secrets into its ephemeral current-user store and removes it after use. See [PACKAGING.md](PACKAGING.md), [the compatibility matrix](../COMPATIBILITY.md), and [the release checklist](../RELEASE_CHECKLIST.md).
 
-## Stage 10 non-goals
+## Stage 11 presentation refinement and non-goals
+
+Stage 11 keeps session/provider/rendering ownership unchanged. The shell uses a bounded two-row HUD so Search focus cannot scroll root/navigation controls out of view. First run explains selected-root Standalone authority and the OmniSorSe requirement for Context/Hybrid. Structure-empty and Search-no-match states are distinct from authoritative no-Context and filter-zero states; the Search result surface temporarily takes precedence over item details so the graph remains primary. Search automation names describe the active provider scope rather than implying that connected Search is structural.
 
 No always-listening mode, wake word, cloud speech requirement, conversational/LLM assistant, destructive voice action, Hybrid voice command, indexing/database implementation, cloud service, telemetry, updater, production signing certificate, public release, or OmniSorSe source change is implemented. Context and Hybrid are read-only, focus-local, and entirely server-authored. Incremental edge updates and durable edge selection are intentionally absent because Protocol v1 has no stable relationship ID. Real microphone validation remains outstanding and is not claimed. The repository still needs an explicit maintainer license decision before public distribution.

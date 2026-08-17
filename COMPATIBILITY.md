@@ -4,8 +4,8 @@ OmniBrille uses capability negotiation and Explorer Protocol major-version valid
 
 | OmniBrille | OmniSorSe | Explorer Protocol | Platform | Status |
 |---|---|---|---|---|
-| 0.8.0-preview.1 | committed v2.5 RC `59be07c6cebff12072cbf18701fb16cb11801287` | v1.0 | Windows x64 | Connected Structure/Search/details/Context/Hybrid compatibility; Hybrid composes the existing bounded neighborhood and Related response without a new protocol operation |
-| 0.8.0-preview.1 | not installed | n/a | Windows x64 | Standalone Structure/Search supported; Context and Hybrid fail closed because no authoritative relationship provider exists |
+| 0.8.0-preview.2 | committed v2.5 RC `59be07c6cebff12072cbf18701fb16cb11801287` | v1.0 | Windows x64 | Connected Structure/details/Context/Hybrid compatibility retained; Search uses session scope and fails safely when the companion response is unavailable |
+| 0.8.0-preview.2 | not installed | n/a | Windows x64 | Standalone Structure/Search supported with selected-root authority; Context and Hybrid fail closed because no authoritative relationship provider exists |
 | 0.7.0-preview.1 | committed v2.5 RC `59be07c6cebff12072cbf18701fb16cb11801287` | v1.0 | Windows x64 | Connected Structure/Search/details/Context compatibility retained; connected voice queries use the same Search operation. Live voice additionally requires a user-provided local whisper.cpp runtime/model |
 | 0.7.0-preview.1 | not installed | n/a | Windows x64 | Standalone Structure/Search supported; optional voice commands and structural voice Search use the same selected-root authority |
 | 0.6.0-preview.3 | committed v2.5 RC `59be07c6cebff12072cbf18701fb16cb11801287` | v1.0 | Windows x64 | Stage 8 exact private-preview candidate validated for installed discovery/handoff, Structure, Search, details, and Context; no voice |

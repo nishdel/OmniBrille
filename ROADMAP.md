@@ -92,3 +92,13 @@ Status language is intentionally conservative: checked items exist in the applic
 - [x] Extend bounded graph automation, the synchronized accessible list, keyboard navigation, and `Ctrl+3` for Hybrid.
 - [x] Validate sparse connected and maximum synthetic Hybrid scenes, themes, reduced motion/effects, renderer diagnostics, packaging, and voice regression without claiming microphone hardware validation.
 - [x] Validate the installed normal OmniSorSe RC handoff with a sparse five-node Hybrid scene containing five structural roles and three real Context roles; preserve structural orientation when the Context response omits containment.
+
+## Stage 11 — Product polish and daily-use maturity (complete)
+
+- [x] Review the installed first-run, standalone, and normal OmniSorSe companion workflows before changing production code.
+- [x] Replace the overflowing single-row header with a bounded two-row HUD that keeps primary controls reachable at the supported minimum window size.
+- [x] Clarify first-run selected-root authority and the OmniSorSe requirement for Context/Hybrid without adding an onboarding wizard.
+- [x] Distinguish empty Structure, no Search result, no Context relationship, and Context-filtered-to-zero states with honest recovery actions.
+- [x] Keep details secondary while Search is active and use provider-accurate Search automation/help in Standalone and connected sessions.
+- [x] Preserve Structure/Context/Hybrid budgets, Explorer Protocol v1, handoff security, voice architecture, release automation, and privacy boundaries.
+- [ ] Continue controlled private-preview use to collect daily-use feedback; real microphone hardware, broader real Context/Hybrid density, interactive Linux/macOS, signing, and public-license decisions remain separate gates.

@@ -1,9 +1,9 @@
 <Project>
   <PropertyGroup>
     <VersionPrefix>0.8.0</VersionPrefix>
-    <VersionSuffix>preview.1</VersionSuffix>
+    <VersionSuffix>preview.2</VersionSuffix>
     <AssemblyVersion>0.8.0.0</AssemblyVersion>
-    <FileVersion>0.8.0.1</FileVersion>
+    <FileVersion>0.8.0.2</FileVersion>
     <Title>OmniBrille</Title>
     <Product>OmniBrille</Product>
     <Description>Optional spatial navigation companion for OmniSorSe.</Description>

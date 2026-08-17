@@ -5,14 +5,14 @@ namespace OmniBrille.Tests;
 public sealed class PackagingMetadataTests
 {
     [Fact]
-    public void CentralVersion_IsPreReleaseAndConsistentWithStageNinePackage()
+    public void CentralVersion_IsPreReleaseAndConsistentWithStageElevenPackage()
     {
         var root = FindRepositoryRoot();
         var document = XDocument.Load(Path.Combine(root, "Directory.Build.props"));
 
         Assert.Equal("0.8.0", document.Descendants("VersionPrefix").Single().Value);
-        Assert.Equal("preview.1", document.Descendants("VersionSuffix").Single().Value);
-        Assert.Equal("0.8.0.1", document.Descendants("FileVersion").Single().Value);
+        Assert.Equal("preview.2", document.Descendants("VersionSuffix").Single().Value);
+        Assert.Equal("0.8.0.2", document.Descendants("FileVersion").Single().Value);
         Assert.Equal("0.8.0.0", document.Descendants("AssemblyVersion").Single().Value);
         Assert.Equal("OmniBrille", document.Descendants("Product").Single().Value);
     }

@@ -4,11 +4,13 @@ OmniBrille is an optional, standalone-capable spatial navigation application for
 
 Conceptually, OmniSorSe is the brain. OmniBrille is the visual lens and spatial navigation interface.
 
-OmniBrille is currently a **Private Preview / Pre-release**. Stage 10 adds a deliberate Hybrid view that answers where an item lives and what it is related to in one bounded scene. Optional local push-to-talk remains an independent, disabled-by-default input path; real microphone hardware validation is still outstanding and is not claimed. Explorer Protocol v1 is unchanged. Always-listening audio, destructive file operations, and automatic updating remain intentionally absent.
+OmniBrille is currently a **Private Preview / Pre-release**. Stage 11 refines the established Structure, Context, and Hybrid experience for repeated use with a responsive HUD, clearer first-run guidance, and distinct Search and empty states. Optional local push-to-talk remains an independent, disabled-by-default input path; real microphone hardware validation is still outstanding and is not claimed. Explorer Protocol v1 is unchanged. Always-listening audio, destructive file operations, and automatic updating remain intentionally absent.
 
 ## What works now
 
 - Explicit operating-system folder selection; no drive-wide startup crawl.
+- A concise first-run surface that explains selected-root Standalone access, offers `Choose folder to explore`, and identifies OmniSorSe as the authority for Context and Hybrid.
+- A responsive two-row HUD that keeps root, Search, provider, mode, view, accessibility, and settings controls reachable at the supported minimum window size.
 - A hard-bounded spatial graph containing the focused folder and immediate children.
 - Progressive directory batches: the focus shell appears first, bounded children stream in, obsolete navigation is rejected, and navigating away cancels prior work.
 - Deterministic three-depth radial layout with positional continuity, a strong focus, receding context, and restrained focus transitions.
@@ -16,6 +18,7 @@ OmniBrille is currently a **Private Preview / Pre-release**. Stage 10 adds a del
 - Priority- and collision-aware labels plus zoom/depth/density level of detail.
 - Double-click drill-down, Back/Backspace navigation, selection, dismissible details, mouse-wheel/button/keyboard zoom, drag-to-pan, and arrow/Enter graph navigation.
 - Bounded name/folder/path search with graph dimming/highlighting, a secondary compact result surface, cancellation, and result-to-graph focus.
+- Provider-accurate Search automation/help, a disabled invalid result action, and a distinct no-match state that keeps the recognized query available for editing.
 - A shared electric-blue Dark/Light visual system, restrained decorative network, and bounded data-rain loading treatment.
 - Persisted `Reduced motion` and `Reduced visual effects` preferences.
 - A synchronized accessible navigation list (`Ctrl+Shift+L`) with the same bounded nodes, selection, search emphasis, drill-down, details, aggregates, and Back state as the graph.
@@ -65,7 +68,7 @@ Build the pinned, unsigned Windows installer with:
 .\build\Package-Windows.ps1 -BootstrapInnoSetup
 ```
 
-The Stage 10 package is `OmniBrille-0.8.0-preview.1-win-x64-setup.exe`. The minor preview increment reflects the new Hybrid exploration surface. It remains self-contained, non-trimmed, and multi-file for reliable Avalonia/XAML behavior, and includes only the small Windows capture dependency—not whisper.cpp or a speech model. The build also emits a release manifest, sanitized dependency manifest, SHA-256 sidecar, and tester notes containing that exact artifact's hash. See [PACKAGING.md](docs/PACKAGING.md) for prerequisites, install/upgrade/uninstall semantics, signing, private-preview automation, and alternatives considered.
+The Stage 11 package is `OmniBrille-0.8.0-preview.2-win-x64-setup.exe`. The preview increment reflects daily-use presentation and accessibility refinements without changing the feature or protocol boundary. It remains self-contained, non-trimmed, and multi-file for reliable Avalonia/XAML behavior, and includes only the small Windows capture dependency—not whisper.cpp or a speech model. The build also emits a release manifest, sanitized dependency manifest, SHA-256 sidecar, and tester notes containing that exact artifact's hash. See [PACKAGING.md](docs/PACKAGING.md) for prerequisites, install/upgrade/uninstall semantics, signing, private-preview automation, and alternatives considered.
 
 The application initially shows no filesystem content. Choose a folder to establish the access root. For an explicit command-line launch (useful for local smoke testing), append `-- --root "C:\path\you\chose" --theme Light`. The theme value may be `Light` or `Dark`.
 

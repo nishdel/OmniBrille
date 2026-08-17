@@ -16,11 +16,11 @@ Inno Setup supplies reliable current-user install, one stable application ID, in
 
 ## Version and deployment model
 
-Stage 10 is `0.8.0-preview.1`. The minor preview increment reflects the new user-facing Hybrid exploration surface; `Directory.Build.props` is the source of truth:
+Stage 11 is `0.8.0-preview.2`. The preview increment reflects distributable daily-use presentation and accessibility refinements while retaining the Stage 10 feature/protocol boundary; `Directory.Build.props` is the source of truth:
 
-- SemVer/informational version: `0.8.0-preview.1`;
+- SemVer/informational version: `0.8.0-preview.2`;
 - assembly compatibility version: `0.8.0.0`;
-- Windows file/installer version: `0.8.0.1`.
+- Windows file/installer version: `0.8.0.2`.
 
 Patch-like preview increments advance the final numeric file-version component. Pre-release labels progress through `preview.N`, `beta.N`, and `rc.N` before a separately approved stable version. No tag or release is created automatically.
 
@@ -29,11 +29,11 @@ The package remains `win-x64`, self-contained, non-trimmed, and multi-file. This
 Artifact names are:
 
 ```text
-OmniBrille-0.8.0-preview.1-win-x64-setup.exe
-OmniBrille-0.8.0-preview.1-win-x64-setup.exe.sha256
-OmniBrille-0.8.0-preview.1-win-x64-setup-manifest.json
-OmniBrille-0.8.0-preview.1-win-x64-setup-dependencies.json
-OmniBrille-0.8.0-preview.1-win-x64-setup-private-preview-notes.md
+OmniBrille-0.8.0-preview.2-win-x64-setup.exe
+OmniBrille-0.8.0-preview.2-win-x64-setup.exe.sha256
+OmniBrille-0.8.0-preview.2-win-x64-setup-manifest.json
+OmniBrille-0.8.0-preview.2-win-x64-setup-dependencies.json
+OmniBrille-0.8.0-preview.2-win-x64-setup-private-preview-notes.md
 ```
 
 The manifest contains product/version, commit SHA, UTC build time, runtime/deployment, Explorer Protocol compatibility, signing status, installer size/hash, published-runtime size, and optional private workflow identity. It contains no username, developer path, token, or user content. Generated tester notes bind the exact filename, commit, hash, signing state, and workflow to concise installation/support guidance. The dependency document is a sanitized runtime package inventory, not a formal SPDX/CycloneDX SBOM; a formal SBOM was deferred to avoid adding a release-critical tool dependency before it provides a clear private-preview benefit.
@@ -72,7 +72,7 @@ The package script signs and validates `OmniBrille.exe` before installer compila
 
 The manual private-preview workflow accepts `unsigned` or `signed`. In signed mode it requires repository secrets `OMNIBRILLE_SIGNING_PFX_BASE64` and `OMNIBRILLE_SIGNING_PFX_PASSWORD`, imports the certificate into the ephemeral runner user's certificate store, supplies only the thumbprint to the build, and removes both temporary PFX and imported certificate. Private keys/passwords are never source, command-line inputs, logs, or artifacts. A future signing service can replace certificate import without changing package semantics.
 
-No production signing certificate is currently available. Stage 10 candidates are therefore unsigned unless externally managed credentials are supplied. Private testers should expect Windows reputation/unknown-publisher warnings and should verify the SHA-256 from the separately retained sidecar. Hash verification detects corruption; it does not authenticate an unsigned publisher. Testers should follow their organization's security policy rather than casually bypass protections.
+No production signing certificate is currently available. Stage 11 candidates are therefore unsigned unless externally managed credentials are supplied. Private testers should expect Windows reputation/unknown-publisher warnings and should verify the SHA-256 from the separately retained sidecar. Hash verification detects corruption; it does not authenticate an unsigned publisher. Testers should follow their organization's security policy rather than casually bypass protections.
 
 ## CI and private-preview workflow
 
@@ -102,4 +102,4 @@ The maintainer checklist in [`RELEASE_CHECKLIST.md`](../RELEASE_CHECKLIST.md) re
 
 The executable, window, Start Menu entry, installer, and uninstall metadata use `OmniBrille`. The Stage 7 mark is a release-quality provisional blue/cyan spatial-navigation asset with transparent PNG source and complete Windows icon sizes; see [`assets/branding/README.md`](../assets/branding/README.md). It can later be professionally refined without changing resource names.
 
-This private repository currently has no selected license. Stage 10 does not choose one. Public distribution should not proceed until the maintainer makes and records that decision.
+This private repository currently has no selected license. Stage 11 does not choose one. Public distribution should not proceed until the maintainer makes and records that decision.
