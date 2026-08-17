@@ -906,9 +906,13 @@ public sealed class ExplorerSession : IDisposable
 
         var total = Neighborhood?.TotalChildCount ?? snapshot.Children.Count;
         var visible = Math.Max(0, (Neighborhood?.Nodes.Count ?? 1) - 1);
-        Status = ProviderMode == ExplorerProviderMode.Connected
-            ? $"{total:N0} indexed items · {visible:N0} graph nodes visible"
-            : $"{total:N0} items · {visible:N0} graph nodes visible";
+        Status = total == 0
+            ? ProviderMode == ExplorerProviderMode.Connected
+                ? "This authorized indexed folder is empty · focus remains visible"
+                : "This folder is empty · focus remains visible"
+            : ProviderMode == ExplorerProviderMode.Connected
+                ? $"{total:N0} indexed items · {visible:N0} graph nodes visible"
+                : $"{total:N0} items · {visible:N0} graph nodes visible";
         if (!string.IsNullOrWhiteSpace(snapshot.Warning))
         {
             Status += $" · {snapshot.Warning}";

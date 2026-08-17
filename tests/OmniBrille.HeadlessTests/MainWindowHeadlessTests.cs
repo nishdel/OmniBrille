@@ -35,10 +35,33 @@ public sealed class MainWindowHeadlessTests
         Assert.Equal("OmniBrille — Structure", window.Title);
         Assert.Equal("Choose an access folder", AutomationProperties.GetName(window.FindControl<Button>("ChooseFolderButton")!));
         Assert.Equal("Structural search", AutomationProperties.GetName(window.FindControl<TextBox>("SearchBox")!));
+        Assert.Equal("Run Standalone Search", AutomationProperties.GetName(window.FindControl<Button>("SearchButton")!));
+        Assert.Equal("Standalone Search results", AutomationProperties.GetName(window.FindControl<ListBox>("SearchResultsList")!));
         Assert.Equal("Theme", AutomationProperties.GetName(window.FindControl<ComboBox>("ThemePicker")!));
+        Assert.True(window.FindControl<Border>("WelcomePanel")!.IsVisible);
+        Assert.Equal("First-run guidance", AutomationProperties.GetName(window.FindControl<Border>("WelcomePanel")!));
+        Assert.Contains("Context and Hybrid", window.FindControl<TextBlock>("WelcomeCompanionText")!.Text, StringComparison.Ordinal);
+        Assert.Equal(
+            "Choose a folder to explore in Standalone mode",
+            AutomationProperties.GetName(window.FindControl<Button>("WelcomeChooseFolderButton")!));
         var graph = window.FindControl<Control>("GraphScene")!;
         Assert.Equal("Spatial Structure graph", AutomationProperties.GetName(graph));
         Assert.Equal("Spatial Structure graph", ControlAutomationPeer.CreatePeerForElement(graph).GetName());
+    }
+
+    [AvaloniaFact]
+    public void MinimumWindow_UsesBoundedTwoRowHudWithoutHorizontalOverflow()
+    {
+        using var window = CreateWindow(out _, out _);
+        window.Width = window.MinWidth;
+        window.Height = window.MinHeight;
+        window.Show();
+
+        var header = window.FindControl<Grid>("HeaderLayout")!;
+        Assert.InRange(header.DesiredSize.Width, 1, window.ClientSize.Width - 31);
+        Assert.True(window.FindControl<Button>("ChooseFolderButton")!.IsEffectivelyVisible);
+        Assert.True(window.FindControl<Button>("AccessibleListButton")!.IsEffectivelyVisible);
+        Assert.True(window.FindControl<Button>("SettingsButton")!.IsEffectivelyVisible);
     }
 
     [AvaloniaFact]
@@ -78,7 +101,7 @@ public sealed class MainWindowHeadlessTests
 
         var report = window.CreateSanitizedDiagnosticsReport();
         Assert.Contains("OmniBrille safe diagnostics", report, StringComparison.Ordinal);
-        Assert.Contains("0.8.0-preview.1", report, StringComparison.Ordinal);
+        Assert.Contains("0.8.0-preview.2", report, StringComparison.Ordinal);
         Assert.Contains("Provider: Connected", report, StringComparison.Ordinal);
         Assert.DoesNotContain("one-time-handoff", report, StringComparison.Ordinal);
         Assert.DoesNotContain("private search query", report, StringComparison.Ordinal);
@@ -151,9 +174,53 @@ public sealed class MainWindowHeadlessTests
         await session.SearchAsync("match");
         Assert.True(window.FindControl<Border>("SearchResultsPanel")!.IsVisible);
         Assert.Equal("1 MATCHES", window.FindControl<TextBlock>("SearchSummaryText")!.Text);
+        Assert.False(window.FindControl<Border>("DetailsPanel")!.IsVisible);
+        Assert.False(window.FindControl<StackPanel>("SearchEmptyState")!.IsVisible);
+        Assert.True(window.FindControl<Button>("FocusSearchResultButton")!.IsEnabled);
 
         session.ClearSearch();
         Assert.False(window.FindControl<Border>("SearchResultsPanel")!.IsVisible);
+        Assert.True(window.FindControl<Border>("DetailsPanel")!.IsVisible);
+    }
+
+    [AvaloniaFact]
+    public async Task EmptySearch_ShowsExplanationAndDisablesUnavailableFocusAction()
+    {
+        using var window = CreateWindow(out var session, out _);
+        window.Show();
+        var root = Path.Combine(Path.GetTempPath(), "OmniBrilleHeadlessEmptySearch");
+        var provider = new DeferredProvider(root);
+        var opening = session.OpenRootAsync(provider, provider);
+        provider.Complete(new ExplorerDirectorySnapshot(Entry(root, ExplorerNodeKind.Folder), []));
+        await opening;
+
+        await session.SearchAsync("nothing-here");
+
+        Assert.True(window.FindControl<Border>("SearchResultsPanel")!.IsVisible);
+        Assert.True(window.FindControl<StackPanel>("SearchEmptyState")!.IsVisible);
+        Assert.Equal("No Search matches", AutomationProperties.GetName(window.FindControl<StackPanel>("SearchEmptyState")!));
+        Assert.False(window.FindControl<ListBox>("SearchResultsList")!.IsVisible);
+        Assert.False(window.FindControl<Button>("FocusSearchResultButton")!.IsEnabled);
+        Assert.False(window.FindControl<Border>("DetailsPanel")!.IsVisible);
+    }
+
+    [AvaloniaFact]
+    public async Task EmptyStructureFolder_ExplainsFocusAndOffersProviderAppropriateRecovery()
+    {
+        using var window = CreateWindow(out var session, out _);
+        window.Show();
+        var root = Path.Combine(Path.GetTempPath(), "OmniBrilleHeadlessEmptyFolder");
+        var provider = new DeferredProvider(root);
+        var opening = session.OpenRootAsync(provider, provider);
+        provider.Complete(new ExplorerDirectorySnapshot(Entry(root, ExplorerNodeKind.Folder), []));
+        await opening;
+
+        Assert.True(window.FindControl<Border>("StructureEmptyPanel")!.IsVisible);
+        Assert.Equal("Empty Structure folder", AutomationProperties.GetName(window.FindControl<Border>("StructureEmptyPanel")!));
+        Assert.Contains("focus remains visible", session.Status, StringComparison.Ordinal);
+        Assert.True(window.FindControl<Button>("StructureEmptyChooseButton")!.IsVisible);
+        Assert.False(window.FindControl<Button>("StructureEmptyProviderButton")!.IsVisible);
+        Assert.False(window.FindControl<Button>("StructureEmptyBackButton")!.IsEnabled);
     }
 
     [AvaloniaFact]
@@ -270,6 +337,15 @@ public sealed class MainWindowHeadlessTests
         Assert.Equal(
             "Provider status: Connected · OmniSorSe",
             AutomationProperties.GetName(statusButton));
+        Assert.Equal(
+            "Structure Search through OmniSorSe",
+            AutomationProperties.GetName(window.FindControl<TextBox>("SearchBox")!));
+        Assert.Equal(
+            "Run OmniSorSe Search",
+            AutomationProperties.GetName(window.FindControl<Button>("SearchButton")!));
+        Assert.Equal(
+            "OmniSorSe Search results",
+            AutomationProperties.GetName(window.FindControl<ListBox>("SearchResultsList")!));
         Assert.Equal("opaque-root", session.AccessRoot);
         Assert.Contains(session.Neighborhood!.Nodes, node => node.Id == "opaque-folder");
 

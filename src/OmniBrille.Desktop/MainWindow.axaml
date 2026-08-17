@@ -17,8 +17,8 @@
             BorderBrush="{DynamicResource BorderBrush}"
             BorderThickness="0,0,0,1"
             Padding="16,12">
-      <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-      <Grid ColumnDefinitions="Auto,Auto,8,*,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8">
+      <Grid x:Name="HeaderLayout" RowDefinitions="Auto,Auto" RowSpacing="8">
+      <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,8,*,Auto" ColumnSpacing="8">
         <Button x:Name="ChooseFolderButton"
                 Grid.Column="0"
                 Classes="hud"
@@ -39,7 +39,7 @@
                 AutomationProperties.Name="Navigate back"
                 AutomationProperties.HelpText="Returns to the aggregate overview or previous folder." />
 
-        <Grid Grid.Column="3" ColumnDefinitions="*,Auto" MinWidth="160" MaxWidth="300" HorizontalAlignment="Stretch">
+        <Grid Grid.Column="3" ColumnDefinitions="*,Auto" MinWidth="160" MaxWidth="520" HorizontalAlignment="Stretch">
           <TextBox x:Name="SearchBox"
                    Grid.Column="0"
                    Classes="hud"
@@ -47,7 +47,8 @@
                    KeyDown="OnSearchKeyDown"
                    AutomationProperties.Name="Structural search"
                    AutomationProperties.HelpText="Searches only names and paths inside the selected root. Press Escape to clear." />
-          <Button Grid.Column="1"
+          <Button x:Name="SearchButton"
+                  Grid.Column="1"
                   Classes="hud"
                   Margin="6,0,0,0"
                   Content="Search"
@@ -55,7 +56,18 @@
                   AutomationProperties.Name="Run structural search" />
         </Grid>
 
-        <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="2">
+        <Button x:Name="ConnectionButton"
+                Grid.Column="4"
+                Classes="hud"
+                Content="Standalone"
+                Click="OnConnectionClick"
+                AutomationProperties.Name="Provider connection status"
+                AutomationProperties.HelpText="Shows whether navigation is standalone or supplied by OmniSorSe."
+                AutomationProperties.LiveSetting="Polite" />
+      </Grid>
+
+      <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="8">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2">
           <RadioButton x:Name="StructureModeButton"
                        Classes="hud"
                        Content="Structure"
@@ -90,23 +102,14 @@
                   AutomationProperties.HelpText="Filters the current authorized relationship response by kind, strength, or evidence. Ctrl+Shift+F." />
         </StackPanel>
 
-        <Button x:Name="ConnectionButton"
-                Grid.Column="5"
-                Classes="hud"
-                Content="Standalone"
-                Click="OnConnectionClick"
-                AutomationProperties.Name="Provider connection status"
-                AutomationProperties.HelpText="Shows whether navigation is standalone or supplied by OmniSorSe."
-                AutomationProperties.LiveSetting="Polite" />
-
-        <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="4">
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
           <Button Classes="hud" Content="-" Click="OnZoomOutClick" ToolTip.Tip="Zoom out" AutomationProperties.Name="Zoom out" />
           <Button Classes="hud" Content="0" Click="OnResetViewClick" ToolTip.Tip="Reset view" AutomationProperties.Name="Reset graph view" />
           <Button Classes="hud" Content="+" Click="OnZoomInClick" ToolTip.Tip="Zoom in" AutomationProperties.Name="Zoom in" />
         </StackPanel>
 
         <ComboBox x:Name="ThemePicker"
-                  Grid.Column="7"
+                  Grid.Column="3"
                   Classes="hud"
                   Width="104"
                   SelectedIndex="0"
@@ -117,22 +120,22 @@
           <ComboBoxItem Content="Light" />
         </ComboBox>
 
-        <Button x:Name="AccessibleListButton"
-                Grid.Column="8"
-                Classes="hud"
-                Content="List"
-                Click="OnAccessibleListClick"
-                AutomationProperties.Name="Open accessible navigation list"
-                AutomationProperties.HelpText="Opens a keyboard and screen-reader friendly view of the same bounded graph scene." />
+        <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="4">
+          <Button x:Name="AccessibleListButton"
+                  Classes="hud"
+                  Content="List"
+                  Click="OnAccessibleListClick"
+                  AutomationProperties.Name="Open accessible navigation list"
+                  AutomationProperties.HelpText="Opens a keyboard and screen-reader friendly view of the same bounded graph scene." />
 
-        <Button x:Name="SettingsButton"
-                Grid.Column="9"
-                Classes="hud"
-                Content="Settings"
-                Click="OnSettingsClick"
-                AutomationProperties.Name="Visual settings" />
+          <Button x:Name="SettingsButton"
+                  Classes="hud"
+                  Content="Settings"
+                  Click="OnSettingsClick"
+                  AutomationProperties.Name="Visual settings" />
+        </StackPanel>
       </Grid>
-      </ScrollViewer>
+      </Grid>
     </Border>
 
     <Grid Grid.Row="1">
@@ -309,7 +312,8 @@
               Background="{DynamicResource SurfaceStrongBrush}"
               BorderBrush="{DynamicResource BorderBrush}"
               BorderThickness="1"
-              CornerRadius="4">
+              CornerRadius="4"
+              AutomationProperties.Name="Search results">
         <Grid RowDefinitions="Auto,*,Auto">
           <Grid ColumnDefinitions="*,Auto">
             <TextBlock x:Name="SearchSummaryText" Text="Search results" FontWeight="SemiBold" Margin="4,2,4,8" />
@@ -331,7 +335,24 @@
               </DataTemplate>
             </ListBox.ItemTemplate>
           </ListBox>
-          <Button Grid.Row="2" Classes="hud" Margin="4,8,4,2" Content="Focus selected result" Click="OnFocusSearchResultClick" />
+          <StackPanel x:Name="SearchEmptyState"
+                      Grid.Row="1"
+                      IsVisible="False"
+                      Margin="8,18"
+                      Spacing="7"
+                      AutomationProperties.Name="No Search matches">
+            <TextBlock Text="NO MATCHES" FontSize="10" LetterSpacing="1.4" Foreground="{DynamicResource AccentBrush}" />
+            <TextBlock Text="No items match this query in the current Search scope. Edit the query or press Escape to clear."
+                       TextWrapping="Wrap"
+                       Foreground="{DynamicResource SecondaryTextBrush}" />
+          </StackPanel>
+          <Button x:Name="FocusSearchResultButton"
+                  Grid.Row="2"
+                  Classes="hud"
+                  Margin="4,8,4,2"
+                  Content="Focus selected result"
+                  Click="OnFocusSearchResultClick"
+                  AutomationProperties.Name="Focus selected Search result" />
         </Grid>
       </Border>
 
@@ -641,13 +662,63 @@
               Background="{DynamicResource SurfaceStrongBrush}"
               BorderBrush="{DynamicResource BorderBrush}"
               BorderThickness="1"
-              CornerRadius="5">
+              CornerRadius="5"
+              AutomationProperties.Name="First-run guidance">
         <StackPanel HorizontalAlignment="Center" Spacing="12">
           <TextBlock Text="OMNIBRILLE" FontSize="28" FontWeight="Light" LetterSpacing="5" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" />
           <TextBlock Text="Navigate your information universe" FontSize="16" HorizontalAlignment="Center" />
           <TextBlock Text="Standalone Structure mode reads only the folder you explicitly choose. It does not crawl drives, run in the background, or modify files."
                      TextWrapping="Wrap" TextAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" />
-          <Button Classes="hud" Margin="0,10,0,0" HorizontalAlignment="Center" Content="Choose a folder" Click="OnChooseFolderClick" />
+          <TextBlock x:Name="WelcomeCompanionText"
+                     Text="Open OmniBrille from OmniSorSe to explore authorized Context and Hybrid relationships."
+                     TextWrapping="Wrap" TextAlignment="Center" FontSize="11" Foreground="{DynamicResource AccentBrush}" />
+          <Button x:Name="WelcomeChooseFolderButton"
+                  Classes="hud"
+                  Margin="0,10,0,0"
+                  HorizontalAlignment="Center"
+                  Content="Choose folder to explore"
+                  Click="OnChooseFolderClick"
+                  AutomationProperties.Name="Choose a folder to explore in Standalone mode" />
+        </StackPanel>
+      </Border>
+
+      <Border x:Name="StructureEmptyPanel"
+              IsVisible="False"
+              Width="380"
+              Padding="20"
+              HorizontalAlignment="Left"
+              VerticalAlignment="Bottom"
+              Margin="16,0,0,86"
+              Background="{DynamicResource SurfaceStrongBrush}"
+              BorderBrush="{DynamicResource BorderBrush}"
+              BorderThickness="1"
+              CornerRadius="4"
+              AutomationProperties.Name="Empty Structure folder">
+        <StackPanel Spacing="10">
+          <TextBlock Text="THIS FOLDER IS EMPTY" FontSize="10" LetterSpacing="1.4" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" />
+          <TextBlock x:Name="StructureEmptyText"
+                     Text="No items were found here."
+                     TextWrapping="Wrap"
+                     TextAlignment="Center" />
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="6">
+            <Button x:Name="StructureEmptyChooseButton"
+                    Classes="hud"
+                    Content="Choose another folder"
+                    Click="OnChooseFolderClick"
+                    AutomationProperties.Name="Choose another Standalone folder" />
+            <Button x:Name="StructureEmptyProviderButton"
+                    Classes="hud"
+                    IsVisible="False"
+                    Content="Authorized roots"
+                    Click="OnConnectionClick"
+                    AutomationProperties.Name="Open authorized OmniSorSe roots" />
+            <Button x:Name="StructureEmptyBackButton"
+                    Grid.Column="1"
+                    Classes="hud"
+                    Content="Back"
+                    Click="OnBackClick"
+                    AutomationProperties.Name="Go back from empty folder" />
+          </Grid>
         </StackPanel>
       </Border>
 
@@ -655,9 +726,9 @@
               IsVisible="False"
               Width="360"
               Padding="20"
-              HorizontalAlignment="Center"
+              HorizontalAlignment="Left"
               VerticalAlignment="Bottom"
-              Margin="0,0,0,86"
+              Margin="16,0,0,86"
               Background="{DynamicResource SurfaceStrongBrush}"
               BorderBrush="{DynamicResource BorderBrush}"
               BorderThickness="1"
@@ -701,7 +772,12 @@
                    Foreground="{DynamicResource AccentBrush}" />
         <TextBlock x:Name="StatusText" Grid.Column="1" Margin="18,0" Text="Choose a folder to begin. Only that location will be accessible."
                    TextTrimming="CharacterEllipsis" Foreground="{DynamicResource SecondaryTextBrush}" AutomationProperties.LiveSetting="Polite" />
-        <TextBlock Grid.Column="2" Text="Enter open · Backspace back · Ctrl+1/2/3 modes · Ctrl+F search · Ctrl+Shift+L list · Ctrl+Shift+Space voice" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
+        <TextBlock Grid.Column="2"
+                   Text="Backspace back · Ctrl+1/2/3 modes · Ctrl+F search · Ctrl+Shift+L list"
+                   FontSize="10"
+                   TextTrimming="CharacterEllipsis"
+                   ToolTip.Tip="Enter opens · Backspace goes back · Ctrl+1/2/3 changes mode · Ctrl+F searches · Ctrl+Shift+L opens the accessible list · Ctrl+Shift+Space toggles voice"
+                   Foreground="{DynamicResource SecondaryTextBrush}" />
       </Grid>
     </Border>
   </Grid>

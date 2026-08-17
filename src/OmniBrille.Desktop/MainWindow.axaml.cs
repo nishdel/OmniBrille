@@ -1293,17 +1293,31 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             _isApplyingPreferences = false;
         }
 
-        SearchBox.PlaceholderText = _session.ProviderMode == ExplorerProviderMode.Connected
+        var connectedSearch = _session.ProviderMode == ExplorerProviderMode.Connected;
+        SearchBox.PlaceholderText = connectedSearch
             ? "Search authorized indexed scope"
             : "Search selected root";
         AutomationProperties.SetName(
             SearchBox,
-            _session.ViewMode switch
-            {
-                ExplorerViewMode.Context => "Context search",
-                ExplorerViewMode.Hybrid => "Hybrid search",
-                _ => "Structural search",
-            });
+            connectedSearch
+                ? $"{_session.ViewMode} Search through OmniSorSe"
+                : _session.ViewMode switch
+                {
+                    ExplorerViewMode.Context => "Context search",
+                    ExplorerViewMode.Hybrid => "Hybrid search",
+                    _ => "Structural search",
+                });
+        AutomationProperties.SetHelpText(
+            SearchBox,
+            connectedSearch
+                ? "Searches the current authorized OmniSorSe session scope. Press Escape to clear."
+                : "Searches only names and paths inside the selected root. Press Escape to clear.");
+        AutomationProperties.SetName(
+            SearchButton,
+            connectedSearch ? "Run OmniSorSe Search" : "Run Standalone Search");
+        AutomationProperties.SetName(
+            SearchResultsList,
+            connectedSearch ? "OmniSorSe Search results" : "Standalone Search results");
         AutomationProperties.SetName(
             GraphScene,
             $"Spatial {_session.ViewMode} graph");
@@ -1345,25 +1359,43 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
                     ? "Reading indexed structure…"
                     : "Reading structural items…";
 
+        var results = _session.SearchResult;
+        var showSearchResults = results is not null &&
+            _session.SearchQuery.Length > 0 &&
+            !AccessibleListPanel.IsVisible &&
+            !ContextFilterPanel.IsVisible;
         DetailsPanel.IsVisible = selected is not null &&
             !_detailsDismissed &&
             !SettingsPanel.IsVisible &&
             !ConnectionPanel.IsVisible &&
-            !ContextFilterPanel.IsVisible;
+            !ContextFilterPanel.IsVisible &&
+            !showSearchResults;
         if (selected is not null)
         {
             UpdateDetails(selected, neighborhood);
         }
 
-        var results = _session.SearchResult;
         SearchResultsList.ItemsSource = results?.Hits;
-        SearchResultsPanel.IsVisible = results is not null &&
-            _session.SearchQuery.Length > 0 &&
-            !AccessibleListPanel.IsVisible &&
-            !ContextFilterPanel.IsVisible;
+        SearchResultsPanel.IsVisible = showSearchResults;
+        var hasSearchMatches = results is { Hits.Count: > 0 };
+        SearchResultsList.IsVisible = hasSearchMatches;
+        SearchEmptyState.IsVisible = results is not null && !hasSearchMatches;
+        FocusSearchResultButton.IsEnabled = hasSearchMatches;
         SearchSummaryText.Text = results is null
             ? "Search results"
             : $"{results.Hits.Count:N0} MATCHES{(results.WasTruncated ? " · BOUNDED" : string.Empty)}";
+        var emptyStructure = _session.ViewMode == ExplorerViewMode.Structure &&
+            neighborhood is not null &&
+            !_session.IsLoading &&
+            neighborhood.TotalChildCount == 0 &&
+            string.IsNullOrWhiteSpace(neighborhood.Warning);
+        StructureEmptyPanel.IsVisible = emptyStructure && !showSearchResults;
+        StructureEmptyChooseButton.IsVisible = _session.ProviderMode == ExplorerProviderMode.Standalone;
+        StructureEmptyProviderButton.IsVisible = _session.ProviderMode == ExplorerProviderMode.Connected;
+        StructureEmptyBackButton.IsEnabled = _session.CanGoBack && !_session.IsLoading;
+        StructureEmptyText.Text = _session.ProviderMode == ExplorerProviderMode.Connected
+            ? "This authorized indexed folder contains no visible items. Go Back or choose another authorized root."
+            : "This folder contains no visible items. Choose another folder or go Back.";
         var emptyContext = IsContextualMode(_session.ViewMode) &&
             !_session.IsLoading &&
             _session.ContextFilterSummary?.MatchingRelationshipCount == 0;
