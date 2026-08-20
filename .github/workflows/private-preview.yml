@@ -295,8 +295,10 @@ jobs:
               throw 'Signed candidate did not retain valid installer and application signatures.'
             }
           }
-          elseif ($installerSignature.Status -eq 'Valid' -or $applicationSignature.Status -eq 'Valid') {
-            throw 'Unsigned manifest disagrees with a valid Authenticode signature on the installed artifact.'
+          elseif ($manifest.installer.signatureStatus -ne 'NotSigned' -or
+                  $installerSignature.Status -ne 'NotSigned' -or
+                  $applicationSignature.Status -ne 'NotSigned') {
+            throw "Unsigned candidate must report NotSigned for manifest, installer, and installed application: '$($manifest.installer.signatureStatus)' / '$($installerSignature.Status)' / '$($applicationSignature.Status)'."
           }
 
           $smokeRoot = Join-Path $env:RUNNER_TEMP 'OmniBrilleCleanSmoke'

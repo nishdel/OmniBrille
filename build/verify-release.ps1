@@ -234,12 +234,27 @@ function Assert-PackagedContents {
     if ($RequireSigning -and -not $manifest.installer.signed) {
         throw 'Release signing was required, but the manifest describes an unsigned installer.'
     }
+    if (-not $manifest.installer.signed -and
+        ($manifest.installer.signatureStatus -ne 'NotSigned' -or
+         (Get-AuthenticodeSignature -LiteralPath $PackageResult.Package).Status -ne [System.Management.Automation.SignatureStatus]::NotSigned)) {
+        throw 'Unsigned release metadata and installer must both report NotSigned.'
+    }
 
     $dependencyManifest = Get-Content -Raw -LiteralPath $PackageResult.DependencyManifest | ConvertFrom-Json
     if ($dependencyManifest.product -ne 'OmniBrille' -or
         $dependencyManifest.version -ne $Version -or
         $dependencyManifest.projectLicenseExpression -ne 'MIT') {
         throw 'Runtime dependency manifest identity/version is inconsistent.'
+    }
+    $assetOverrides = @($dependencyManifest.assetOverrides)
+    if ($assetOverrides.Count -ne 1 -or
+        $assetOverrides[0].packageId -ne 'SkiaSharp.NativeAssets.Win32' -or
+        $assetOverrides[0].version -ne '3.119.4' -or
+        $assetOverrides[0].excludedAssets -ne 'all' -or
+        $assetOverrides[0].contributesPackagedFiles -ne $false -or
+        $assetOverrides[0].replacementPackageId -ne 'OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng' -or
+        $assetOverrides[0].replacementPackageVersion -ne '3.119.4.2') {
+        throw 'Runtime dependency manifest does not describe the fail-closed official-native exclusion and DNG-free replacement.'
     }
 
     if (-not (Test-Path -LiteralPath $PackageResult.ReleaseNotes -PathType Leaf)) {

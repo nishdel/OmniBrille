@@ -41,6 +41,9 @@ $signature = Get-AuthenticodeSignature -FilePath $resolvedPackage
 if ($Signed -and $signature.Status -ne [System.Management.Automation.SignatureStatus]::Valid) {
     throw "The release was marked signed, but installer signature status is '$($signature.Status)'."
 }
+if (-not $Signed -and $signature.Status -ne [System.Management.Automation.SignatureStatus]::NotSigned) {
+    throw "The release was marked unsigned, but installer signature status is '$($signature.Status)' rather than 'NotSigned'."
+}
 
 $baseName = [System.IO.Path]::GetFileNameWithoutExtension($package.Name)
 $outputDirectory = $package.DirectoryName

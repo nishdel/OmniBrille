@@ -120,6 +120,7 @@ public sealed class ReleaseHardeningTests
         Assert.Contains("explorerProtocol", metadataScript, StringComparison.Ordinal);
         Assert.Contains("schemaVersion = 4", metadataScript, StringComparison.Ordinal);
         Assert.Contains("projectLicenseExpression = 'MIT'", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("rather than 'NotSigned'", metadataScript, StringComparison.Ordinal);
         Assert.Contains("distributionNotices", metadataScript, StringComparison.Ordinal);
         Assert.Contains("skiaSharpNotice", metadataScript, StringComparison.Ordinal);
         Assert.Contains("nativeComponents", metadataScript, StringComparison.Ordinal);
@@ -132,12 +133,16 @@ public sealed class ReleaseHardeningTests
         Assert.Contains("assetOverrides", metadataScript, StringComparison.Ordinal);
         Assert.Contains("contributesPackagedFiles = $false", metadataScript, StringComparison.Ordinal);
         Assert.Contains("Suppress the transitive official DNG-bearing native runtime", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("Runtime dependency manifest does not describe the fail-closed official-native exclusion", File.ReadAllText(
+            Path.Combine(root, "build", "verify-release.ps1")), StringComparison.Ordinal);
         Assert.Contains("release-gate status is not recorded", metadataScript, StringComparison.Ordinal);
         Assert.Contains("MIT License", File.ReadAllText(Path.Combine(root, "docs", "release-notes.md")), StringComparison.Ordinal);
         Assert.DoesNotContain("AuthorizationToken", metadataScript, StringComparison.Ordinal);
         Assert.DoesNotContain("UserProfile", metadataScript, StringComparison.Ordinal);
         Assert.Contains("Public release verification requires a maintainer-approved", File.ReadAllText(
             Path.Combine(root, "build", "verify-release.ps1")), StringComparison.Ordinal);
+        Assert.Contains("Unsigned candidate must report NotSigned for manifest, installer, and installed application", File.ReadAllText(
+            Path.Combine(root, ".github", "workflows", "private-preview.yml")), StringComparison.Ordinal);
     }
 
     [Fact]
