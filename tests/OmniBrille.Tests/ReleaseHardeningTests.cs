@@ -90,6 +90,7 @@ public sealed class ReleaseHardeningTests
         Assert.Contains("Expected the project-built native DLL to be NotSigned", buildScript, StringComparison.Ordinal);
         Assert.Contains("AB054D5A4A8E82FACF9925BA106FDBE8BB83918F9AAABDB20B6DA2FF75A80268", buildScript, StringComparison.Ordinal);
         Assert.Contains("Build-DngFreeSkia.ps1", workflow, StringComparison.Ordinal);
+        Assert.Contains("if: always()", workflow, StringComparison.Ordinal);
         Assert.Contains("needs: build-dng-free-skia", workflow, StringComparison.Ordinal);
         Assert.Contains("Installed Skia native binary does not match", workflow, StringComparison.Ordinal);
         Assert.Contains("$manifest.schemaVersion -ne 4", workflow, StringComparison.Ordinal);

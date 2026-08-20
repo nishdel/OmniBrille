@@ -73,6 +73,7 @@ jobs:
             -LlvmHome $env:LLVM_HOME
 
       - name: Retain native asset and proof bundle
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: OmniBrille-dng-free-skia-3.119.4-${{ github.sha }}
