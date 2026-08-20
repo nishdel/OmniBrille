@@ -6,6 +6,8 @@ This is authoritative provenance and upgrade guidance for the replacement native
 
 The accepted Windows x64 DLL has SHA-256 `AB054D5A4A8E82FACF9925BA106FDBE8BB83918F9AAABDB20B6DA2FF75A80268` and is stored in the distinctly named local package `OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng` 3.119.4.1 (package SHA-256 `D888FACDAFF8E704EB48FA1D812152E42747D91A6AF0C20EDCC6432929538A2B`). `NuGet.Config` maps that exact ID to the repository package source; Desktop explicitly excludes every asset from the transitive official Win32 native package. Release gates bind the reviewed hash through restore, publish, manifest, installation, and final-installer qualification.
 
+A deterministic replacement candidate with SHA-256 `A5A4C1EECE528A5BED7C98889435BD8214BBA610F963FE80E35256A91508B5DD` has passed one hosted build's DNG, dependency-closure, export, and signature checks. It is not yet the accepted packaged asset: a second independent hosted build must reproduce the exact bytes before the package and release hashes move to it.
+
 ## Pinned upstream source
 
 - SkiaSharp version: `3.119.4`
