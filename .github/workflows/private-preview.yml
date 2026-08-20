@@ -20,6 +20,67 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  build-dng-free-skia:
+    name: Build and prove DNG-free SkiaSharp x64
+    runs-on: windows-2022
+    timeout-minutes: 120
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: 1
+    steps:
+      - name: Check out OmniBrille build recipe
+        uses: actions/checkout@v7
+
+      - name: Install OmniBrille and upstream SkiaSharp SDKs
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: |
+            9.0.316
+            10.0.105
+
+      - name: Install Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Restore official ABI reference
+        shell: pwsh
+        run: dotnet restore .\src\OmniBrille.Desktop\OmniBrille.Desktop.csproj --runtime win-x64
+
+      - name: Install upstream-pinned LLVM
+        shell: pwsh
+        run: |
+          $llvmHome = Join-Path $env:RUNNER_TEMP 'llvm-19.1.1'
+          $llvmInstaller = Join-Path $env:RUNNER_TEMP 'LLVM-19.1.1-win64.exe'
+          Invoke-WebRequest `
+            -Uri 'https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.1/LLVM-19.1.1-win64.exe' `
+            -OutFile $llvmInstaller
+          & 7z x $llvmInstaller -y "-o$llvmHome"
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned LLVM extraction failed.' }
+          & (Join-Path $llvmHome 'bin\clang.exe') --version
+          "LLVM_HOME=$llvmHome" >> $env:GITHUB_ENV
+
+      - name: Build and verify pinned DNG-free native asset
+        shell: pwsh
+        run: |
+          $officialReference = Join-Path `
+            $env:USERPROFILE `
+            '.nuget\packages\skiasharp.nativeassets.win32\3.119.4\runtimes\win-x64\native\libSkiaSharp.dll'
+          .\build\Build-DngFreeSkia.ps1 `
+            -OfficialReferenceDll $officialReference `
+            -OutputDirectory (Join-Path $env:GITHUB_WORKSPACE 'artifacts\dng-free-skia') `
+            -WorkDirectory (Join-Path $env:RUNNER_TEMP 'omnibrille-dng-free-skia') `
+            -LlvmHome $env:LLVM_HOME
+
+      - name: Retain native asset and proof bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: OmniBrille-dng-free-skia-3.119.4-${{ github.sha }}
+          path: artifacts/dng-free-skia
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+
   validate-and-package:
     name: Windows release candidate (${{ inputs.signing }})
     runs-on: windows-latest

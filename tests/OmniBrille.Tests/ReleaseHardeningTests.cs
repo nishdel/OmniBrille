@@ -68,6 +68,27 @@ public sealed class ReleaseHardeningTests
     }
 
     [Fact]
+    public void DngFreeSkiaBuild_IsPinnedAndFailsClosed()
+    {
+        var root = FindRepositoryRoot();
+        var buildScript = File.ReadAllText(Path.Combine(root, "build", "Build-DngFreeSkia.ps1"));
+        var workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "private-preview.yml"));
+        var provenanceGuide = File.ReadAllText(Path.Combine(root, "docs", "native-skia.md"));
+
+        Assert.Contains("f568ac94dd768ef9a2f593537cfde2dd0d348ef5", buildScript, StringComparison.Ordinal);
+        Assert.Contains("7dbfc07dd33181f84e0958afb7ee805c6c769f0b", buildScript, StringComparison.Ordinal);
+        Assert.Contains("8fecc592a290769242d5098666cee8d29b7f0523", buildScript, StringComparison.Ordinal);
+        Assert.Contains("--gnArgs=skia_use_dng_sdk=false", buildScript, StringComparison.Ordinal);
+        Assert.Contains("DNG or its RAW-only PIEX dependency was fetched", buildScript, StringComparison.Ordinal);
+        Assert.Contains("native C export set differs", buildScript, StringComparison.Ordinal);
+        Assert.Contains("Expected the project-built native DLL to be NotSigned", buildScript, StringComparison.Ordinal);
+        Assert.Contains("Build-DngFreeSkia.ps1", workflow, StringComparison.Ordinal);
+        Assert.Contains("OmniBrille-dng-free-skia-3.119.4", workflow, StringComparison.Ordinal);
+        Assert.Contains("no upstream source branch or permanent fork", provenanceGuide, StringComparison.Ordinal);
+        Assert.Contains("proof-bundle.sha256", provenanceGuide, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ReleaseMetadata_HasHashManifestAndSanitizedDependencyInventory()
     {
         var root = FindRepositoryRoot();

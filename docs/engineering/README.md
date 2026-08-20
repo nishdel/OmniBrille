@@ -15,6 +15,7 @@ Repository evidence wins in this order: current source and observable behavior, 
 | Explorer Protocol client and connected boundary | [`docs/explorer-protocol.md`](../explorer-protocol.md) | Current client contract plus explicitly historical external validation |
 | Voice input boundary | [`docs/voice.md`](../voice.md) | Authoritative subsystem guide |
 | Packaging, compatibility, privacy, and release gates | [`docs/PACKAGING.md`](../PACKAGING.md), [`COMPATIBILITY.md`](../../COMPATIBILITY.md), [`RELEASE_CHECKLIST.md`](../../RELEASE_CHECKLIST.md) | Current guidance and tested combinations |
+| DNG-free Windows SkiaSharp native asset | [`docs/native-skia.md`](../native-skia.md) | Authoritative native-build provenance and upgrade procedure |
 | Architectural reasons | [`docs/decisions/README.md`](../decisions/README.md) | Decision records; not alternate current architecture |
 | Risk, specialists, and validation | [`risk-and-validation.md`](risk-and-validation.md) | Engineering guidance |
 | Retrospectives, lesson promotion, freshness, and reports | [`learning-and-reports.md`](learning-and-reports.md) | Engineering guidance |
@@ -40,6 +41,7 @@ Small tasks should stay small. Use `AGENTS.md`, the authority map above, the tar
 | Protocol, handoff, connected provider/cache | Current architecture; protocol guide; ADR 0001; client/provider/coordinator tests; compatibility matrix | Renderer history unless visible graph semantics change |
 | Voice | Current architecture; voice guide; voice source/tests; privacy/release guidance | Historical graph performance samples |
 | Packaging/release | Packaging, compatibility, privacy, release checklist, build scripts and release tests | Renderer implementation unless packaged output changed |
+| SkiaSharp/native renderer dependency | [Native Skia provenance](../native-skia.md); renderer/performance sections of current architecture; build recipe and release tests | Protocol, voice, and historical run reports |
 
 Do not load every retained run report. Use one only when investigating what a past run claimed, a specific regression, or a validation environment.
 
