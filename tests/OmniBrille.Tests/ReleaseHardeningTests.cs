@@ -38,7 +38,7 @@ public sealed class ReleaseHardeningTests
     }
 
     [Fact]
-    public void ReleasePipeline_HasFailClosedSigningAndNonPublishingManualWorkflow()
+    public void ReleasePipeline_HasFailClosedSigningAndNonPublishingCandidateWorkflow()
     {
         var root = FindRepositoryRoot();
         var packageScript = File.ReadAllText(Path.Combine(root, "build", "Package-Windows.ps1"));
@@ -51,11 +51,18 @@ public sealed class ReleaseHardeningTests
         Assert.Contains("OMNIBRILLE_SIGNING_CERTIFICATE_THUMBPRINT", packageScript, StringComparison.Ordinal);
         Assert.DoesNotContain("PFX_PASSWORD", packageScript, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("requires a clean checkout", releaseScript, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Test-EngineeringDocs.ps1", releaseScript, StringComparison.Ordinal);
         Assert.Contains("workflow_dispatch", workflow, StringComparison.Ordinal);
-        Assert.Contains("Signed preview requested, but signing secrets are unavailable", workflow, StringComparison.Ordinal);
+        Assert.Contains("Signed release candidate requested, but signing secrets are unavailable", workflow, StringComparison.Ordinal);
+        Assert.Contains("Release candidate artifact", workflow, StringComparison.Ordinal);
+        Assert.Contains("normalCloseAndRelaunch", workflow, StringComparison.Ordinal);
+        Assert.Contains("Installer filename or byte length does not match the manifest", workflow, StringComparison.Ordinal);
+        Assert.Contains("Required installed distribution notice", workflow, StringComparison.Ordinal);
+        Assert.Contains("Manifest signing state does not match", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("gh release", workflow, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("action-gh-release", workflow, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("create tag", workflow, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("current SkiaSharp Windows native asset includes Adobe DNG SDK code", releaseScript, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -67,13 +74,20 @@ public sealed class ReleaseHardeningTests
 
         Assert.Contains("New-ReleaseArtifacts.ps1", packageScript, StringComparison.Ordinal);
         Assert.Contains("Get-FileHash", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("safe.directory", metadataScript, StringComparison.Ordinal);
         Assert.Contains("explorerProtocol", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("licenseExpression = 'GPL-3.0-only'", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("sourceUrl", metadataScript, StringComparison.Ordinal);
         Assert.Contains("commitSha", metadataScript, StringComparison.Ordinal);
-        Assert.Contains("private-preview-notes.md", metadataScript, StringComparison.Ordinal);
-        Assert.Contains("docs\\private-preview.md", metadataScript, StringComparison.Ordinal);
-        Assert.Contains("dependency manifest; not a formal SPDX or CycloneDX SBOM", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("release-notes.md", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("docs\\release-notes.md", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("not an exact packaged-file inventory", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("release-gate status is not recorded", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("GPL-3.0-only", File.ReadAllText(Path.Combine(root, "docs", "release-notes.md")), StringComparison.Ordinal);
         Assert.DoesNotContain("AuthorizationToken", metadataScript, StringComparison.Ordinal);
         Assert.DoesNotContain("UserProfile", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("Public release verification requires a maintainer-approved", File.ReadAllText(
+            Path.Combine(root, "build", "verify-release.ps1")), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -85,6 +99,7 @@ public sealed class ReleaseHardeningTests
         Assert.Contains("actions/setup-dotnet@v6", workflow, StringComparison.Ordinal);
         Assert.Contains("actions/upload-artifact@v7", workflow, StringComparison.Ordinal);
         Assert.Contains("Test-NuGetVulnerabilities.ps1", workflow, StringComparison.Ordinal);
+        Assert.Contains("Test-EngineeringDocs.ps1", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("actions/checkout@v4", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("actions/setup-dotnet@v4", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("actions/upload-artifact@v4", workflow, StringComparison.Ordinal);
@@ -123,7 +138,7 @@ public sealed class ReleaseHardeningTests
     }
 
     [Fact]
-    public void PrivatePreviewDocumentation_DefinesCompatibilitySecurityAndManualGates()
+    public void ReleaseDocumentation_DefinesCompatibilitySecurityAndManualGates()
     {
         var root = FindRepositoryRoot();
 
@@ -131,11 +146,11 @@ public sealed class ReleaseHardeningTests
         Assert.True(File.Exists(Path.Combine(root, "CHANGELOG.md")));
         Assert.True(File.Exists(Path.Combine(root, "RELEASE_CHECKLIST.md")));
         Assert.True(File.Exists(Path.Combine(root, "docs", "SECURITY-PRIVACY.md")));
-        Assert.True(File.Exists(Path.Combine(root, "docs", "private-preview.md")));
+        Assert.True(File.Exists(Path.Combine(root, "docs", "release-notes.md")));
         Assert.True(File.Exists(Path.Combine(root, "docs", "PRIVATE_PREVIEW_FEEDBACK.md")));
         Assert.True(File.Exists(Path.Combine(root, "docs", "PRIVATE_PREVIEW_ROLLOUT.md")));
         Assert.True(File.Exists(Path.Combine(root, "docs", "voice.md")));
-        Assert.Contains("0.8.0-preview.2", File.ReadAllText(Path.Combine(root, "COMPATIBILITY.md")), StringComparison.Ordinal);
+        Assert.Contains("1.0.0", File.ReadAllText(Path.Combine(root, "COMPATIBILITY.md")), StringComparison.Ordinal);
         Assert.Contains("always-listening mode", File.ReadAllText(Path.Combine(root, "docs", "voice.md")), StringComparison.OrdinalIgnoreCase);
         Assert.Contains("whisper-cli", File.ReadAllText(Path.Combine(root, "docs", "SECURITY-PRIVACY.md")), StringComparison.Ordinal);
         Assert.Contains("- [ ]", File.ReadAllText(Path.Combine(root, "RELEASE_CHECKLIST.md")), StringComparison.Ordinal);

@@ -21,13 +21,14 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+$gitSafeDirectory = $repositoryRoot.Replace('\', '/')
 $resolvedPackage = [System.IO.Path]::GetFullPath($PackagePath)
 if (-not (Test-Path -LiteralPath $resolvedPackage -PathType Leaf)) {
     throw "Installer was not found at '$resolvedPackage'."
 }
 
 if ([string]::IsNullOrWhiteSpace($CommitSha)) {
-    $CommitSha = (& git -C $repositoryRoot rev-parse HEAD).Trim()
+    $CommitSha = (& git -c "safe.directory=$gitSafeDirectory" -C $repositoryRoot rev-parse HEAD).Trim()
     if ($LASTEXITCODE -ne 0) { throw 'Could not resolve the release commit SHA.' }
 }
 if ($CommitSha -notmatch '^[0-9a-fA-F]{40}$') {
@@ -46,7 +47,7 @@ $outputDirectory = $package.DirectoryName
 $checksumPath = Join-Path $outputDirectory "$($package.Name).sha256"
 $manifestPath = Join-Path $outputDirectory "$baseName-manifest.json"
 $dependencyPath = Join-Path $outputDirectory "$baseName-dependencies.json"
-$previewNotesPath = Join-Path $outputDirectory "$baseName-private-preview-notes.md"
+$releaseNotesPath = Join-Path $outputDirectory "$baseName-release-notes.md"
 
 $workflowRunId = if ($env:GITHUB_RUN_ID -match '^\d+$') { $env:GITHUB_RUN_ID } else { $null }
 $workflowRepository = if ($env:GITHUB_REPOSITORY -match '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$') {
@@ -70,7 +71,9 @@ $manifest = [ordered]@{
     product = 'OmniBrille'
     version = $Version
     fileVersion = $NumericVersion
+    licenseExpression = 'GPL-3.0-only'
     commitSha = $CommitSha.ToLowerInvariant()
+    sourceUrl = "https://github.com/nishdel/OmniBrille/tree/$($CommitSha.ToLowerInvariant())"
     buildTimestampUtc = [DateTimeOffset]::UtcNow.ToString('O')
     runtimeIdentifier = $RuntimeIdentifier
     deployment = 'self-contained; non-trimmed; multi-file'
@@ -127,29 +130,30 @@ $dependencies = [ordered]@{
     schemaVersion = 1
     product = 'OmniBrille'
     version = $Version
-    scope = 'packaged desktop runtime dependencies'
-    format = 'OmniBrille dependency manifest; not a formal SPDX or CycloneDX SBOM'
+    projectLicenseExpression = 'GPL-3.0-only'
+    scope = 'desktop project resolved dependency graph; may include runtime-identifier alternatives not present in the win-x64 publish output'
+    format = 'OmniBrille dependency graph; not an exact packaged-file inventory, SPDX document, or CycloneDX SBOM'
     projects = @($projects)
 }
 $dependencies | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $dependencyPath -Encoding UTF8
 
-$previewTemplatePath = Join-Path $repositoryRoot 'docs\private-preview.md'
-if (-not (Test-Path -LiteralPath $previewTemplatePath -PathType Leaf)) {
-    throw "Tester-facing preview notes were not found at '$previewTemplatePath'."
+$releaseTemplatePath = Join-Path $repositoryRoot 'docs\release-notes.md'
+if (-not (Test-Path -LiteralPath $releaseTemplatePath -PathType Leaf)) {
+    throw "Installer-facing release notes were not found at '$releaseTemplatePath'."
 }
 $signingDescription = if ($Signed) {
     'Authenticode signed; verify the publisher and Valid signature before installation.'
 } else {
-    'Unsigned private preview; Windows may show Unknown Publisher or SmartScreen reputation warnings.'
+    'Unsigned release; Windows may show Unknown Publisher or SmartScreen reputation warnings.'
 }
 $workflowDescription = if ($null -ne $workflow) {
     "GitHub Actions run: $($workflow.runUrl)"
 } else {
-    'Build workflow: local validated release check'
+    'Build provenance: local package build; release-gate status is not recorded'
 }
-$previewBody = Get-Content -Raw -LiteralPath $previewTemplatePath
-$previewNotes = @"
-# OmniBrille $Version private preview
+$releaseBody = Get-Content -Raw -LiteralPath $releaseTemplatePath
+$releaseNotes = @"
+# OmniBrille $Version
 
 Installer: $($package.Name)
 Commit: $($CommitSha.ToLowerInvariant())
@@ -157,15 +161,15 @@ SHA-256: $hash
 Signing: $signingDescription
 $workflowDescription
 
-$previewBody
+$releaseBody
 "@
-Set-Content -LiteralPath $previewNotesPath -Encoding UTF8 -Value $previewNotes
+Set-Content -LiteralPath $releaseNotesPath -Encoding UTF8 -Value $releaseNotes
 
 [pscustomobject]@{
     Checksum = $checksumPath
     Manifest = $manifestPath
     DependencyManifest = $dependencyPath
-    PreviewNotes = $previewNotesPath
+    ReleaseNotes = $releaseNotesPath
     Sha256 = $hash
     SignatureStatus = [string] $signature.Status
 }

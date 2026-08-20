@@ -4,11 +4,30 @@ All notable OmniBrille changes are recorded here. The project uses SemVer-compat
 
 ## [Unreleased]
 
-### Planned
+- No changes yet.
 
-- Private-preview feedback and support triage.
-- Maintainer license decision before any public distribution.
-- Production Authenticode signing when externally managed credentials are available.
+## [1.0.0] - 2026-08-20
+
+Prepared first stable public release; not yet published. A public `0.8.0-preview.2` prerelease already existed on GitHub. The v1.0.0 candidate establishes the intended Windows x64 Standalone contract and GPL-3.0-only project license, but publication is blocked pending resolution of the Adobe DNG SDK terms in the current SkiaSharp Windows native asset.
+
+### Added
+
+- Public project landing page with a direct Windows x64 download path, honest support contract, real installed-candidate screenshots, privacy summary, and developer-documentation routes.
+- Stable-version release notes plus exact installer manifest, SHA-256, dependency inventory, and artifact-only validation record support.
+- Complete packaged notices for Avalonia, Inter, ANGLE, SkiaSharp/HarfBuzzSharp, MicroCom, Tmds.DBus, NAudio, .NET, and System.IO.Pipelines redistributed by the self-contained Windows runtime.
+- Release validation for installed executable version metadata, normal close/relaunch, required project/distribution licenses, and signed-artifact status when signing is requested.
+- GPL-3.0-only project licensing in source, package metadata, release metadata, and the installed application.
+
+### Changed
+
+- Version/product/installer metadata now identify stable `1.0.0` and describe OmniBrille as a standalone-first local spatial file explorer.
+- The established Inno Setup workflow is documented and gated for a public release candidate rather than only private previews.
+- Public claims limit downloadable/interactive support to Windows x64 Standalone. Connected mode is compatibility-dependent; voice lacks real-microphone validation; automated accessibility coverage is not described as certification.
+
+### Fixed
+
+- Corrected corrupted smart-quote glyphs around the visible voice transcript.
+- Removed a user-facing hard-coded OmniSorSe v2.5 RC requirement in favor of the compatibility matrix.
 
 ## [0.8.0-preview.2] - 2026-08-17
 

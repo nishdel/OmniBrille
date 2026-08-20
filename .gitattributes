@@ -3,3 +3,4 @@
 *.axaml text eol=crlf
 *.sln text eol=crlf
 *.md text eol=lf
+THIRD-PARTY-LICENSES/** -text -whitespace

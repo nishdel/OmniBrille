@@ -1,8 +1,12 @@
 # OmniSorSe Explorer Protocol v1 integration
 
+> **Authority:** current OmniBrille client, adapter, and failure boundary. The Stage 4–6 host-validation sections are historical evidence against the named external commit, not a guarantee for untested OmniSorSe versions.
+
 ## Status and authority
 
-Stage 9 consumes the same real read-only protocol introduced in OmniSorSe v2.4.0 and companion workflow committed in the v2.5 release candidate. The authoritative source inspected and run is repository `OpenSorSe-recovered-clean`, commit `59be07c6cebff12072cbf18701fb16cb11801287`, especially `src/OpenSorSe.Application/Explorer/ExplorerCompanionLaunch.cs`, `ExplorerReadService.cs`, and `docs/OMNIBRILLE_COMPANION_HANDOFF_v2.5.md`. Protocol major remains 1 and schema remains 5; OmniSorSe source was not modified.
+Current OmniBrille consumes the same real read-only protocol introduced in OmniSorSe v2.4.0 and companion workflow committed in the v2.5 release candidate. The external source historically inspected and run was commit `59be07c6cebff12072cbf18701fb16cb11801287`, especially `src/OpenSorSe.Application/Explorer/ExplorerCompanionLaunch.cs`, `ExplorerReadService.cs`, and `docs/OMNIBRILLE_COMPANION_HANDOFF_v2.5.md`. Protocol major was 1 and schema 5 in that evidence; OmniSorSe source was not modified by those runs.
+
+The 2026-08-20 engineering audit also compared the mirrored DTO/enums and launcher/handoff history with the available OmniSorSe checkout at `cc6c331c984a6298f74fbc8ed7fb8e0681974ff2`: the inspected wire DTOs and handoff shape were stable, while host relationship projection had evolved (including pair aggregation, evidence classification, and explicit user-authority provenance). This is source-level boundary evidence, not a new installed two-process validation or a claim that host results are unchanged.
 
 The earlier OmniBrille document was conceptual. Its core boundary was correct—opaque graph DTOs, bounded reads, capability/version negotiation, cancellation, and no SQLite—but transport and exact fields were undecided. This document records the shipped behavior. OmniSorSe is authoritative when the two differ.
 
@@ -19,7 +23,7 @@ The earlier OmniBrille document was conceptual. Its core boundary was correct—
 - Envelope: protocol major, request ID, session ID, bearer authorization token, operation, and typed JSON payload; the response repeats protocol major/request ID and contains either payload or a stable error.
 - Bounds: 64 KiB requests, 1 MiB responses, 256 nodes, 512 edges, 100 Search/Related results, depth 2, four concurrent and sixteen queued requests, and a 15-second server timeout.
 
-OmniBrille uses a three-second connection timeout and an 18-second client request deadline so the server's stable 15-second result normally wins. It validates the grant and negotiated limits, then independently validates every response identity, enum, ID, collection, relationship reference, reason, metadata, and details bound before adapting it.
+OmniBrille uses a three-second connection timeout and an 18-second client request deadline so the server's stable 15-second result normally wins. It validates the grant and the advertised safety limits it consumes (request/response size, nodes, edges, Search/Related results, query presence, and timeout), then independently validates response identity, enum, ID, collection, relationship reference, reason, metadata, and details bounds before adapting them. Several advertised but currently unconsumed limits are not validated; that gap is tracked rather than described as comprehensive negotiation.
 
 ## Authorization, discovery, and lifecycle
 
@@ -67,7 +71,7 @@ Protocol child pages stream into the existing 32-item interactive batches. OmniB
 
 For an uncached Context focus, the provider requests one depth-1 neighborhood with `IncludeContext: true`, at most 48 nodes, and at most 84 combined edges. If the focus is an issued file, it also requests at most 36 `GetRelated` results. It validates and merges duplicate edges, adapts only server-supplied reason/evidence/provenance, then applies the existing global/per-node renderer policy. One session-scoped acquisition gate and an eight-entry LRU prevent fan-out. A new grant constructs a new provider, invalidating all cached opaque IDs and Context snapshots.
 
-Because v1 has no relationship ID, OmniBrille computes an ephemeral scene key from source ID, target ID, kind, reason, and provenance. It is useful only for deterministic deduplication/selection inside the current immutable session snapshot. It is never persisted or presented as a durable protocol identity.
+Because v1 has no relationship ID, OmniBrille computes an ephemeral scene key from source ID, target ID, kind, reason, and provenance. It is useful only for deduplication and deterministic budget ordering inside the current immutable session snapshot. It is never persisted or presented as a durable protocol identity.
 
 ## Cancellation, errors, and diagnostics
 
@@ -103,13 +107,15 @@ The 15-minute grant remains server-owned and is never extended by OmniBrille. `S
 
 ### Compatibility behavior
 
-OmniBrille validates protocol major 1, the read-only `OmniSorSe` server identity, negotiated hard bounds, and required Structure/Search capabilities. An absent OmniSorSe instance simply leaves Standalone active. Missing optional Context capability disables Context without local substitution. An incompatible major, malformed server limits, or missing required capability is rejected before provider creation; the main UI reports that this OmniBrille/OmniSorSe combination is incompatible while detailed expected/actual protocol values remain local diagnostics. Unknown additive fields and minor-version features are ignored unless explicitly understood and capability-gated. See [`COMPATIBILITY.md`](../COMPATIBILITY.md).
+OmniBrille validates protocol major 1, the read-only `OmniSorSe` server identity, the advertised safety bounds it consumes, and required Structure/Search capabilities. An absent OmniSorSe instance simply leaves Standalone active. All invalid cases are rejected before provider creation, but their current UI classification differs: a mismatched major is `Incompatible`; malformed consumed limits or missing required capabilities fail closed as a connection failure. Detailed failure categories remain local diagnostics.
+
+Current strict JSON rejects unknown members and numeric enums. Minor/additive compatibility is therefore not implied merely by keeping protocol major 1; new fields require an explicit client decision and compatibility tests. A missing optional Context/Related capability is rejected when Context is requested, but the current shell does not disable Context/Hybrid before that attempt and reports the provider failure as a connection failure. This is a known product follow-up, not the previously documented graceful-disable behavior. Standalone remains available and no local relationship substitute is created. See [`COMPATIBILITY.md`](../COMPATIBILITY.md).
 
 ### Required for ordinary connected Structure use
 
 - No blocker remains in the committed v2.5 RC contract. Packaging must place the reviewed executable in a configured/adjacent/conventional/PATH location; the RC is not described here as a released product.
 
-### Required or important for future Context
+### Required or important for future Context evolution
 
 - `ExplorerEdge` has no stable relationship ID. Stage 5 supports node-centric relationship inspection and immutable bounded replacement with an ephemeral key, but not durable edge bookmarks or incremental edge update/removal.
 - v1 responses are request/response snapshots/pages, not server-pushed incremental updates; future Context streaming would need additive revision/update semantics or bounded replacement requests.

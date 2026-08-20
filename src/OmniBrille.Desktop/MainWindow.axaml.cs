@@ -977,7 +977,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         VoiceLevelIndicator.Value = _voice.InputLevel;
         VoiceTranscriptText.Text = string.IsNullOrWhiteSpace(_voice.TranscriptPreview)
             ? string.Empty
-            : $"â€œ{_voice.TranscriptPreview}â€";
+            : $"“{_voice.TranscriptPreview}”";
         VoiceTranscriptText.IsVisible = VoiceTranscriptText.Text.Length > 0;
         if (VoiceTranscriptText.IsVisible)
         {
@@ -1453,7 +1453,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             OmniSorSeConnectionState.Standalone =>
                 "Choose a folder for explicit standalone access. Connected mode begins only from an authorized OmniSorSe launch handoff.",
             _ =>
-                "OmniSorSe v2.5 RC launches OmniBrille through a one-time authorized local handoff; standalone remains available after any failure.",
+                "A compatible OmniSorSe release can launch OmniBrille through a one-time authorized local handoff; standalone remains available after any failure.",
         };
     }
 

@@ -1,5 +1,7 @@
 # OmniBrille private-preview feedback
 
+> **Historical preview artifact.** This feedback template describes the earlier controlled preview and is not current public-release authority. Use the [public release checklist](../RELEASE_CHECKLIST.md) for v1.0 release gates.
+
 Thank you for testing OmniBrille. A useful report includes:
 
 - OmniBrille version and commit from the candidate notes or safe diagnostics;

@@ -14,7 +14,7 @@
     <AssemblyName>OmniBrille.Infrastructure</AssemblyName>
     <RootNamespace>OmniBrille.Infrastructure</RootNamespace>
     <Product>OmniBrille</Product>
-    <Description>Standalone filesystem infrastructure for OmniBrille.</Description>
+    <Description>Filesystem, preferences, connected-protocol, and local-voice infrastructure for OmniBrille.</Description>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>

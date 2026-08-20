@@ -1,4 +1,4 @@
-name: Private preview artifact
+name: Release candidate artifact
 
 on:
   workflow_dispatch:
@@ -16,12 +16,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: private-preview-${{ github.ref }}
+  group: release-candidate-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   validate-and-package:
-    name: Windows private preview (${{ inputs.signing }})
+    name: Windows release candidate (${{ inputs.signing }})
     runs-on: windows-latest
     timeout-minutes: 30
     env:
@@ -49,7 +49,7 @@ jobs:
         run: |
           if ([string]::IsNullOrWhiteSpace($env:SIGNING_PFX_BASE64) -or
               [string]::IsNullOrWhiteSpace($env:SIGNING_PFX_PASSWORD)) {
-            throw 'Signed preview requested, but signing secrets are unavailable.'
+            throw 'Signed release candidate requested, but signing secrets are unavailable.'
           }
           $pfxPath = Join-Path $env:RUNNER_TEMP 'OmniBrille-signing.pfx'
           [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:SIGNING_PFX_BASE64))
@@ -65,12 +65,12 @@ jobs:
             Remove-Item -LiteralPath $pfxPath -Force -ErrorAction SilentlyContinue
           }
 
-      - name: Verify and build unsigned private preview
+      - name: Verify and build unsigned release candidate
         if: inputs.signing == 'unsigned'
         shell: pwsh
         run: .\build\verify-release.ps1
 
-      - name: Verify and build signed private preview
+      - name: Verify and build signed release candidate
         if: inputs.signing == 'signed'
         shell: pwsh
         env:
@@ -84,16 +84,16 @@ jobs:
           CERTIFICATE_THUMBPRINT: ${{ steps.signing.outputs.thumbprint }}
         run: Remove-Item -LiteralPath "Cert:\CurrentUser\My\$env:CERTIFICATE_THUMBPRINT" -Force -ErrorAction SilentlyContinue
 
-      - name: Upload private preview artifact
+      - name: Upload release candidate artifact
         uses: actions/upload-artifact@v7
         with:
-          name: OmniBrille-private-preview-${{ inputs.signing }}-${{ github.sha }}
+          name: OmniBrille-release-candidate-${{ inputs.signing }}-${{ github.sha }}
           path: |
             artifacts/packages/OmniBrille-*-win-x64-setup.exe
             artifacts/packages/OmniBrille-*-win-x64-setup.exe.sha256
             artifacts/packages/OmniBrille-*-win-x64-setup-manifest.json
             artifacts/packages/OmniBrille-*-win-x64-setup-dependencies.json
-            artifacts/packages/OmniBrille-*-win-x64-setup-private-preview-notes.md
+            artifacts/packages/OmniBrille-*-win-x64-setup-release-notes.md
           if-no-files-found: error
           retention-days: 90
           compression-level: 0
@@ -107,7 +107,7 @@ jobs:
       - name: Download exact candidate only
         uses: actions/download-artifact@v8
         with:
-          name: OmniBrille-private-preview-${{ inputs.signing }}-${{ github.sha }}
+          name: OmniBrille-release-candidate-${{ inputs.signing }}-${{ github.sha }}
           path: candidate
 
       - name: Verify, install, launch, and uninstall exact candidate
@@ -124,6 +124,23 @@ jobs:
           if ($manifestPaths.Count -ne 1) { throw "Expected one release manifest, found $($manifestPaths.Count)." }
           $manifestPath = $manifestPaths[0]
           $manifest = Get-Content -Raw -LiteralPath $manifestPath.FullName | ConvertFrom-Json
+          $expectedInstallerName = "OmniBrille-$($manifest.version)-win-x64-setup.exe"
+          $expectedSigned = '${{ inputs.signing }}' -eq 'signed'
+          if ($manifest.product -ne 'OmniBrille' -or $manifest.runtimeIdentifier -ne 'win-x64') {
+            throw 'Manifest product or runtime does not identify the expected Windows x64 release.'
+          }
+          if ($manifest.licenseExpression -ne 'GPL-3.0-only' -or
+              $manifest.sourceUrl -ne "https://github.com/nishdel/OmniBrille/tree/${{ github.sha }}") {
+            throw 'Manifest license or corresponding-source URL does not match the release commit.'
+          }
+          if ($installer.Name -ne $manifest.installer.fileName -or
+              $installer.Name -ne $expectedInstallerName -or
+              $installer.Length -ne [long]$manifest.installer.bytes) {
+            throw 'Installer filename or byte length does not match the manifest.'
+          }
+          if ([bool]$manifest.installer.signed -ne $expectedSigned) {
+            throw 'Manifest signing state does not match the requested workflow mode.'
+          }
           $actualHash = (Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256).Hash.ToUpperInvariant()
           $sidecarHash = (((Get-Content -Raw -LiteralPath $sidecar.FullName).Trim()) -split '\s+')[0].ToUpperInvariant()
           if ($actualHash -ne $sidecarHash -or $actualHash -ne $manifest.installer.sha256.ToUpperInvariant()) {
@@ -141,11 +158,51 @@ jobs:
           $shortcut = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\OmniBrille.lnk'
           if (-not (Test-Path -LiteralPath $application -PathType Leaf)) { throw 'Installed executable was not found.' }
           if (-not (Test-Path -LiteralPath $shortcut -PathType Leaf)) { throw 'Start Menu shortcut was not found.' }
+          $requiredNotices = @(
+            'LICENSE',
+            'THIRD-PARTY-NOTICES.txt',
+            'THIRD-PARTY-LICENSES\ANGLE-LICENSE.txt',
+            'THIRD-PARTY-LICENSES\Avalonia-LICENSE.txt',
+            'THIRD-PARTY-LICENSES\DotNet-LICENSE.txt',
+            'THIRD-PARTY-LICENSES\DotNet-Runtime-THIRD-PARTY-NOTICES.txt',
+            'THIRD-PARTY-LICENSES\Inter-OFL-1.1.txt',
+            'THIRD-PARTY-LICENSES\MicroCom-LICENSE.txt',
+            'THIRD-PARTY-LICENSES\SkiaSharp-HarfBuzz-LICENSE.txt',
+            'THIRD-PARTY-LICENSES\SkiaSharp-HarfBuzz-THIRD-PARTY-NOTICES.txt',
+            'THIRD-PARTY-LICENSES\System.IO.Pipelines-THIRD-PARTY-NOTICES.txt',
+            'THIRD-PARTY-LICENSES\Tmds.DBus-LICENSE.txt'
+          )
+          foreach ($requiredNotice in $requiredNotices) {
+            if (-not (Test-Path -LiteralPath (Join-Path $installDirectory $requiredNotice) -PathType Leaf)) {
+              throw "Required installed distribution notice '$requiredNotice' was not found."
+            }
+          }
+          $installedLicense = Get-Content -Raw -LiteralPath (Join-Path $installDirectory 'LICENSE')
+          if ($installedLicense -notmatch 'GNU GENERAL PUBLIC LICENSE' -or
+              $installedLicense -notmatch 'Version 3, 29 June 2007' -or
+              $installedLicense -notmatch 'END OF TERMS AND CONDITIONS') {
+            throw 'Installed project license is not the expected GPLv3 text.'
+          }
           $uninstallRoot = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall'
           $registration = @(Get-ChildItem -LiteralPath $uninstallRoot | ForEach-Object {
             Get-ItemProperty -LiteralPath $_.PSPath
           } | Where-Object { $_.DisplayName -eq 'OmniBrille' })
           if ($registration.Count -ne 1) { throw "Expected one uninstall registration, found $($registration.Count)." }
+          $versionInfo = [Diagnostics.FileVersionInfo]::GetVersionInfo($application)
+          if ($versionInfo.FileVersion -ne $manifest.fileVersion -or
+              $versionInfo.ProductVersion -ne $manifest.version) {
+            throw "Installed version metadata does not match the manifest: '$($versionInfo.FileVersion)' / '$($versionInfo.ProductVersion)'."
+          }
+          $installerSignature = Get-AuthenticodeSignature -LiteralPath $installer.FullName
+          $applicationSignature = Get-AuthenticodeSignature -LiteralPath $application
+          if ($manifest.installer.signed) {
+            if ($installerSignature.Status -ne 'Valid' -or $applicationSignature.Status -ne 'Valid') {
+              throw 'Signed candidate did not retain valid installer and application signatures.'
+            }
+          }
+          elseif ($installerSignature.Status -eq 'Valid' -or $applicationSignature.Status -eq 'Valid') {
+            throw 'Unsigned manifest disagrees with a valid Authenticode signature on the installed artifact.'
+          }
 
           $smokeRoot = Join-Path $env:RUNNER_TEMP 'OmniBrilleCleanSmoke'
           New-Item -ItemType Directory -Path $smokeRoot -Force | Out-Null
@@ -166,8 +223,26 @@ jobs:
           if ($applicationProcess.MainWindowTitle -notlike 'OmniBrille*') {
             throw "Installed application did not expose the expected window title: '$($applicationProcess.MainWindowTitle)'."
           }
-          Stop-Process -Id $applicationProcess.Id -Force
-          Wait-Process -Id $applicationProcess.Id -ErrorAction SilentlyContinue
+          if (-not $applicationProcess.CloseMainWindow()) { throw 'Installed application did not accept a normal window-close request.' }
+          Wait-Process -Id $applicationProcess.Id -Timeout 10 -ErrorAction Stop
+
+          $relaunchProcess = Start-Process -FilePath $application -ArgumentList @(
+            '--root', $smokeRoot, '--theme', 'Dark'
+          ) -PassThru
+          $deadline = (Get-Date).AddSeconds(20)
+          do {
+            Start-Sleep -Milliseconds 500
+            $relaunchProcess.Refresh()
+          } until (
+            $relaunchProcess.HasExited -or
+            -not [string]::IsNullOrWhiteSpace($relaunchProcess.MainWindowTitle) -or
+            (Get-Date) -gt $deadline
+          )
+          if ($relaunchProcess.HasExited -or $relaunchProcess.MainWindowTitle -notlike 'OmniBrille*') {
+            throw 'Installed application did not expose the expected window on relaunch.'
+          }
+          if (-not $relaunchProcess.CloseMainWindow()) { throw 'Relaunched application did not accept a normal window-close request.' }
+          Wait-Process -Id $relaunchProcess.Id -Timeout 10 -ErrorAction Stop
 
           $uninstaller = Join-Path $installDirectory 'unins000.exe'
           if (-not (Test-Path -LiteralPath $uninstaller -PathType Leaf)) { throw 'Uninstaller was not found.' }
@@ -182,7 +257,7 @@ jobs:
           } | Where-Object { $_.DisplayName -eq 'OmniBrille' })
           if ($remainingRegistration.Count -ne 0) { throw 'Uninstall registration remains after uninstall.' }
 
-          $validationPath = Join-Path $artifactRoot 'OmniBrille-private-preview-validation.json'
+          $validationPath = Join-Path $artifactRoot 'OmniBrille-release-validation.json'
           [ordered]@{
             schemaVersion = 1
             product = 'OmniBrille'
@@ -200,6 +275,9 @@ jobs:
               perUserInstall = 'passed'
               startMenuAndUninstallRegistration = 'passed'
               installedStandaloneWindow = 'passed'
+              installedVersionMetadata = 'passed'
+              normalCloseAndRelaunch = 'passed'
+              signatureWhenRequired = 'passed'
               uninstallCleanup = 'passed'
               interactiveFeatureSweep = 'not run on hosted runner'
               inPlaceUpgrade = 'not run on hosted runner'
@@ -210,7 +288,7 @@ jobs:
       - name: Retain exact candidate validation record
         uses: actions/upload-artifact@v7
         with:
-          name: OmniBrille-private-preview-validation-${{ github.sha }}
-          path: candidate/OmniBrille-private-preview-validation.json
+          name: OmniBrille-release-validation-${{ github.sha }}
+          path: candidate/OmniBrille-release-validation.json
           if-no-files-found: error
           retention-days: 90

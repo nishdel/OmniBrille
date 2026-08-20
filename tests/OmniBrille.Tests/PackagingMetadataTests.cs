@@ -5,16 +5,21 @@ namespace OmniBrille.Tests;
 public sealed class PackagingMetadataTests
 {
     [Fact]
-    public void CentralVersion_IsPreReleaseAndConsistentWithStageElevenPackage()
+    public void CentralVersion_IsStableAndConsistentWithFirstPublicRelease()
     {
         var root = FindRepositoryRoot();
         var document = XDocument.Load(Path.Combine(root, "Directory.Build.props"));
 
-        Assert.Equal("0.8.0", document.Descendants("VersionPrefix").Single().Value);
-        Assert.Equal("preview.2", document.Descendants("VersionSuffix").Single().Value);
-        Assert.Equal("0.8.0.2", document.Descendants("FileVersion").Single().Value);
-        Assert.Equal("0.8.0.0", document.Descendants("AssemblyVersion").Single().Value);
+        Assert.Equal("1.0.0", document.Descendants("VersionPrefix").Single().Value);
+        Assert.Equal(string.Empty, document.Descendants("VersionSuffix").Single().Value);
+        Assert.Equal("1.0.0.0", document.Descendants("FileVersion").Single().Value);
+        Assert.Equal("1.0.0.0", document.Descendants("AssemblyVersion").Single().Value);
         Assert.Equal("OmniBrille", document.Descendants("Product").Single().Value);
+        Assert.Equal("GPL-3.0-only", document.Descendants("PackageLicenseExpression").Single().Value);
+        var license = File.ReadAllText(Path.Combine(root, "LICENSE"));
+        Assert.Contains("GNU GENERAL PUBLIC LICENSE", license, StringComparison.Ordinal);
+        Assert.Contains("Version 3, 29 June 2007", license, StringComparison.Ordinal);
+        Assert.Contains("END OF TERMS AND CONDITIONS", license, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -43,6 +48,7 @@ public sealed class PackagingMetadataTests
         Assert.DoesNotContain("OMNISORSE_OMNIBRILLE_PATH", script, StringComparison.Ordinal);
         Assert.DoesNotContain(string.Concat("Omni", "Explorer"), script, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(string.Concat("Omni", "Nav"), script, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Local-first spatial file explorer", script, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -56,12 +62,13 @@ public sealed class PackagingMetadataTests
         Assert.Contains("PublishSingleFile=false", packageScript, StringComparison.Ordinal);
         Assert.Contains("PublishTrimmed=false", packageScript, StringComparison.Ordinal);
         Assert.Contains("DebugSymbols=false", packageScript, StringComparison.Ordinal);
+        Assert.Contains("Windows packaging supports only", packageScript, StringComparison.Ordinal);
         Assert.Contains("6.7.3", bootstrapScript, StringComparison.Ordinal);
         Assert.Contains("Get-FileHash", bootstrapScript, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void VoiceCaptureDependency_HasPackagedLicenseNoticeWithoutBundledModel()
+    public void RedistributedDependencies_HavePackagedNoticesWithoutBundledVoiceModel()
     {
         var root = FindRepositoryRoot();
         var infrastructure = XDocument.Load(Path.Combine(
@@ -80,7 +87,18 @@ public sealed class PackagingMetadataTests
             .Single(reference => (string?)reference.Attribute("Include") == "NAudio.WinMM")
             .Attribute("Version")!.Value);
         Assert.Contains("THIRD-PARTY-NOTICES.txt", desktop, StringComparison.Ordinal);
+        Assert.Contains("LICENSE", desktop, StringComparison.Ordinal);
+        Assert.Contains("THIRD-PARTY-LICENSES", desktop, StringComparison.Ordinal);
         Assert.Contains("Copyright 2020 Mark Heath", notice, StringComparison.Ordinal);
+        Assert.Contains("Avalonia 12.1.1", notice, StringComparison.Ordinal);
+        Assert.Contains("Inter-OFL-1.1.txt", notice, StringComparison.Ordinal);
+        Assert.Contains("SkiaSharp-HarfBuzz-THIRD-PARTY-NOTICES.txt", notice, StringComparison.Ordinal);
+        Assert.Contains("DotNet-Runtime-THIRD-PARTY-NOTICES.txt", notice, StringComparison.Ordinal);
+        Assert.Contains("Tmds.DBus.Protocol 0.94.1", notice, StringComparison.Ordinal);
+        Assert.Contains("GPL-3.0-only", notice, StringComparison.Ordinal);
+        Assert.True(File.Exists(Path.Combine(root, "THIRD-PARTY-LICENSES", "ANGLE-LICENSE.txt")));
+        Assert.True(File.Exists(Path.Combine(root, "THIRD-PARTY-LICENSES", "Inter-OFL-1.1.txt")));
+        Assert.True(File.Exists(Path.Combine(root, "THIRD-PARTY-LICENSES", "Tmds.DBus-LICENSE.txt")));
         Assert.Contains("whisper.cpp and GGML speech models are not included", notice, StringComparison.Ordinal);
     }
 

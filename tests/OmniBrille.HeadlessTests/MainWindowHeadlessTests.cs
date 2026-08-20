@@ -101,7 +101,7 @@ public sealed class MainWindowHeadlessTests
 
         var report = window.CreateSanitizedDiagnosticsReport();
         Assert.Contains("OmniBrille safe diagnostics", report, StringComparison.Ordinal);
-        Assert.Contains("0.8.0-preview.2", report, StringComparison.Ordinal);
+        Assert.Contains("1.0.0", report, StringComparison.Ordinal);
         Assert.Contains("Provider: Connected", report, StringComparison.Ordinal);
         Assert.DoesNotContain("one-time-handoff", report, StringComparison.Ordinal);
         Assert.DoesNotContain("private search query", report, StringComparison.Ordinal);
@@ -961,7 +961,7 @@ public sealed class MainWindowHeadlessTests
         await WaitUntilAsync(() => window.Voice.State == VoiceCapabilityState.Ready);
 
         Assert.Equal(ThemeVariant.Light, Application.Current!.RequestedThemeVariant);
-        Assert.Contains("use light mode", window.FindControl<TextBlock>("VoiceTranscriptText")!.Text);
+        Assert.Equal("“use light mode”", window.FindControl<TextBlock>("VoiceTranscriptText")!.Text);
         Assert.False(window.FindControl<Button>("VoiceCancelButton")!.IsVisible);
     }
 

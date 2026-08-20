@@ -15,10 +15,17 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+[string] $supportedRuntimeIdentifier = 'win-x64'
+if ($RuntimeIdentifier -ne $supportedRuntimeIdentifier) {
+    throw "Windows packaging supports only '$supportedRuntimeIdentifier'; received '$RuntimeIdentifier'."
+}
 [xml] $buildProperties = Get-Content -Raw -LiteralPath (Join-Path $repositoryRoot 'Directory.Build.props')
 $properties = $buildProperties.Project.PropertyGroup | Select-Object -First 1
 if ([string]::IsNullOrWhiteSpace($Version)) {
-    $Version = "$($properties.VersionPrefix)-$($properties.VersionSuffix)"
+    $Version = [string] $properties.VersionPrefix
+    if (-not [string]::IsNullOrWhiteSpace([string] $properties.VersionSuffix)) {
+        $Version += "-$($properties.VersionSuffix)"
+    }
 }
 if ([string]::IsNullOrWhiteSpace($NumericVersion)) {
     $NumericVersion = [string] $properties.FileVersion
@@ -176,5 +183,5 @@ $releaseArtifacts = & (Join-Path $PSScriptRoot 'New-ReleaseArtifacts.ps1') `
     Checksum = $releaseArtifacts.Checksum
     Manifest = $releaseArtifacts.Manifest
     DependencyManifest = $releaseArtifacts.DependencyManifest
-    PreviewNotes = $releaseArtifacts.PreviewNotes
+    ReleaseNotes = $releaseArtifacts.ReleaseNotes
 }

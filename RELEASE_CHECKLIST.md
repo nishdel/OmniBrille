@@ -1,59 +1,66 @@
-# Private-preview release checklist
+# v1.0.0 public-release checklist
 
-Checkboxes are maintainer gates. Automated verification does not mark manual checks complete.
+Checkboxes are maintainer gates. Automation does not mark manual checks complete, and a source build is not an installed-artifact validation.
 
-## Source and compatibility
+## Release authority
 
-- [ ] Release commit and branch are identified; working tree is clean.
-- [ ] `main` equals `origin/main` and normal CI is green.
-- [ ] Version, changelog, preview notes, and [compatibility matrix](COMPATIBILITY.md) agree.
-- [ ] The maintainer has reviewed whether the repository license permits the intended distribution. No license is currently selected.
-- [ ] No tag or GitHub Release is created without separate approval.
+- [ ] The release commit is identified, reviewed, and clean; `main` equals GitHub `main`.
+- [ ] `Directory.Build.props`, installer fallback, executable metadata, changelog, compatibility matrix, README, release notes, and artifact names all say `1.0.0`.
+- [x] The project owner selected GPL-3.0-only and the authoritative root `LICENSE` plus package metadata record that exact expression.
+- [ ] The exact installed application contains the same GPLv3 license text and its manifest records `GPL-3.0-only` plus the release-commit source URL.
+- [ ] Redistributed runtime licenses/notices were reviewed and are included in the installed application.
+- [ ] Resolve the current SkiaSharp Windows native asset's bundled Adobe DNG SDK license before GPL-3.0-only publication: obtain qualified compatibility review or use a DNG-free native build/package. `verify-release.ps1` fails closed until evidence supports removing this gate.
+- [ ] Exact v1.0 screenshots were captured from the installed release candidate using non-private demo data and independently reviewed.
+- [ ] Any release blocker found by the checklist is fixed and the exact artifact is rebuilt; the gate is never lowered to fit an artifact.
 
 ## Automated release gate
 
-- [ ] Run `./build/verify-release.ps1` from a clean Windows checkout.
-- [ ] Restore, format, Release build, analyzers, all tests, and NuGet vulnerability audit pass.
-- [ ] The private-preview GitHub Actions workflow succeeds for the intended signing mode.
-- [ ] Installer, release manifest, dependency manifest, and `.sha256` sidecar are retained together.
-- [ ] Generated tester notes name the exact installer, commit, signing state, and SHA-256.
-- [ ] SHA-256 verification succeeds after artifact download.
-- [ ] The artifact-only fresh hosted-Windows install/window/uninstall job succeeds and its validation record is retained.
+- [ ] Run `.\build\verify-release.ps1` from a clean Windows checkout.
+- [ ] Engineering-document validation, restore, format, Release build/analyzers, all tests, and NuGet vulnerability audit pass.
+- [ ] The manual release-candidate workflow succeeds for the intended signing mode on the release commit.
+- [ ] Installer, `.sha256`, manifest, dependency inventory, generated release notes, and hosted validation JSON are retained together.
+- [ ] Independent, sidecar, manifest, and published-asset SHA-256 values all agree.
+- [ ] The hosted artifact-only gate passes version metadata, signature policy, install, first launch, normal close, relaunch, registration, uninstall, and cleanup.
 
-## Signing
+## Signing and download trust
 
-- [ ] For a signed preview, approved secrets are configured and the workflow was invoked with `signed`.
-- [ ] `Get-AuthenticodeSignature` reports `Valid` for both installed `OmniBrille.exe` and the installer.
-- [ ] Publisher identity and timestamp are reviewed.
-- [ ] If the preview is unsigned, testers are explicitly told it is unsigned and may trigger Windows reputation warnings.
+- [ ] If signed, both installer and installed executable report a valid expected publisher and timestamp.
+- [x] The owner explicitly accepted an unsigned v1.0.0 on 2026-08-20; README and release notes prominently disclose Unknown Publisher / SmartScreen risk. Code signing remains future work.
+- [ ] The GitHub Release is the only advertised download location; no unrelated mirror is presented as authoritative.
+- [ ] The published installer downloads successfully and its checksum matches the independently retained value.
 
-## Clean Windows environment
+## Exact installed Windows candidate
 
-- [ ] Test environment contains no OmniBrille checkout or developer locator override.
-- [ ] Record whether the environment is a genuine clean VM, hosted artifact-only runner, or an isolated development host; do not conflate them.
-- [ ] Fresh install succeeds as a normal current user.
-- [ ] Start Menu launch opens Standalone.
-- [ ] Folder selection, Structure, Search, Light/Dark, reduced motion/effects, and accessible list are smoke-tested.
-- [ ] Application starts and all non-voice features work with Voice disabled and with no whisper.cpp runtime/model installed.
-- [ ] On Windows hardware, push-to-talk clearly announces listening/transcribing, stops on `Escape`, and runs representative deterministic commands.
-- [ ] Standalone spoken Search uses only the selected-root structural provider; connected spoken Search reaches the existing OmniSorSe Search capability.
-- [ ] Missing runtime/model, microphone unavailable, and permission denial remain non-fatal and leave typed Search available.
-- [ ] Compatible OmniSorSe discovers the installed executable without `OMNISORSE_OMNIBRILLE_PATH`.
-- [ ] Handoff reaches `Connected · OmniSorSe`; authorized roots, Structure, Search, details, Context, Hybrid, filters, refocus, and Back work.
-- [ ] Hybrid deduplicates shared nodes, preserves structural orientation while filtering Context, and remains bounded in sparse and maximum synthetic scenes.
-- [ ] In-place upgrade from the previous preview preserves safe preferences and creates no duplicate registration or stale PDBs.
-- [ ] Uninstall removes installer-owned files, shortcut, and registration without touching user content or OmniSorSe.
+- [ ] Record the Windows version and whether validation used a genuine clean VM, hosted runner, or development host.
+- [ ] Fresh install succeeds as a normal current user without a separate .NET installation.
+- [ ] Start Menu launch opens OmniBrille in Standalone with no filesystem content preloaded.
+- [ ] Selecting the non-private demo root loads Structure and permits drill-down and Back.
+- [ ] Name/path Search, result focus, file/folder details, Light/Dark, reduced motion/effects, and the accessible list are exercised.
+- [ ] Close and relaunch work; safe visual preferences behave according to policy.
+- [ ] OmniBrille starts and non-voice Standalone works with voice disabled and without whisper.cpp/model files.
+- [ ] Uninstall removes installer-owned files, shortcut, and registration without deleting demo/user content or retained preferences.
 
-## Artifact, privacy, and support
+## Optional capabilities (do not block the Standalone contract)
 
-- [ ] Installer name, version metadata, size, installed footprint, and hash are recorded in release notes.
-- [ ] Artifact contains no PDB/source/test files, logs, databases, screenshots, user content, local paths, keys, tokens, or OmniSorSe application binaries.
-- [ ] Handoff grants remain memory-only; no secret appears in arguments, preferences, manifests, hashes, or diagnostics.
-- [ ] No telemetry, cloud upload, always-listening microphone, voice helper/background service, or auto-start behavior is present.
-- [ ] Artifact contains no raw/test audio, whisper runtime, GGML model, or temporary utterance; configured external models remain untouched by uninstall.
-- [ ] Voice diagnostics contain timing/length/classification only—no audio, transcript, runtime/model path, or spoken query text.
-- [ ] Runtime/model licenses and distribution boundary are documented; only distributable NAudio capture assemblies are packaged.
-- [ ] Runtime performance regression samples are recorded.
-- [ ] Known limitations and safe support-data instructions are included in preview notes.
-- [ ] `Copy safe diagnostics` output is reviewed and contains no paths, queries, content, endpoint, grant, token, or session/node identity.
-- [ ] The controlled-rollout boundary and private-preview blocker policy are reviewed.
+- [ ] If Connected mode is advertised beyond compatibility-dependent preview status, validate the exact claimed OmniSorSe host: discovery/handoff, roots, Structure, Search, details, Context, Hybrid, filters, refocus, disconnect, and Back.
+- [ ] If voice is advertised as validated, exercise a real Windows microphone and user-supplied local model, cancellation, permission/hardware failure, and cleanup. Otherwise keep it outside the supported v1.0 contract.
+- [ ] Any accessibility claim beyond automated keyboard/list/automation coverage has matching manual assistive-technology evidence.
+- [ ] Any Linux/macOS runtime claim has matching packaging and interactive evidence.
+
+## Artifact, privacy, and public presentation
+
+- [ ] The installed app contains the project license and required third-party notices but no PDB/source/test files, logs, databases, screenshots, user content, development paths, keys, tokens, unexpected OmniSorSe binary, raw/test audio, whisper runtime, or GGML model.
+- [ ] `Copy safe diagnostics` is reviewed and contains no paths, filenames, queries, content, endpoints, grants, tokens, audio/transcript text, or session/node IDs.
+- [ ] No telemetry, cloud upload, background recorder/indexer/service, auto-start, file mutation, or auto-update behavior is introduced.
+- [ ] README, screenshots, generated notes, GitHub release body, platform statement, Connected/voice status, signing state, and downloadable files describe the same product.
+- [ ] GitHub description, homepage, topics, and security-reporting route are reviewed.
+
+## Publication and post-publication verification
+
+- [ ] Independent adversarial review finds no remaining blocker and distinguishes verified, inferred, and unverified claims.
+- [ ] Create a release commit on `main`; push normally and wait for required CI.
+- [ ] Create annotated tag `v1.0.0` on that exact commit and push it normally.
+- [ ] Create a non-prerelease GitHub Release titled `OmniBrille 1.0.0`, using the reviewed notes.
+- [ ] Attach the exact validated installer, checksum, manifest, dependency inventory, and generated notes; do not rebuild after validation.
+- [ ] Verify the public page, assets, download, checksum, repository metadata, and README links from GitHub.
+- [ ] Retain the owner report and retrospective as historical evidence; record rather than rewrite any later-discovered discrepancy.

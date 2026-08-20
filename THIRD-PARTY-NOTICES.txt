@@ -1,15 +1,62 @@
 OmniBrille third-party notices
 
-NAudio.Core 2.3.0 and NAudio.WinMM 2.3.0
-Project: https://github.com/naudio/NAudio
-License: MIT
+OmniBrille itself is licensed under GPL-3.0-only; see LICENSE. The terms below
+apply to the identified third-party components and are preserved independently.
 
-Copyright 2020 Mark Heath
+This distribution includes third-party software. The corresponding license
+texts and notices are installed in THIRD-PARTY-LICENSES beside OmniBrille.exe.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+- Avalonia 12.1.1, including Avalonia.Desktop and Fluent theme components
+  Project: https://github.com/AvaloniaUI/Avalonia
+  License: MIT; see Avalonia-LICENSE.txt
+- Inter font, distributed through Avalonia.Fonts.Inter 12.1.1
+  Project: https://github.com/rsms/inter
+  License: SIL Open Font License 1.1; see Inter-OFL-1.1.txt
+- Avalonia ANGLE Windows native components 2.1.27548.20260419
+  Project: https://github.com/AvaloniaUI/angle
+  License and required notices: see ANGLE-LICENSE.txt
+- SkiaSharp 3.119.4 and HarfBuzzSharp 8.3.1.3, including Windows native assets
+  Project: https://github.com/mono/SkiaSharp
+  License and required notices: see SkiaSharp-HarfBuzz-LICENSE.txt and
+  SkiaSharp-HarfBuzz-THIRD-PARTY-NOTICES.txt
+- MicroCom.Runtime 0.11.6
+  Project: https://github.com/kekekeks/MicroCom
+  License: MIT; see MicroCom-LICENSE.txt
+- Tmds.DBus.Protocol 0.94.1
+  Project: https://github.com/tmds/Tmds.DBus
+  License: MIT; see Tmds.DBus-LICENSE.txt
+- NAudio.Core 2.3.0 and NAudio.WinMM 2.3.0
+  Project: https://github.com/naudio/NAudio
+  License: MIT
 
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+  Copyright 2020 Mark Heath
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
 
-whisper.cpp and GGML speech models are not included in OmniBrille. Users who configure external voice components are responsible for obtaining them from trusted sources and reviewing their applicable licenses.
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+- Microsoft .NET 8 self-contained Windows runtime components
+  Project: https://github.com/dotnet/runtime
+  License and required notices: see DotNet-LICENSE.txt and
+  DotNet-Runtime-THIRD-PARTY-NOTICES.txt
+- System.IO.Pipelines 8.0.0
+  Project: https://github.com/dotnet/runtime
+  License: the same MIT text in DotNet-LICENSE.txt
+  Required notices: see System.IO.Pipelines-THIRD-PARTY-NOTICES.txt
+
+whisper.cpp and GGML speech models are not included in OmniBrille. Users who
+configure external voice components are responsible for obtaining them from
+trusted sources and reviewing their applicable licenses.

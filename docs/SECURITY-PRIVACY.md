@@ -18,7 +18,7 @@ Explorer Protocol requests use current-user named pipes, explicit major-version/
 
 The Windows installer is per-user and requires the lowest privilege level. It installs only into `%LOCALAPPDATA%\Programs\OmniBrille`, creates a Start Menu entry and uninstall registration, and installs no service, file association, startup entry, updater, or OmniSorSe binary.
 
-Development/private-preview packages may be unsigned. A signed release path requires externally supplied GitHub secrets, imports the certificate only into the ephemeral runner user store, signs the application and installer, verifies both, then removes the imported certificate. Private keys and passwords must never enter source control or build artifacts.
+Development/release-candidate packages may be unsigned. A signed release path requires externally supplied GitHub secrets, imports the certificate only into the ephemeral runner user store, signs the application and installer, verifies both, then removes the imported certificate. Private keys and passwords must never enter source control or build artifacts. A public unsigned release requires explicit owner acceptance and prominent Unknown Publisher/SmartScreen disclosure in every download surface; a checksum is integrity evidence, not publisher authentication.
 
 The release gate rejects debug symbols, source/test artifacts, databases, logs, key/certificate files, raw/test audio, whisper models/runtimes, unexpected OmniSorSe binaries, and developer-profile/repository paths from the publish directory. Installer SHA-256 is integrity metadata, not publisher authentication.
 

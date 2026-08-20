@@ -1,8 +1,8 @@
 #ifndef AppVersion
-  #define AppVersion "0.8.0-preview.2"
+  #define AppVersion "1.0.0"
 #endif
 #ifndef NumericVersion
-  #define NumericVersion "0.8.0.2"
+  #define NumericVersion "1.0.0.0"
 #endif
 #ifndef SourceDir
   #define SourceDir "..\artifacts\publish\win-x64"
@@ -59,7 +59,7 @@ Type: files; Name: "{app}\*.pdb"
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "*.pdb"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\OmniBrille"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Comment: "Spatial navigation companion for OmniSorSe"
+Name: "{autoprograms}\OmniBrille"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Comment: "Local-first spatial file explorer"
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "Launch OmniBrille"; Flags: nowait postinstall skipifsilent

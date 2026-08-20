@@ -58,7 +58,7 @@ Standalone voice Search uses the current bounded standalone structural provider.
 
 ## Current limits
 
-- Real capture is implemented and validated for Windows WinMM. Linux/macOS microphone runtime support is not claimed; source/build tests remain cross-platform.
+- Real capture is implemented for Windows WinMM, but no live microphone device was available for the retained validation run, so hardware capture remains unvalidated. Linux/macOS microphone runtime support is not claimed; source/build tests remain cross-platform.
 - Commands are English-only. Free-form Search transcription may use whisper.cpp auto-detection, subject to the selected model.
 - `whisper-cli` loads the model per utterance, so cold transcription latency and memory depend on CPU/model. There is no warm persistent speech service.
 - Confidence is not fabricated because `whisper-cli` JSON does not provide a single reliable utterance-confidence value through this adapter.

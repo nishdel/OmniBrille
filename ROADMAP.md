@@ -32,7 +32,7 @@ Status language is intentionally conservative: checked items exist in the applic
 
 ## Stage 4 — Real OmniSorSe Explorer Protocol v1 integration (complete)
 
-- [x] Consume the actual v1 strict framed named-pipe contract and validate version, capabilities, identity, authorization, limits, and errors.
+- [x] Consume the actual v1 strict framed named-pipe contract and validate version, capabilities, identity, authorization, client-consumed safety limits, and errors.
 - [x] Add a connected provider behind existing explorer/search/details abstractions with cancellation, request generations, opaque IDs, scope enforcement, and clear offline/incompatible states.
 - [x] Preserve standalone independence and avoid OmniSorSe SQLite/application/indexing dependencies.
 - [x] Validate authorized roots, bounded Structure navigation, Search, details, disconnect, and fresh-session restart against the production OmniSorSe 2.4.0 host in two processes.
@@ -69,7 +69,7 @@ Status language is intentionally conservative: checked items exist in the applic
 - [x] User-invoked sanitized diagnostics report and privacy-conscious feedback/rollout guidance.
 - [x] Artifact-only fresh hosted-Windows hash/install/window/uninstall gate with retained validation metadata.
 - [ ] Genuine clean interactive Windows VM validation of Standalone and normal OmniSorSe companion workflow.
-- [ ] Maintainer license decision before any public distribution.
+- [x] Maintainer selected GPL-3.0-only before the stable public release.
 - [ ] Production Authenticode certificate and signed preview validation.
 - [ ] Private tester rollout, support triage, and evidence-driven blocker remediation.
 - [ ] Windows VM matrix expansion and Linux/macOS interactive runtime validation.
@@ -101,4 +101,24 @@ Status language is intentionally conservative: checked items exist in the applic
 - [x] Distinguish empty Structure, no Search result, no Context relationship, and Context-filtered-to-zero states with honest recovery actions.
 - [x] Keep details secondary while Search is active and use provider-accurate Search automation/help in Standalone and connected sessions.
 - [x] Preserve Structure/Context/Hybrid budgets, Explorer Protocol v1, handoff security, voice architecture, release automation, and privacy boundaries.
-- [ ] Continue controlled private-preview use to collect daily-use feedback; real microphone hardware, broader real Context/Hybrid density, interactive Linux/macOS, signing, and public-license decisions remain separate gates.
+- [ ] Continue controlled preview feedback where useful; real microphone hardware, broader real Context/Hybrid density, interactive Linux/macOS, and future code signing remain separate follow-up work. GPL-3.0-only and the unsigned v1.0.0 decision are resolved.
+
+## Stage 12 — v1.0.0 first stable public release (release candidate in progress)
+
+- [x] Define a Windows x64 Standalone-first public contract without widening renderer, protocol, persistence, or product behavior.
+- [x] Add stable-version packaging support, public release notes, exact-artifact metadata, dependency notices, and stronger installed lifecycle checks.
+- [x] Capture and independently review real installed preflight-candidate screenshots using non-private demo data; recapture is required only if the final visible binary or demo presentation changes.
+- [x] Record GPL-3.0-only in source and release metadata; the exact installed-artifact copy remains part of final qualification.
+- [x] Record explicit owner acceptance of a prominently disclosed unsigned v1.0.0; add Authenticode code signing in a future release.
+- [ ] Validate the exact release-commit artifact through local interaction and the hosted artifact-only workflow.
+- [ ] Complete independent release review, push the release commit/tag, publish the GitHub Release and metadata, and verify the public download.
+- [ ] Resolve the GPL-3.0-only distribution blocker in the current SkiaSharp Windows native asset: obtain qualified review of its bundled Adobe DNG SDK terms or replace/rebuild the asset without DNG, then rerun all exact-artifact gates.
+- [ ] Treat Connected-mode broad compatibility, real voice hardware, interactive Linux/macOS, and screen-reader certification as follow-up unless separately validated.
+
+## Unscheduled engineering follow-up
+
+- [ ] Correct `NavigationState` to compare Connected opaque targets with ordinal semantics and add a Windows regression covering IDs that differ only by case, including Back/history coherence. Current provider/session behavior can apply the new scene while retaining the old target. Route through Architecture/Integration, Implementation, and independent adversarial review.
+- [ ] Decide whether every advertised Protocol v1 limit must be validated or whether unconsumed fields should be explicitly outside client negotiation, then add focused malformed-info tests. Current validation covers the safety limits OmniBrille consumes but not `MaximumDepth`, snippet/topic/entity/reason bounds, or maximum concurrency. Route through Architecture/Integration and Adversarial Review.
+- [ ] Make Context/Hybrid availability reflect negotiated optional capabilities before activation, and add a capability-negative connected regression test. Current code fails closed on request but reports the expected capability absence as a generic connection failure. Route through Architecture/Integration, UX/Accessibility, and independent adversarial review.
+- [ ] Couple contrast validation to actual application theme resources if a reliable low-maintenance test seam can be established; current contrast math tests use separately declared literals.
+- [ ] Split `MainWindow`, `ExplorerSession`, and the headless fixture by concern only during future touched-area work. Preserve the single state authority and avoid a standalone refactor campaign.

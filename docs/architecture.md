@@ -1,27 +1,42 @@
 # Architecture
 
+> **Authority:** current OmniBrille subsystem, ownership, state, and flow model. Stage-specific timings and installed-workflow narratives are explicitly historical evidence, not active architecture or universal guarantees.
+
 ## Status and goals
 
-This document describes the Stage 11 private-preview architecture: an independently packaged standalone Structure explorer and connected Structure/Context/Hybrid explorer, plus optional local push-to-talk input. Stage 11 refines the presentation layer without changing the committed OmniSorSe v2.5 release-candidate handoff or Explorer Protocol v1; renderer, accessibility, packaging, diagnostics, signing, and voice surfaces remain independent of OmniSorSe internals.
+This document describes the v1.0 candidate architecture: an independently packaged standalone Structure explorer and compatibility-dependent connected Structure/Context/Hybrid explorer, plus optional local push-to-talk input. The intended public v1 support contract is Windows x64 Standalone; v1.0.0 is not yet published because a third-party distribution-license gate remains unresolved. Release work changed packaging, presentation, and validation—not the established graph, renderer, state, persistence, handoff, or Explorer Protocol v1 behavior.
 
 OmniSorSe owns scanning, indexing, Search, Content Intelligence, Media Intelligence, OCR, transcripts, Related Files, organization, safe file operations, and persistent intelligence/index state. OmniBrille owns standalone spatial navigation, provider-independent Structure/Context/Hybrid presentation, and optional local speech transcription as an input method. Hybrid composes existing authorized snapshots; it does not create intelligence. Voice queries still use the current standalone/OmniSorSe Search provider. In short, OmniSorSe is the brain; OmniBrille is the visual lens and spatial navigation interface.
 
+Knowledge status in this document:
+
+- **CURRENT TRUTH** — local project dependencies, owners, state, flows, limits, and invariants below are verified against current OmniBrille source/tests.
+- **STRONGLY SUPPORTED EXTERNAL** — OmniSorSe host ownership and compatibility are supported by the mirrored contract and pinned cross-repository validation evidence. The available later checkout retains the wire DTOs and handoff shape but has evolved relationship projection; a changed external host still needs real integration validation.
+- **HISTORICAL** — named Stage timings, installed-workflow observations, and rejected pressure samples explain decisions but are not current guarantees.
+- **UNKNOWN / NOT VERIFIED** — real microphone hardware, formal screen-reader behavior, GPU-backed visual/performance quality in this audit, Linux interactive/connected runtime, and macOS runtime remain unverified.
+- **SUPERSEDED** — earlier design-only protocol descriptions and byte-for-byte additive JSON tolerance do not describe the current strict client. Git history and [`history-and-lessons.md`](engineering/history-and-lessons.md) preserve that context.
+
 ```mermaid
 flowchart LR
-    Shell[Avalonia shell] --> Session[Explorer session and request identity]
-    Session --> Core[Explorer contracts and graph policies]
-    Shell --> Renderer[DrawingContext scene]
-    Renderer --> Core
-    FS[Progressive standalone filesystem adapter] --> Core
-    Session --> FS
-    Connected[OmniSorSe connected provider] --> Core
-    Client[Strict Protocol v1 named-pipe client] --> Connected
-    Handoff[One-time v2.5 RC companion handoff] -. short-lived scoped grant .-> Client
-    Host[External OmniSorSe protocol host] -. authorized read-only IPC .-> Client
-    Handoff --> Host
-    Voice[Push-to-talk coordinator] --> Session
-    Capture[Bounded Windows microphone capture] --> Voice
-    Speech[Optional local whisper.cpp provider] --> Voice
+    User[User input] --> Shell[MainWindow / Avalonia shell]
+    Shell --> Session[ExplorerSession]
+    Session --> Core[Core builders, layouts, and policies]
+    Session --> FS[Standalone filesystem provider]
+    Session --> Connected[OmniSorSe connected provider]
+    Shell --> Connection[Connection coordinator / authorized roots]
+    Connection --> Client[Strict Protocol v1 client]
+    Shell -. constructs from client, protocol info, and root .-> Connected
+    Connected --> Client
+    Handoff[One-time companion handoff] -. scoped in-memory grant .-> Connection
+    Client -. authorized read-only IPC .-> Host[External OmniSorSe host]
+    Session -- StateChanged --> Shell
+    Shell --> Renderer[GraphSceneControl]
+    Shell --> List[Accessible list projection]
+    Shell --> Voice[VoiceInteractionCoordinator]
+    Voice --> Target[IVoiceActionTarget / MainWindow]
+    Target --> Session
+    Voice --> Capture[Bounded Windows capture]
+    Voice --> Speech[Optional local whisper.cpp]
 ```
 
 The dependency rule is inward: `Infrastructure` and `Desktop` depend on `Core`; `Core` depends only on the .NET base class library. The renderer never calls `System.IO`. The filesystem adapter never chooses positions, labels, colors, or animation. Search returns domain hits and is not owned by the canvas.
@@ -53,7 +68,7 @@ The renderer uses deterministic radial coordinates rather than continuous force 
 - `GraphPresentationPolicy` owns deterministic LOD, label priority, search emphasis, and priority-based label collision rejection without Avalonia dependencies.
 - `BoundedLruCache` supplies the small deterministic cache primitive used by renderer hot paths; cache capacity is always explicit.
 - `ContextFilter` is an immutable local presentation predicate over fields Protocol v1 actually supplies: kind, ranking strength, and evidence class. It never requests, computes, or persists intelligence.
-- `ContextNeighborhoodBuilder` retains the authoritative snapshot separately, applies reversible filters, and then applies `ContextRenderBudgetPolicy`: 48 combined nodes, 36 Context edges, 84 combined edges, and three Context edges per node. It filters malformed/missing endpoints but never infers a relationship.
+- `ContextNeighborhoodBuilder` is stateless: it applies reversible filters and `ContextRenderBudgetPolicy` to a snapshot retained by `ExplorerSession`. The [Context rendering contract](context-rendering-contract.md) owns the current numeric limits. The builder filters malformed/missing endpoints but never infers a relationship.
 - `ContextGraphLayout` keeps focus centered, places strongest relationships in deterministic inner/middle/outer rings, subtly recedes weaker nodes within a ring, preserves surviving angles, and has no continuous physics.
 - `ContrastMath` makes documented theme text-pair checks reproducible without coupling Core to Avalonia colors.
 - `NavigationState` owns history and enforces the selected-root boundary.
@@ -64,7 +79,7 @@ These are application-local contracts, not the future wire protocol.
 
 ### `OmniBrille.Infrastructure`
 
-`FileSystemExplorerProvider` performs filesystem work away from the UI thread. It emits batches of 32 by default, checks cancellation, caps a directory read at 5,000 observed entries, skips malformed entry metadata, turns common enumeration failures into domain failures/warnings, and refuses paths outside the selected root. Directory reparse points may be shown for orientation but are not navigable and are never recursively searched.
+`FileSystemExplorerProvider` performs filesystem work away from the UI thread. It emits batches of 32 by default, checks cancellation, retains at most 5,000 valid entries (and may inspect one additional entry to establish truncation), skips malformed entry metadata, turns common enumeration failures into domain failures/warnings, and refuses paths outside the selected root. Directory reparse points may be shown for orientation but are not navigable and are never recursively searched.
 
 Structural search is breadth-first, starts only on user action, and is capped at 80 results and 500 visited directories by default. There is no recursive preload, background index, or duplicate intelligence system.
 
@@ -84,17 +99,77 @@ Structural search is breadth-first, starts only on user action, and is capped at
 - `DataRainControl` renders a fixed, deterministic number of sparse blue token streams, caches its small token set, becomes static/sparse for reduced motion, and stops when hidden.
 - `ScenePalette` and application resources centralize the Dark/Light visual tokens.
 
+## State ownership
+
+| State | Authoritative owner | Lifetime / boundary |
+| --- | --- | --- |
+| Provider, mode, visible neighborhood, Structure/Context/Hybrid snapshots, selection, Search, details, filters, connected `(mode, focus)` history, Structure return state, and operation/provider generations | [`ExplorerSession`](../src/OmniBrille.Desktop/Presentation/ExplorerSession.cs) | In-memory application session; cleared or invalidated on provider replacement as appropriate |
+| Active provider-specific access root/current target and structural-target Back history | [`NavigationState`](../src/OmniBrille.Core/NavigationState.cs) | In-memory; filesystem paths in Standalone and opaque targets in Connected. See the current Windows connected-target equality gap below. |
+| Handoff grant, protocol client/info, authorized roots, retry state | [`OmniSorSeConnectionCoordinator`](../src/OmniBrille.Infrastructure/OmniSorSe/OmniSorSeConnectionCoordinator.cs) | Short-lived, in-memory connected session |
+| Issued connected nodes/display labels and Context LRU/gate | [`OmniSorSeConnectedProvider`](../src/OmniBrille.Infrastructure/OmniSorSe/OmniSorSeConnectedProvider.cs) | Per authorized root/provider; discarded with provider/grant replacement |
+| Zoom, pan, hover, hit targets, transition, drawing caches, render diagnostics | [`GraphSceneControl`](../src/OmniBrille.Desktop/Rendering/GraphSceneControl.cs) | UI-thread presentation state; never acquisition authority |
+| Panel visibility, anti-reentrancy flags, UI projection, current preferences, voice action dispatch | [`MainWindow`](../src/OmniBrille.Desktop/MainWindow.axaml.cs) | UI-only state around the one session |
+| Theme/effects/diagnostics and optional voice configuration | [`JsonVisualPreferencesStore`](../src/OmniBrille.Infrastructure/JsonVisualPreferencesStore.cs) | Only durable application state; no roots, queries, graph, audio, transcript, grants, or opaque IDs |
+
+```mermaid
+stateDiagram-v2
+    state "Structure / Idle / no provider" as NoProvider
+    [*] --> NoProvider
+    NoProvider --> Structure: establish provider/root
+    Structure --> Context: connected mode request
+    Structure --> Hybrid: connected mode request
+    Context --> Hybrid: same focus or bounded refresh
+    Hybrid --> Context: same focus or bounded refresh
+    Context --> Context: related-node refocus
+    Hybrid --> Hybrid: related-node refocus
+    Context --> Structure: mode switch / Back past connected history
+    Hybrid --> Structure: mode switch / Back past connected history
+    Structure --> Structure: folder navigation / aggregate paging / Back
+    Structure --> NoProvider: provider reset
+    Context --> NoProvider: provider reset
+    Hybrid --> NoProvider: provider reset
+```
+
+Structure history and connected `(mode, focus)` history are separate. Switching away from Structure records its return target/selection; connected Back unwinds refocus/mode entries before restoring Structure. Provider replacement clears both authorities rather than attempting to translate IDs or history.
+
 ## Progressive loading and stale-work safety
 
-Opening a directory immediately applies a focus shell. Each provider batch rebuilds a bounded interactive neighborhood and reports an honest state: `Loading`, `PartiallyLoaded`, `Ready`, `Cancelled`, or `Failed`. Exact percentage is deliberately absent because filesystem enumeration does not know the final count in advance.
+Standalone directory loading immediately emits a focus shell before content. The connected provider first awaits focus details and its first bounded child page, then yields progressive batches; it does not currently expose an earlier empty shell. Each applied provider batch rebuilds a bounded interactive neighborhood and reports an honest state: `Loading`, `PartiallyLoaded`, `Ready`, `Cancelled`, or `Failed`. Exact percentage is deliberately absent because enumeration/paging may not know a complete count in advance.
 
 Every load and search receives a monotonically increasing request identity as well as a replaceable cancellation token. A result is applied only if its identity is still current. This identity check is required even when a filesystem/provider implementation cannot stop promptly after cancellation. Navigation history is committed only after the new location yields usable data; a failed drill-down restores the prior scene.
 
 The same rule applies to protocol work. Cancelling a named-pipe read closes/cancels the client connection, which OmniSorSe v1 observes as provider cancellation; v1 has no separate cancel-operation message. A late response is still rejected by the session generation if cancellation loses a race. Protocol client diagnostics count rejected stale responses. Disconnect cancels/fails in-flight work and retains the last valid graph as visibly stale context; it cannot overwrite a newer standalone or reconnected scene.
 
+```mermaid
+sequenceDiagram
+    actor User
+    participant UI as MainWindow
+    participant Session as ExplorerSession
+    participant Provider as Active provider
+    participant Client as Protocol client
+    participant Host as OmniSorSe host
+    User->>UI: Navigate, Search, or refocus
+    UI->>Session: Start operation
+    Session->>Session: Increment operation generation; cancel prior same-kind work
+    Session->>Provider: Bounded request + cancellation
+    opt Connected
+        Provider->>Client: Validated protocol request
+        Client->>Host: Length-prefixed JSON over named pipe
+        Host-->>Client: Bounded response or stable error
+        Client-->>Provider: Strictly validated DTOs
+    end
+    Provider-->>Session: Application-local snapshot/result
+    alt Generation is still current
+        Session->>Session: Commit snapshot/history/state
+        Session-->>UI: StateChanged
+    else Obsolete completion
+        Session->>Session: Reject and count stale response
+    end
+```
+
 ## Explorer Protocol v1 integration boundary
 
-`src/OmniSorSe.ExplorerProtocol` mirrors only the unchanged public dependency-free v1 DTO/enum contract. The companion workflow was inspected at OmniSorSe v2.5 RC commit `59be07c6cebff12072cbf18701fb16cb11801287`; OmniSorSe schema version 5 and protocol major 1 remain unchanged. OmniBrille does not reference `OpenSorSe.Application`, OmniSorSe binaries, SQLite, indexing, Search implementations, or storage.
+`src/OmniSorSe.ExplorerProtocol` mirrors only the public dependency-free v1 DTO/enum contract. At the pinned OmniSorSe v2.5 RC evidence (`59be07c6cebff12072cbf18701fb16cb11801287`), the host schema was version 5 and protocol major was 1. The available later host checkout has schema 6 and evolved relationship projection while retaining the inspected wire/handoff shape. OmniBrille does not consume either schema and does not reference `OpenSorSe.Application`, OmniSorSe binaries, SQLite, indexing, Search implementations, or storage.
 
 Provider modes are separate authorities:
 
@@ -127,13 +202,13 @@ Label priority is focus, selected, visible search match, hover, aggregate, immed
 
 During search, visible matches gain the search accent and unrelated nodes/edges recede. Focusing a result navigates to its folder and pins the match within the 48-node graph budget. The compact result surface remains secondary and dismissible.
 
-Context uses the same scene object with an explicit mode and edge kind. The current node stays at the focal position; up to ten strongest related nodes occupy the inner Context ring, sixteen the middle ring, and the remaining accepted endpoints the subdued outer ring. Provider strength subtly adjusts radius, scale, and opacity within a ring so weak relationships recede without changing deterministic order. Stable opaque IDs provide deterministic angular jitter and surviving nodes retain their angle when their depth remains the same. Context edges are thinner cyan dashed strokes; structural edges remain solid blue, and decorative background lines remain faint and non-interactive. Selection strengthens one Context relationship without adding edge labels or rainbow categories.
+Context uses the same scene object with an explicit mode and edge kind. The current node stays at the focal position; up to ten strongest related nodes occupy the inner Context ring, sixteen the middle ring, and the remaining accepted endpoints the subdued outer ring. Provider strength subtly adjusts radius, scale, and opacity within a ring so weak relationships recede without changing deterministic order. Stable opaque IDs provide deterministic angular jitter and surviving nodes retain their angle when their depth remains the same. Context edges are thinner cyan dashed strokes; structural edges remain solid blue, and decorative background lines remain faint and non-interactive. Selecting a node strengthens every already-admitted contextual edge incident to it; the details surface separately derives the strongest admitted focus-to-selected-node relationship. There is no independent relationship selection and selection does not change edge admission.
 
 The compact Context-filter HUD filters only the already-authorized immutable snapshot by relationship kind, minimum ranking strength, or evidence class. `ExplorerSession` owns that filter beside the authoritative snapshot and rebuilds locally, so reset is lossless and does not issue a protocol request. UI counts distinguish authorized, matching, and visible relationships; an empty filter result is different from an authoritative no-relationships result. Provider/root/session replacement clears the filter and snapshot together.
 
 Switching Structure to Context or Hybrid stores the Structure return target and selection, then replaces the bounded scene after the authoritative request completes. Connected refocus and mode changes push one entry containing the prior mode and focus; Back unwinds those entries and then returns to the saved Structure scene. Reduced motion bypasses long migration, while Reduced visual effects removes optional Context glow but preserves the dash/solid distinction. Search in Context/Hybrid still delegates to OmniSorSe; selecting a result requests its real provider-authored snapshot rather than treating result co-occurrence as a relationship.
 
-Hybrid composes the acquired `ExplorerContextSnapshot` with the most recent bounded Structure snapshot for the same session. A same-focus Context-to-Hybrid switch rebuilds locally when that retained Structure snapshot already contains the focus. If an external related-node refocus is outside it, the session performs one bounded parent/directory read and merges only that authoritative parent, siblings, and containment edges; it never crawls or fans out requests. This is one replaceable snapshot rather than a new durable cache. The builder deduplicates opaque node IDs, assigns structural/contextual/both roles, and first retains the focus plus structural parent and immediate orientation. It reserves at most 18 of the 48 slots for strongest matching Context endpoints, then fills unused capacity with lower-priority Structure. The final scene remains capped at 47 structural edges, 36 contextual edges, 84 combined edges, and three contextual edges per node. Filtering removes only Context edges/endpoints; structural orientation never disappears because of a Context filter.
+Hybrid composes the acquired `ExplorerContextSnapshot` with the most recent bounded Structure snapshot for the same session. A same-focus Context-to-Hybrid switch rebuilds locally when that retained Structure snapshot already contains the focus. If an external related-node refocus is outside it, the session performs one bounded parent/directory read and merges only that authoritative parent, siblings, and containment edges; it never crawls or fans out requests. This is one replaceable snapshot rather than a new durable cache. The builder deduplicates opaque node IDs, assigns structural/contextual/both roles, and first retains the focus plus structural parent and immediate orientation. It reserves a bounded share for strongest matching Context endpoints, then fills unused capacity with Structure. Filtering removes only Context edges/endpoints; structural orientation never disappears because of a Context filter. The [Context rendering contract](context-rendering-contract.md) is authoritative for the current combined limits.
 
 The Hybrid layout keeps focus at the same center. Structural parents sit above it, structural nodes occupy a stable left plane, contextual-only nodes occupy a strength-attenuated right plane, and combined-role nodes appear once near the shared inner plane with a small secondary junction marker. Solid blue containment, dashed cyan Context, focus/selection halos, search color, and extremely faint non-interactive background geometry remain separate channels. Context↔Hybrid mode switches preserve the focus and animate surviving coordinates; Reduced motion applies the new layout immediately.
 
@@ -173,42 +248,28 @@ Known accessibility gaps remain: direct edge selection is node-centric because P
 
 Connected UI tests additionally verify accessible live connection status, opaque-ID navigation, shared graph/list selection, real-field Search/details, disconnect announcement, and clearing provider identity on standalone switch.
 
-## Performance baseline and budget decision
+## Performance evidence and current budget decision
 
-Stage 3 retains 48 rather than raising the budget. Candidate 32/48/64 fixtures were all comfortable on the development machine, so readability—not raw draw throughput—is the deciding constraint: 48 preserves the readable 12/18/remaining depth split without increasing outer-ring/label pressure. The diagnostics overlay and representative fixtures establish local engineering baselines, not product guarantees.
+The current decision is a deterministic 48-node scene, the Context/Hybrid limits in the [Context rendering contract](context-rendering-contract.md), bounded renderer caches, local diagnostics, and user-controlled reduced motion/effects. Candidate 32/48/64 Structure fixtures showed that readability and label pressure—not primitive draw throughput—justify 48. A denser 72-Context-edge candidate was rejected. There is no automatic hardware fingerprint or adaptive node count.
 
-The untouched Stage 2 search sample was 25.835 ms. With bounded text/resource caching, representative warmed samples place normal 48-node scenes around 1–3 ms and search emphasis around 6 ms in the Avalonia headless renderer. Reduced effects removes edge-glow passes and lowers decorative density; the paired search fixture measured a meaningful reduction. Isolated cold frames may exceed 16.7 ms while fonts are first shaped or a scene arrives; the target is representative interactive rendering below the 60 Hz frame budget, not a claim that every transition frame is universally below it.
+Stage 2 Search emphasis exposed repeated text-layout/brush/pen allocation; bounded caches and representative pressure fixtures corrected it. Later warmed headless samples were comfortably below the 16.7 ms target, but cold font shaping, host load, and headless/GPU differences make absolute CI timing thresholds unreliable. The durable evidence is the cache/budget implementation, diagnostics, tests, ADR 0002, and the [historical failure chain](engineering/history-and-lessons.md#2-search-emphasis-regressed-renderer-allocation), not any one timing sample.
 
-A synthetic 48-node/72-context-edge fixture was rejected as too dense and produced a costly cold frame. Product Context permits at most 36 contextual edges, three per visible node, and 84 combined edge slots. Stage 5's fixture renders actual dashed Context edges and records Full/Reduced effects separately. The Context provider allows one uncached focus request at a time and retains only eight session-local snapshots, preventing request fan-out and durable ID retention. See [the Context rendering contract](context-rendering-contract.md) for semantics and update rules.
-
-The Stage 6 installed-workflow fixture produced a real three-node/two-relationship Context scene using ordinary indexed controlled files and server-authored deterministic evidence. Installed standalone window readiness was 2,656 ms; the UI-observed initial Context switch was about 646 ms and a Context refocus about 418 ms, including protocol and UI scheduling. A local filter update took 2.230 ms. The warmed 48-node Structure fixture rendered in 1.190 ms; search highlight in 6.114 ms. The maximum accepted synthetic Context fixture (48 nodes, 47 structural plus 36 contextual edges) rendered in 4.019 ms full and 4.222 ms reduced in one sample; the reduced edge phase fell from 1.007 to 0.787 ms, while total-frame variance was dominated by labels. These are local engineering samples, not universal guarantees.
-
-The Stage 7 regression sample, after the Avalonia 12.1.1 patch, measured installed standalone window readiness at 2,924 ms and normal OmniSorSe companion readiness at 2,155 ms on the same development host. Warm representative render samples were 1.000 ms small, 1.605 ms medium, 1.987 ms for a 180-item bounded source, 2.029 ms aggregate-heavy, and 5.780 ms search-highlight. The maximum accepted Context fixture measured 4.486 ms full and 4.740 ms reduced; the reduced edge phase fell from 1.218 to 0.960 ms. A separate deliberately cold search-effects pair measured 24.058 ms full and 6.977 ms reduced, confirming that reduced effects materially lowers the expensive first emphasis frame even though ordinary warmed samples remain the interactive baseline. Context filtering measured 1.409 ms. Run-to-run font shaping and host load make these regression samples, not guarantees.
-
-The Stage 9 real-provider sample used the official whisper.cpp v1.9.1 x64 CLI and temporary `tiny.en` model with four non-private Windows TTS phrases. Capability validation took 139 ms. Utterances of 1.45–2.68 seconds transcribed in 1.33–1.49 seconds and classified correctly as Back, Context, Dark theme, and Search; the last preserved `Raspberry Pi files` as the Search argument. The host exposed no WinMM input device, so this validates the real recognizer/process/cleanup path but not live microphone capture. Temporary utterance workspaces were empty after every run and the downloaded validation runtime/model were removed. These are local samples, not guarantees; process-per-utterance model load remains the primary latency limitation.
-
-The Stage 10 warmed headless Hybrid samples use medians of five frames after one warm-up frame. An 8-node/7-structural/12-context scene rendered in 2.254 ms Full and 2.242 ms Reduced; a 24-node/23-structural/34-context scene rendered in 4.165 ms Full, 4.134 ms Reduced, and 6.734 ms with 14 Search matches. The maximum 48-node/47-structural/36-context scene rendered in 6.014 ms Full, 6.322 ms Reduced, and 8.549 ms search-emphasized, with 13 accepted labels and 389,720 bytes allocated during the sampled frame. Its layout/preparation phases were 0.606/0.656 ms after warm-up; the first representative Hybrid layout/preparation sample was 14.722/15.185 ms due to cold setup. These local headless measurements are engineering samples, not GPU/runtime guarantees, but steady scenes remain comfortably inside the 16.7 ms target without a continuous simulation.
-
-The Stage 10 installed smoke used an isolated build of the exact committed OmniSorSe v2.5 RC `59be07c6cebff12072cbf18701fb16cb11801287` and its normal desktop `Open in OmniBrille` action, with no locator override or protocol harness. Companion readiness was 3.2–3.8 seconds across repeated runs. The selected real sparse scene contained five deduplicated visible nodes, all five carrying structural orientation and three carrying real Context roles. Hybrid readiness was 1.5–1.9 seconds. A maximum-strength Context filter left all five structural nodes visible; related-node refocus, Back, Context-to-Hybrid restoration, and disconnect survival passed. The non-interactive Windows automation host could not inject text into the installed Avalonia Search box or enumerate its virtualized list items, so installed Search-to-Hybrid and details-panel selection are not claimed by that script; the unchanged real connected Search path remains established by earlier two-process gates, and Stage 10 Search/details behavior is covered by the 38-test headless UI suite.
-
-The Stage 11 installed startup samples were 2.331 and 2.369 seconds to a usable window. A 100-focus-change soak with ten bounded Search cycles, three mode attempts, and accessible-list open/close completed without an exception, stuck state, or unexpected exit; working set rose from 147.0 MB to 171.3 MB during JIT/cache/Search warm-up and settled to 169.4 MB after idle rather than continuing to rise. Warming samples measured 1.650 ms for a 48-node Structure scene and 6.183 ms for Search emphasis. The maximum accepted synthetic Context scene measured 3.790 ms Full / 3.867 ms Reduced; Context filtering took 1.543 ms. Small, representative, and maximum Hybrid scenes measured 2.241/2.195, 3.747/3.838, and 5.413/6.236 ms Full/Reduced; their Search-emphasized frames were 3.332, 6.573, and 8.239 ms. The maximum Hybrid layout/preparation sample was 0.579/0.624 ms. These local headless and installed engineering samples show no material Stage 10 regression; font shaping, process load, and headless rendering remain sources of run-to-run variance.
-
-No automatic hardware fingerprint or adaptive node-count system was introduced. The default remains deterministic. The two user-facing controls—Reduced motion and Reduced visual effects—are reliable, reversible degradation paths; a future sustained-frame guardrail may reduce decoration only after GPU-backed runtime evidence justifies it.
+The real voice recognizer/process/cleanup path was exercised on a host with no WinMM input device; live microphone capture remains unvalidated. Detailed stage samples remain in Git history and are not default current-architecture context. Future material performance or installed-runtime evidence belongs in a selective run report.
 
 ## Cross-platform posture
 
-Avalonia platform detection, storage providers, rendering, input, and automation abstractions remain in Desktop. Core and Infrastructure use `Path`/`Environment.SpecialFolder` rather than Windows literals. Root-boundary comparison follows native semantics: case-insensitive on Windows and case-sensitive on Linux/macOS. Explorer/protocol IDs are opaque case-sensitive strings on every platform, preventing Linux `A`/`a` collisions and avoiding assumptions about future OmniSorSe IDs. Folder reparse/symbolic-link children remain non-navigable and are not recursively followed. Voice contracts, parser, coordinator, process provider, and tests remain portable; the initial live capture adapter deliberately reports unavailable outside Windows rather than pretending Linux/macOS microphone support.
+Avalonia platform detection, storage providers, rendering, input, and automation abstractions remain in Desktop. Core and Infrastructure use `Path`/`Environment.SpecialFolder` rather than Windows literals. Root-boundary comparison follows native semantics: case-insensitive on Windows and case-sensitive on Linux/macOS. Explorer/protocol IDs are defined as opaque case-sensitive strings on every platform. Most identity comparisons use `ExplorerIdentity`, but `NavigationState.NavigateTo` currently reuses native `PathBoundary` equality for Connected targets, so Windows IDs differing only by case can corrupt target/history coherence; this is a documented high-risk defect, not a verified invariant. Folder reparse/symbolic-link children remain non-navigable and are not recursively followed. Voice contracts, parser, coordinator, process provider, and tests remain portable; the initial live capture adapter deliberately reports unavailable outside Windows rather than pretending Linux/macOS microphone support.
 
-GitHub Actions restores, verifies format, builds Release with analyzers-as-errors, runs all tests, and audits NuGet vulnerabilities on Windows and Ubuntu, including transport-independent fake-client and local named-pipe framing tests. The Windows leg also creates the unsigned installer, release manifest, dependency inventory, checksum, and checksum-bound tester notes using the pinned packaging script. A separate manual workflow executes the full clean-checkout private-preview gate and has explicit unsigned or fail-closed signed paths. Its dependent fresh Windows runner has no checkout and receives only the exact artifact for independent hash, per-user install, installed-window, registration, uninstall, and cleanup validation. Windows runtime is the primary interactive validation platform. Linux remains build/test validated, and no Linux connected runtime or macOS runtime claim is made.
+GitHub Actions validates engineering-document paths/fences, restores, verifies format, builds Release with analyzers-as-errors, runs all tests, and audits NuGet vulnerabilities on Windows and Ubuntu, including transport-independent fake-client and local named-pipe framing tests. The Windows leg also creates the unsigned installer, release manifest, dependency graph, checksum, and generated notes using the pinned packaging script. A separate manual release-candidate workflow executes the clean-checkout public-release gate with unsigned or fail-closed signed paths. Its dependent fresh Windows runner has no checkout and receives only the exact artifact for independent hash, version/signature policy, per-user install, installed-window, normal close/relaunch, registration, uninstall, and cleanup validation. This does not replace manual visual or representative interaction validation. Windows x64 Standalone is the public runtime contract; interactive release qualification records the exact Windows client version exercised rather than generalizing from a hosted runner. Linux remains build/test validated; no Linux package/interactive or macOS runtime claim is made.
 
 ## Windows packaging boundary
 
-The primary Windows package is an Inno Setup 6.7.3 current-user installer. It publishes a self-contained, non-trimmed, multi-file `win-x64` application into `%LOCALAPPDATA%\Programs\OmniBrille`, an existing bounded v2.5 RC locator candidate. One stable installer application ID provides in-place upgrades and one uninstall entry. Visual/voice configuration remains outside the install directory; all audio/transcripts, grants, bearer secrets, session IDs, opaque node IDs, and Context caches remain transient. Publish and installer gates exclude PDB/source/test/database/key/audio/model material and developer paths. No speech model, whisper.cpp executable, OmniSorSe application binary, service, auto-start entry, file association, telemetry component, or updater is installed.
+The primary Windows package is an Inno Setup 6.7.3 current-user installer. It publishes a self-contained, non-trimmed, multi-file `win-x64` application into `%LOCALAPPDATA%\Programs\OmniBrille`, an existing bounded companion-locator candidate. One stable installer application ID provides in-place upgrades and one uninstall entry. The installed application includes the owner-approved project license and redistributed dependency notices. Visual/voice configuration remains outside the install directory; all audio/transcripts, grants, bearer secrets, session IDs, opaque node IDs, and Context caches remain transient. Publish and installer gates exclude PDB/source/test/database/key/audio/model material and developer paths. No speech model, whisper.cpp executable, OmniSorSe application binary, service, auto-start entry, file association, telemetry component, or updater is installed.
 
-`Directory.Build.props` is the version/product source of truth. Packaging emits a SHA-256 sidecar, non-sensitive JSON release manifest, and sanitized runtime dependency inventory. Unsigned development packaging is normal. Signed mode accepts only a certificate thumbprint already imported into a Windows certificate store, signs the application and installer, validates both signatures, and fails closed when credentials or validation are unavailable. CI imports any PFX from encrypted secrets into its ephemeral current-user store and removes it after use. See [PACKAGING.md](PACKAGING.md), [the compatibility matrix](../COMPATIBILITY.md), and [the release checklist](../RELEASE_CHECKLIST.md).
+`Directory.Build.props` is the version/product source of truth. Packaging emits a SHA-256 sidecar, non-sensitive JSON release manifest, and sanitized project dependency graph. The graph is not an exact packaged-file inventory or formal SBOM. Unsigned development packaging is normal. Signed mode accepts only a certificate thumbprint already imported into a Windows certificate store, signs the application and installer, validates both signatures, and fails closed when credentials or validation are unavailable. CI imports any PFX from encrypted secrets into its ephemeral current-user store and removes it after use. See [PACKAGING.md](PACKAGING.md), [the compatibility matrix](../COMPATIBILITY.md), and [the release checklist](../RELEASE_CHECKLIST.md).
 
 ## Stage 11 presentation refinement and non-goals
 
 Stage 11 keeps session/provider/rendering ownership unchanged. The shell uses a bounded two-row HUD so Search focus cannot scroll root/navigation controls out of view. First run explains selected-root Standalone authority and the OmniSorSe requirement for Context/Hybrid. Structure-empty and Search-no-match states are distinct from authoritative no-Context and filter-zero states; the Search result surface temporarily takes precedence over item details so the graph remains primary. Search automation names describe the active provider scope rather than implying that connected Search is structural.
 
-No always-listening mode, wake word, cloud speech requirement, conversational/LLM assistant, destructive voice action, Hybrid voice command, indexing/database implementation, cloud service, telemetry, updater, production signing certificate, public release, or OmniSorSe source change is implemented. Context and Hybrid are read-only, focus-local, and entirely server-authored. Incremental edge updates and durable edge selection are intentionally absent because Protocol v1 has no stable relationship ID. Real microphone validation remains outstanding and is not claimed. The repository still needs an explicit maintainer license decision before public distribution.
+No always-listening mode, wake word, cloud speech requirement, conversational/LLM assistant, destructive voice action, Hybrid voice command, indexing/database implementation, cloud service, telemetry, updater, production signing certificate, or OmniSorSe source change is implemented. All contextual relationship data in Context and Hybrid is server-authored; the Hybrid scene itself is a read-only, focus-local client composition. Incremental edge updates and durable edge selection are intentionally absent because Protocol v1 has no stable relationship ID. Real microphone validation remains outstanding and is not claimed. OmniBrille is licensed GPL-3.0-only; the owner authorized v1.0.0 to ship unsigned with explicit SmartScreen/Unknown Publisher disclosure.

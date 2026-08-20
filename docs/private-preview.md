@@ -1,3 +1,5 @@
+> **Historical preview artifact.** This guide is superseded for v1.0 release work by the [public release checklist](../RELEASE_CHECKLIST.md) and [current release-notes template](release-notes.md). Do not use it as current release authority.
+
 ## What OmniBrille is
 
 OmniBrille is an optional spatial navigation companion for exploring files as a bounded graph. It can run by itself in Structure mode or connect to a compatible OmniSorSe session for authorized Structure, Search, details, server-authored Context, and a combined Hybrid view. This is a private pre-release, not a stable production release.
@@ -41,7 +43,7 @@ If the header identifies an unsigned preview, Windows may show **Unknown Publish
 - Context density depends on OmniSorSe's indexed intelligence. OmniBrille does not invent relationships.
 - Voice commands are English-only, use the default Windows input device, and have process-per-utterance model-load latency. Linux/macOS microphone capture is not validated.
 - Destructive file operations, automatic updating, cloud services, always-listening audio, and telemetry are absent. Real microphone hardware validation remains outstanding and is not claimed.
-- The repository has no selected public-distribution license.
+- At the time of this historical preview, the repository had no selected public-distribution license. GPL-3.0-only was selected later for v1.0.
 
 ## Safe feedback
 

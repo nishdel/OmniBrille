@@ -1,5 +1,7 @@
 # Controlled private-preview rollout
 
+> **Historical preview artifact.** This rollout is superseded for v1.0 release work by the [public release checklist](../RELEASE_CHECKLIST.md) and [current release-notes template](release-notes.md). Do not use it as current release authority.
+
 ## Initial boundary
 
 - Start with one to three trusted Windows x64 testers.
@@ -21,4 +23,4 @@ Visual imperfections, optional voice requiring a separately supplied local runti
 
 ## Distribution boundary
 
-Keep the repository and artifact private. Do not create a public tag, GitHub Release, package-feed publication, or announcement. A maintainer license decision is required before public distribution.
+At the time of this historical rollout, the repository and artifact were intended to remain private and a maintainer license decision was required before public distribution. GPL-3.0-only was selected later for v1.0.

@@ -21,7 +21,7 @@ public sealed class WindowsWaveInAudioCaptureService : IAudioCaptureService
         {
             return new VoiceCapability(
                 VoiceCapabilityState.MicrophoneUnavailable,
-                "Microphone capture is currently validated on Windows only.",
+                "Microphone capture is currently implemented on Windows only.",
                 "Windows WaveIn");
         }
 

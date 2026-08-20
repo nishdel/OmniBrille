@@ -17,8 +17,8 @@ public sealed record ContextRelationshipCandidate(
     ExplorerRelationshipEvidenceClass EvidenceClass = ExplorerRelationshipEvidenceClass.Derived);
 
 /// <summary>
-/// Renderer-facing limits for future contextual relationships. This policy neither
-/// creates semantic relationships nor implies that Context mode is available.
+/// Renderer-facing limits for provider-authored contextual relationships. This policy
+/// neither creates semantic relationships nor decides whether Context mode is available.
 /// </summary>
 public static class ContextRenderBudgetPolicy
 {

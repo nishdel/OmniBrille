@@ -270,7 +270,7 @@
                      FontWeight="SemiBold"
                      AutomationProperties.LiveSetting="Polite" />
           <TextBlock x:Name="ConnectionDescriptionText"
-                     Text="Choose a folder for explicit standalone access. OmniSorSe v2.5 RC can launch OmniBrille through an authorized one-time handoff."
+                     Text="Choose a folder for explicit standalone access. A compatible OmniSorSe release can launch OmniBrille through an authorized one-time handoff."
                      TextWrapping="Wrap"
                      FontSize="10"
                      Foreground="{DynamicResource SecondaryTextBrush}" />

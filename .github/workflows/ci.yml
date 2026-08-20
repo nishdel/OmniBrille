@@ -30,6 +30,10 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
 
+      - name: Validate engineering documentation
+        shell: pwsh
+        run: .\build\Test-EngineeringDocs.ps1
+
       - name: Install pinned .NET SDK
         uses: actions/setup-dotnet@v6
         with:
@@ -58,7 +62,7 @@ jobs:
         shell: pwsh
         run: .\build\Package-Windows.ps1 -BootstrapInnoSetup
 
-      - name: Retain private Windows installer artifact
+      - name: Retain Windows installer build artifact
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v7
         with:

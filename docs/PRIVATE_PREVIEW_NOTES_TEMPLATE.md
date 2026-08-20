@@ -1,5 +1,7 @@
 # OmniBrille `<version>` private-preview notes
 
+> **Historical preview artifact.** This template is superseded by [release-notes.md](release-notes.md) for v1.0 and later public releases.
+
 Commit: `<40-character SHA>`  
 Explorer Protocol: `v1.0`  
 Windows artifact: `<installer filename>`  
