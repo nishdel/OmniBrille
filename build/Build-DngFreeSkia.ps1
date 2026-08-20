@@ -108,6 +108,14 @@ function Get-Sha256 {
     return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToUpperInvariant()
 }
 
+function Get-NormalizedTextSha256 {
+    param([Parameter(Mandatory)][string] $Path)
+
+    $normalized = [System.IO.File]::ReadAllText($Path).Replace("`r`n", "`n")
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($normalized)
+    return [Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData($bytes))
+}
+
 function Invoke-CapturedLine {
     param(
         [Parameter(Mandatory)]
@@ -237,7 +245,7 @@ if ($initialStatus.Count -ne 0) {
 }
 
 $globalJsonPath = Join-Path $checkoutRoot 'global.json'
-$globalJsonOriginalSha256 = Get-Sha256 $globalJsonPath
+$globalJsonOriginalSha256 = Get-NormalizedTextSha256 $globalJsonPath
 if ($globalJsonOriginalSha256 -ne $expectedGlobalJsonSha256) {
     throw "Pinned SkiaSharp global.json changed from '$expectedGlobalJsonSha256' to '$globalJsonOriginalSha256'. Review SDK selection before rebuilding."
 }

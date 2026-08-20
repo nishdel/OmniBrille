@@ -30,7 +30,7 @@ Supply the official 3.119.4 Windows x64 DLL from the NuGet package as the ABI re
   -OfficialReferenceDll "$env:USERPROFILE\.nuget\packages\skiasharp.nativeassets.win32\3.119.4\runtimes\win-x64\native\libSkiaSharp.dll"
 ```
 
-The reference must have SHA-256 `7DEC3BA900AB353491E6446F0083739924C6F8DD668832E2F09D38EBFFDBBE1C`. The script refuses to reuse work/output directories and leaves its source worktree available for inspection.
+The reference must have SHA-256 `7DEC3BA900AB353491E6446F0083739924C6F8DD668832E2F09D38EBFFDBBE1C`. The script refuses to reuse work/output directories and leaves its source worktree available for inspection. Its fail-closed `global.json` source hash normalizes Git's platform line endings before hashing; native binaries and other artifact hashes remain byte-exact.
 
 The output directory contains at least:
 
