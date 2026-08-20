@@ -107,7 +107,7 @@ Status language is intentionally conservative: checked items exist in the applic
 
 - [x] Define a Windows x64 Standalone-first public contract without widening renderer, protocol, persistence, or product behavior.
 - [x] Add stable-version packaging support, public release notes, exact-artifact metadata, dependency notices, and stronger installed lifecycle checks.
-- [x] Capture and independently review real installed preflight-candidate screenshots using non-private demo data; recapture is required only if the final visible binary or demo presentation changes.
+- [x] Capture and review real installed DNG-free release-candidate screenshots using non-private demo data; recapture is required only if the final visible binary, native renderer, or demo presentation changes.
 - [x] Record the MIT License in source and release metadata; the exact installed-artifact copy remains part of final qualification.
 - [x] Record explicit owner acceptance of a prominently disclosed unsigned v1.0.0; add Authenticode code signing in a future release.
 - [ ] Validate the exact release-commit artifact through local interaction and the hosted artifact-only workflow.
