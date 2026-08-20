@@ -78,6 +78,8 @@ public sealed class ReleaseHardeningTests
         Assert.Contains("f568ac94dd768ef9a2f593537cfde2dd0d348ef5", buildScript, StringComparison.Ordinal);
         Assert.Contains("7dbfc07dd33181f84e0958afb7ee805c6c769f0b", buildScript, StringComparison.Ordinal);
         Assert.Contains("8fecc592a290769242d5098666cee8d29b7f0523", buildScript, StringComparison.Ordinal);
+        Assert.Contains("64F27E6A38F1E9C222B6B40D103C60597EF112D08F1F5E6E1A535DA845EF53DD", buildScript, StringComparison.Ordinal);
+        Assert.Contains("rollForward = 'disable'", buildScript, StringComparison.Ordinal);
         Assert.Contains("--gnArgs=skia_use_dng_sdk=false", buildScript, StringComparison.Ordinal);
         Assert.Contains("Invoke-CapturedLine", buildScript, StringComparison.Ordinal);
         Assert.DoesNotContain(")[0].Trim()", buildScript, StringComparison.Ordinal);

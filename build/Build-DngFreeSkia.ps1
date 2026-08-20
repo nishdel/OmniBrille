@@ -21,6 +21,7 @@ $depotToolsCommit = '8fecc592a290769242d5098666cee8d29b7f0523'
 $dngRevision = 'c8d0c9b1d16bfda56f15165d39e0ffa360a11123'
 $piexRevision = 'bb217acdca1cc0c16b704669dd6f91a1b509c406'
 $expectedDotnetSdk = '10.0.105'
+$expectedGlobalJsonSha256 = '64F27E6A38F1E9C222B6B40D103C60597EF112D08F1F5E6E1A535DA845EF53DD'
 $expectedLlvmVersion = '19.1.1'
 $expectedCakeVersion = '4.0.0'
 $expectedOfficialSha256 = '7DEC3BA900AB353491E6446F0083739924C6F8DD668832E2F09D38EBFFDBBE1C'
@@ -235,6 +236,24 @@ if ($initialStatus.Count -ne 0) {
     throw "Fresh SkiaSharp checkout was unexpectedly dirty:`n$($initialStatus -join [Environment]::NewLine)"
 }
 
+$globalJsonPath = Join-Path $checkoutRoot 'global.json'
+$globalJsonOriginalSha256 = Get-Sha256 $globalJsonPath
+if ($globalJsonOriginalSha256 -ne $expectedGlobalJsonSha256) {
+    throw "Pinned SkiaSharp global.json changed from '$expectedGlobalJsonSha256' to '$globalJsonOriginalSha256'. Review SDK selection before rebuilding."
+}
+$globalJson = Get-Content -Raw -LiteralPath $globalJsonPath | ConvertFrom-Json
+if ([string] $globalJson.sdk.version -ne '10.0.100' -or
+    [string] $globalJson.sdk.rollForward -ne 'latestFeature' -or
+    [bool] $globalJson.sdk.allowPrerelease) {
+    throw 'Pinned SkiaSharp SDK policy changed. Review global.json before rebuilding.'
+}
+$globalJson.sdk.version = $expectedDotnetSdk
+$globalJson.sdk.rollForward = 'disable'
+$globalJson | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $globalJsonPath -Encoding utf8
+$globalJsonPatchedSha256 = Get-Sha256 $globalJsonPath
+$sdkSelectionPatch = @(Invoke-Captured $gitCommand @('diff', '--', 'global.json'))
+$sdkSelectionPatch | Set-Content -LiteralPath (Join-Path $outputRoot 'sdk-selection.patch') -Encoding utf8
+
 $dotnetVersion = Invoke-CapturedLine $dotnetCommand @('--version')
 if ($dotnetVersion -ne $expectedDotnetSdk) {
     throw "SkiaSharp native build requires the pinned .NET SDK '$expectedDotnetSdk'; found '$dotnetVersion'."
@@ -404,11 +423,14 @@ $provenance = [ordered]@{
         sourceTreeStatus = @($sourceStatus)
         depsOriginalSha256 = $originalDepsHash
         depsPatchedSha256 = $patchedDepsHash
+        globalJsonOriginalSha256 = $globalJsonOriginalSha256
+        globalJsonPatchedSha256 = $globalJsonPatchedSha256
         removedDependencies = @(
             "https://android.googlesource.com/platform/external/dng_sdk.git@$dngRevision",
             "https://android.googlesource.com/platform/external/piex.git@$piexRevision"
         )
         patch = 'skia-deps-dng-removal.patch'
+        sdkSelectionPatch = 'sdk-selection.patch'
     }
     build = [ordered]@{
         upstreamTarget = 'externals-windows'
