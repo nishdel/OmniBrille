@@ -103,7 +103,7 @@ public sealed class PackagingMetadataTests
         Assert.Contains("LICENSE", desktop, StringComparison.Ordinal);
         Assert.Contains("THIRD-PARTY-LICENSES", desktop, StringComparison.Ordinal);
         Assert.Contains("SkiaSharp.NativeAssets.Win32\" Version=\"3.119.4\" ExcludeAssets=\"all", desktop, StringComparison.Ordinal);
-        Assert.Contains("OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng\" Version=\"3.119.4.1", desktop, StringComparison.Ordinal);
+        Assert.Contains("OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng\" Version=\"3.119.4.2", desktop, StringComparison.Ordinal);
         Assert.Contains("Copyright 2020 Mark Heath", notice, StringComparison.Ordinal);
         Assert.Contains("Avalonia 12.1.1", notice, StringComparison.Ordinal);
         Assert.Contains("Inter-OFL-1.1.txt", notice, StringComparison.Ordinal);
@@ -124,10 +124,10 @@ public sealed class PackagingMetadataTests
         var nativePackage = Path.Combine(
             root,
             "packages",
-            "OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng.3.119.4.1.nupkg");
+            "OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng.3.119.4.2.nupkg");
         Assert.True(File.Exists(nativePackage));
         Assert.Equal(
-            "D888FACDAFF8E704EB48FA1D812152E42747D91A6AF0C20EDCC6432929538A2B",
+            "880578F572F541A58C47418AABF881D5F0665A4B1A48AD26753549D01EDDC10C",
             Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(nativePackage))));
         Assert.True(File.Exists(Path.Combine(root, "THIRD-PARTY-LICENSES", "ANGLE-LICENSE.txt")));
         Assert.True(File.Exists(Path.Combine(root, "THIRD-PARTY-LICENSES", "Inter-OFL-1.1.txt")));

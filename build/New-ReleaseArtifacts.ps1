@@ -54,10 +54,10 @@ if (-not (Test-Path -LiteralPath $skiaNoticePath -PathType Leaf)) {
     throw "Reviewed SkiaSharp distribution notice was not found at '$skiaNoticePath'."
 }
 $skiaNoticeHash = (Get-FileHash -LiteralPath $skiaNoticePath -Algorithm SHA256).Hash.ToUpperInvariant()
-$nativePackageRelativePath = 'packages\OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng.3.119.4.1.nupkg'
+$nativePackageRelativePath = 'packages\OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng.3.119.4.2.nupkg'
 $nativePackagePath = Join-Path $repositoryRoot $nativePackageRelativePath
 $publishedNativePath = Join-Path $repositoryRoot "artifacts\publish\$RuntimeIdentifier\libSkiaSharp.dll"
-$expectedNativeHash = 'AB054D5A4A8E82FACF9925BA106FDBE8BB83918F9AAABDB20B6DA2FF75A80268'
+$expectedNativeHash = 'A5A4C1EECE528A5BED7C98889435BD8214BBA610F963FE80E35256A91508B5DD'
 foreach ($requiredNativePath in @($nativePackagePath, $publishedNativePath)) {
     if (-not (Test-Path -LiteralPath $requiredNativePath -PathType Leaf)) {
         throw "Reviewed DNG-free SkiaSharp artifact was not found at '$requiredNativePath'."
@@ -122,7 +122,7 @@ $manifest = [ordered]@{
         skiaSharp = [ordered]@{
             managedVersion = '3.119.4'
             nativePackageId = 'OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng'
-            nativePackageVersion = '3.119.4.1'
+            nativePackageVersion = '3.119.4.2'
             nativePackagePath = $nativePackageRelativePath.Replace('\', '/')
             nativePackageSha256 = $nativePackageHash
             nativeDllSha256 = $publishedNativeHash

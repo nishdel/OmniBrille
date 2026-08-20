@@ -9,7 +9,7 @@ coverage/
 *.suo
 *.nupkg
 *.snupkg
-!packages/OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng.3.119.4.1.nupkg
+!packages/OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng.3.119.4.2.nupkg
 artifacts/
 .DS_Store
 Thumbs.db

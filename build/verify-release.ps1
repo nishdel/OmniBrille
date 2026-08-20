@@ -86,8 +86,8 @@ function Assert-DistributionLicense {
         }
     }
 
-    $nativePackagePath = Join-Path $repositoryRoot 'packages\OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng.3.119.4.1.nupkg'
-    $expectedNativePackageHash = 'D888FACDAFF8E704EB48FA1D812152E42747D91A6AF0C20EDCC6432929538A2B'
+    $nativePackagePath = Join-Path $repositoryRoot 'packages\OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng.3.119.4.2.nupkg'
+    $expectedNativePackageHash = '880578F572F541A58C47418AABF881D5F0665A4B1A48AD26753549D01EDDC10C'
     if (-not (Test-Path -LiteralPath $nativePackagePath -PathType Leaf) -or
         (Get-FileHash -LiteralPath $nativePackagePath -Algorithm SHA256).Hash -ne $expectedNativePackageHash) {
         throw 'The tracked DNG-free SkiaSharp package is missing or differs from the reviewed package bytes.'
@@ -171,7 +171,7 @@ function Assert-PackagedContents {
     if ($publishedSkiaBinaries.Count -ne 1) {
         throw "Expected exactly one published libSkiaSharp.dll; found $($publishedSkiaBinaries.Count)."
     }
-    $expectedNativeHash = 'AB054D5A4A8E82FACF9925BA106FDBE8BB83918F9AAABDB20B6DA2FF75A80268'
+    $expectedNativeHash = 'A5A4C1EECE528A5BED7C98889435BD8214BBA610F963FE80E35256A91508B5DD'
     $publishedSkia = $publishedSkiaBinaries[0]
     if ((Get-FileHash -LiteralPath $publishedSkia.FullName -Algorithm SHA256).Hash -ne $expectedNativeHash -or
         (Get-AuthenticodeSignature -LiteralPath $publishedSkia.FullName).Status -ne [System.Management.Automation.SignatureStatus]::NotSigned) {
@@ -211,9 +211,9 @@ function Assert-PackagedContents {
         $manifest.distributionNotices.skiaSharpNotice.sha256 -ne $expectedSkiaNoticeHash) {
         throw 'Release manifest does not bind the reviewed DNG-free SkiaSharp notice path and bytes.'
     }
-    $expectedNativePackageHash = (Get-FileHash -LiteralPath (Join-Path $repositoryRoot 'packages\OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng.3.119.4.1.nupkg') -Algorithm SHA256).Hash
+    $expectedNativePackageHash = (Get-FileHash -LiteralPath (Join-Path $repositoryRoot 'packages\OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng.3.119.4.2.nupkg') -Algorithm SHA256).Hash
     if ($manifest.nativeComponents.skiaSharp.nativePackageId -ne 'OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng' -or
-        $manifest.nativeComponents.skiaSharp.nativePackageVersion -ne '3.119.4.1' -or
+        $manifest.nativeComponents.skiaSharp.nativePackageVersion -ne '3.119.4.2' -or
         $manifest.nativeComponents.skiaSharp.nativePackageSha256 -ne $expectedNativePackageHash -or
         $manifest.nativeComponents.skiaSharp.nativeDllSha256 -ne $expectedNativeHash -or
         $manifest.nativeComponents.skiaSharp.authenticodeStatus -ne 'NotSigned' -or

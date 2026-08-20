@@ -9,9 +9,9 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$expectedDllSha256 = 'AB054D5A4A8E82FACF9925BA106FDBE8BB83918F9AAABDB20B6DA2FF75A80268'
+$expectedDllSha256 = 'A5A4C1EECE528A5BED7C98889435BD8214BBA610F963FE80E35256A91508B5DD'
 $expectedNoticeSha256 = 'D865C31394CD46C76DDBA4405E96650D3EFA6066C553BD9BCF60D48B4DD6880B'
-$packageName = 'OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng.3.119.4.1.nupkg'
+$packageName = 'OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng.3.119.4.2.nupkg'
 $proof = [System.IO.Path]::GetFullPath($ProofDirectory)
 $output = [System.IO.Path]::GetFullPath($OutputDirectory)
 $project = Join-Path $PSScriptRoot 'native-skia\OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng.csproj'
