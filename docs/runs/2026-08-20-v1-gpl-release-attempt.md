@@ -68,9 +68,9 @@ Updated: project-license metadata, public download status, packaging/release che
 ## Repository state
 
 - Repository: OmniBrille audit worktree.
-- Branch / HEAD: `main` at `8766e33d9778afbf262356be57dbbe7152eb2a83`.
-- Worktree: the inherited engineering-foundation and v1 preparation changes plus this run's GPL/blocker changes are integrated by the local commit containing this report; no pre-existing work was discarded.
-- Tags / push / release: none; `v1.0.0` was not created or published.
+- Branch / HEAD: `main` advanced locally from baseline `8766e33d9778afbf262356be57dbbe7152eb2a83`; final HEAD is the follow-up commit containing this finalized report and byte-preserved vendor notices.
+- Worktree: the inherited engineering-foundation and v1 preparation changes plus this run's GPL/blocker changes are integrated in local commit `c692425` and the final follow-up; no pre-existing work was discarded.
+- Tags / push / release: no tag, push, or release; `v1.0.0` was not created or published.
 - GitHub metadata: not updated.
 - Schema, protocol, persistence format, and public APIs: unchanged.
 - Intentional product behavior: none. Presentation copy/version/package metadata from the preparation work remain candidate changes.
