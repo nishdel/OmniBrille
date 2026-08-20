@@ -8,7 +8,7 @@ All notable OmniBrille changes are recorded here. The project uses SemVer-compat
 
 ## [1.0.0] - 2026-08-20
 
-Prepared first stable public release; not yet published. A public `0.8.0-preview.2` prerelease already existed on GitHub. The v1.0.0 candidate establishes the intended Windows x64 Standalone contract and GPL-3.0-only project license, but publication is blocked pending resolution of the Adobe DNG SDK terms in the current SkiaSharp Windows native asset.
+Prepared first stable public release; not yet published. A public `0.8.0-preview.2` prerelease already existed on GitHub. The v1.0.0 candidate establishes the intended Windows x64 Standalone contract and MIT project license; explicit owner acceptance or qualified review of the bundled Adobe DNG SDK terms remains before exact committed-artifact qualification.
 
 ### Added
 
@@ -16,7 +16,7 @@ Prepared first stable public release; not yet published. A public `0.8.0-preview
 - Stable-version release notes plus exact installer manifest, SHA-256, dependency inventory, and artifact-only validation record support.
 - Complete packaged notices for Avalonia, Inter, ANGLE, SkiaSharp/HarfBuzzSharp, MicroCom, Tmds.DBus, NAudio, .NET, and System.IO.Pipelines redistributed by the self-contained Windows runtime.
 - Release validation for installed executable version metadata, normal close/relaunch, required project/distribution licenses, and signed-artifact status when signing is requested.
-- GPL-3.0-only project licensing in source, package metadata, release metadata, and the installed application.
+- MIT project licensing in source, package metadata, release metadata, and the installed application, with separate bundled third-party terms preserved.
 
 ### Changed
 

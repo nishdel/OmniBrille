@@ -23,4 +23,4 @@ Visual imperfections, optional voice requiring a separately supplied local runti
 
 ## Distribution boundary
 
-At the time of this historical rollout, the repository and artifact were intended to remain private and a maintainer license decision was required before public distribution. GPL-3.0-only was selected later for v1.0.
+At the time of this historical rollout, the repository and artifact were intended to remain private and a maintainer license decision was required before public distribution. MIT was selected for v1.0 after an unshipped GPL release attempt.

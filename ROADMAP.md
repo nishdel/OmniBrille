@@ -69,7 +69,7 @@ Status language is intentionally conservative: checked items exist in the applic
 - [x] User-invoked sanitized diagnostics report and privacy-conscious feedback/rollout guidance.
 - [x] Artifact-only fresh hosted-Windows hash/install/window/uninstall gate with retained validation metadata.
 - [ ] Genuine clean interactive Windows VM validation of Standalone and normal OmniSorSe companion workflow.
-- [x] Maintainer selected GPL-3.0-only before the stable public release.
+- [x] Maintainer selected the MIT License before the stable public release; the earlier GPL choice was superseded before publication.
 - [ ] Production Authenticode certificate and signed preview validation.
 - [ ] Private tester rollout, support triage, and evidence-driven blocker remediation.
 - [ ] Windows VM matrix expansion and Linux/macOS interactive runtime validation.
@@ -101,18 +101,18 @@ Status language is intentionally conservative: checked items exist in the applic
 - [x] Distinguish empty Structure, no Search result, no Context relationship, and Context-filtered-to-zero states with honest recovery actions.
 - [x] Keep details secondary while Search is active and use provider-accurate Search automation/help in Standalone and connected sessions.
 - [x] Preserve Structure/Context/Hybrid budgets, Explorer Protocol v1, handoff security, voice architecture, release automation, and privacy boundaries.
-- [ ] Continue controlled preview feedback where useful; real microphone hardware, broader real Context/Hybrid density, interactive Linux/macOS, and future code signing remain separate follow-up work. GPL-3.0-only and the unsigned v1.0.0 decision are resolved.
+- [ ] Continue controlled preview feedback where useful; real microphone hardware, broader real Context/Hybrid density, interactive Linux/macOS, and future code signing remain separate follow-up work. MIT licensing and the unsigned v1.0.0 decision are resolved.
 
 ## Stage 12 — v1.0.0 first stable public release (release candidate in progress)
 
 - [x] Define a Windows x64 Standalone-first public contract without widening renderer, protocol, persistence, or product behavior.
 - [x] Add stable-version packaging support, public release notes, exact-artifact metadata, dependency notices, and stronger installed lifecycle checks.
 - [x] Capture and independently review real installed preflight-candidate screenshots using non-private demo data; recapture is required only if the final visible binary or demo presentation changes.
-- [x] Record GPL-3.0-only in source and release metadata; the exact installed-artifact copy remains part of final qualification.
+- [x] Record the MIT License in source and release metadata; the exact installed-artifact copy remains part of final qualification.
 - [x] Record explicit owner acceptance of a prominently disclosed unsigned v1.0.0; add Authenticode code signing in a future release.
 - [ ] Validate the exact release-commit artifact through local interaction and the hosted artifact-only workflow.
 - [ ] Complete independent release review, push the release commit/tag, publish the GitHub Release and metadata, and verify the public download.
-- [ ] Resolve the GPL-3.0-only distribution blocker in the current SkiaSharp Windows native asset: obtain qualified review of its bundled Adobe DNG SDK terms or replace/rebuild the asset without DNG, then rerun all exact-artifact gates.
+- [ ] Record explicit owner acceptance or qualified review of the SkiaSharp-bundled Adobe DNG SDK agreement, including its undefined “commercial product” indemnity condition, or use a DNG-free native asset. Preserve the complete human-readable agreement in every case where DNG remains compiled in.
 - [ ] Treat Connected-mode broad compatibility, real voice hardware, interactive Linux/macOS, and screen-reader certification as follow-up unless separately validated.
 
 ## Unscheduled engineering follow-up

@@ -10,9 +10,9 @@ OmniBrille is a Windows desktop file explorer that keeps the folder you are expl
 
 ## Download
 
-> **Release status:** v1.0.0 is not published yet. Publication is blocked while the project resolves a third-party license-compatibility question in the current Windows graphics dependency. Do not use or redistribute a local preflight installer as the v1 release.
+> **Release status:** v1.0.0 is not published yet. The MIT transition is complete, but publication is waiting for an explicit owner decision on the separately licensed Adobe DNG SDK terms bundled through SkiaSharp. Do not use or redistribute an older local preflight installer as the v1 release.
 
-When the gate is resolved, the official [GitHub Releases page](https://github.com/nishdel/OmniBrille/releases) will be the download source. The prepared installer is self-contained, installs for the current user, and does not require a separate .NET installation or administrator access. It can be removed from Windows Installed apps.
+After qualification, the official [GitHub Releases page](https://github.com/nishdel/OmniBrille/releases) will be the download source. The prepared installer is self-contained, installs for the current user, and does not require a separate .NET installation or administrator access. It can be removed from Windows Installed apps.
 
 > **Signing notice:** the authorized v1.0.0 installer will be unsigned. Windows may show **Unknown Publisher** or a SmartScreen reputation warning. Download only from the official GitHub Release after publication, compare its SHA-256 with the attached checksum, and follow your organization’s security policy. A checksum detects corruption; it does not authenticate an unsigned publisher.
 
@@ -56,7 +56,7 @@ Standalone access is limited to the selected root. OmniBrille does not recursive
 
 Optional local push-to-talk is disabled by default and requires a user-provided whisper.cpp runtime and model; neither is bundled or downloaded. Real microphone hardware behavior has not been validated for v1.0 and is outside the supported release contract. There is no wake word or always-listening mode.
 
-The GitHub Release includes the release manifest, dependency graph, exact installer checksum, and generated artifact notes. The installed application contains GPL and third-party license/notice files. The repository records the [security and privacy posture](docs/SECURITY-PRIVACY.md). `Copy safe diagnostics` produces a user-reviewed support snapshot designed to exclude paths, filenames, queries, content, endpoints, grants, tokens, and session/node IDs.
+The GitHub Release includes the release manifest, dependency graph, exact installer checksum, and generated artifact notes. The installed application contains the MIT project license and separately applicable third-party license/notice files. The repository records the [security and privacy posture](docs/SECURITY-PRIVACY.md). `Copy safe diagnostics` produces a user-reviewed support snapshot designed to exclude paths, filenames, queries, content, endpoints, grants, tokens, and session/node IDs.
 
 ## Current limitations
 
@@ -103,7 +103,7 @@ Build the Windows installer with:
 
 ## License
 
-OmniBrille is licensed under the **GNU General Public License version 3 only** (`GPL-3.0-only`). See [`LICENSE`](LICENSE). Third-party components remain under their respective licenses and notices in [`THIRD-PARTY-NOTICES.txt`](THIRD-PARTY-NOTICES.txt) and [`THIRD-PARTY-LICENSES`](THIRD-PARTY-LICENSES).
+OmniBrille project code is licensed under the **MIT License**. See [`LICENSE`](LICENSE). Bundled third-party components remain under their own terms—including the Adobe DNG SDK terms carried by SkiaSharp—and their complete notices are preserved in [`THIRD-PARTY-NOTICES.txt`](THIRD-PARTY-NOTICES.txt) and [`THIRD-PARTY-LICENSES`](THIRD-PARTY-LICENSES).
 
 ## Engineering documentation
 

@@ -12,4 +12,4 @@ These PNGs are real captures of the installed Windows x64 `1.0.0` preflight cand
 
 The captures use Windows `PrintWindow` from a Per-Monitor-V2-aware process so the complete 125%-DPI window is represented. They were visually inspected for full window chrome and the Connection, zoom, Theme, List, and Settings controls after an earlier DPI-unaware capture was rejected as cropped.
 
-The preflight installer is not the publishable release artifact: it is unsigned, predates the final release commit, and omitted the project license later selected as GPL-3.0-only. Rebuild and revalidate the final artifact. Recapture these images before publication if any visible application binary, theme, demo content, version presentation, or supported workflow changes.
+The preflight installer is not the publishable release artifact: it is unsigned, predates the final release commit, and omitted the project license later selected as MIT. Rebuild and revalidate the final artifact. Recapture these images before publication if any visible application binary, theme, demo content, version presentation, or supported workflow changes.

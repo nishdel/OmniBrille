@@ -48,6 +48,12 @@ $checksumPath = Join-Path $outputDirectory "$($package.Name).sha256"
 $manifestPath = Join-Path $outputDirectory "$baseName-manifest.json"
 $dependencyPath = Join-Path $outputDirectory "$baseName-dependencies.json"
 $releaseNotesPath = Join-Path $outputDirectory "$baseName-release-notes.md"
+$skiaNoticeRelativePath = 'THIRD-PARTY-LICENSES\SkiaSharp-HarfBuzz-THIRD-PARTY-NOTICES.txt'
+$skiaNoticePath = Join-Path $repositoryRoot $skiaNoticeRelativePath
+if (-not (Test-Path -LiteralPath $skiaNoticePath -PathType Leaf)) {
+    throw "Reviewed SkiaSharp distribution notice was not found at '$skiaNoticePath'."
+}
+$skiaNoticeHash = (Get-FileHash -LiteralPath $skiaNoticePath -Algorithm SHA256).Hash.ToUpperInvariant()
 
 $workflowRunId = if ($env:GITHUB_RUN_ID -match '^\d+$') { $env:GITHUB_RUN_ID } else { $null }
 $workflowRepository = if ($env:GITHUB_REPOSITORY -match '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$') {
@@ -67,11 +73,11 @@ $workflow = if ($null -ne $workflowRunId -and $null -ne $workflowRepository) {
 Set-Content -LiteralPath $checksumPath -Encoding Ascii -Value "$hash *$($package.Name)"
 
 $manifest = [ordered]@{
-    schemaVersion = 2
+    schemaVersion = 3
     product = 'OmniBrille'
     version = $Version
     fileVersion = $NumericVersion
-    licenseExpression = 'GPL-3.0-only'
+    projectLicenseExpression = 'MIT'
     commitSha = $CommitSha.ToLowerInvariant()
     sourceUrl = "https://github.com/nishdel/OmniBrille/tree/$($CommitSha.ToLowerInvariant())"
     buildTimestampUtc = [DateTimeOffset]::UtcNow.ToString('O')
@@ -87,6 +93,14 @@ $manifest = [ordered]@{
         sha256 = $hash
         signed = [bool] $Signed
         signatureStatus = [string] $signature.Status
+    }
+    distributionNotices = [ordered]@{
+        indexPath = 'THIRD-PARTY-NOTICES.txt'
+        directory = 'THIRD-PARTY-LICENSES'
+        skiaDngNotice = [ordered]@{
+            path = $skiaNoticeRelativePath.Replace('\', '/')
+            sha256 = $skiaNoticeHash
+        }
     }
     publishedRuntimeBytes = $PublishedBytes
     workflow = $workflow
@@ -130,7 +144,7 @@ $dependencies = [ordered]@{
     schemaVersion = 1
     product = 'OmniBrille'
     version = $Version
-    projectLicenseExpression = 'GPL-3.0-only'
+    projectLicenseExpression = 'MIT'
     scope = 'desktop project resolved dependency graph; may include runtime-identifier alternatives not present in the win-x64 publish output'
     format = 'OmniBrille dependency graph; not an exact packaged-file inventory, SPDX document, or CycloneDX SBOM'
     projects = @($projects)

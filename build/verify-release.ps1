@@ -57,28 +57,37 @@ function Assert-DistributionLicense {
     }
     [xml] $propertiesDocument = Get-Content -Raw -LiteralPath (Join-Path $repositoryRoot 'Directory.Build.props')
     $licenseExpression = [string] ($propertiesDocument.Project.PropertyGroup | Select-Object -First 1).PackageLicenseExpression
-    if ($licenseExpression -ne 'GPL-3.0-only') {
-        throw "Public release metadata must identify the owner-selected GPL-3.0-only license; found '$licenseExpression'."
+    if ($licenseExpression -ne 'MIT') {
+        throw "Public release metadata must identify the owner-selected MIT license; found '$licenseExpression'."
     }
     $licenseText = Get-Content -Raw -LiteralPath $licensePath
     foreach ($requiredText in @(
-        'GNU GENERAL PUBLIC LICENSE',
-        'Version 3, 29 June 2007',
-        'Everyone is permitted to copy and distribute verbatim copies',
-        'END OF TERMS AND CONDITIONS'
+        'MIT License',
+        'Copyright (c) 2026 OmniBrille Contributors',
+        'Permission is hereby granted, free of charge',
+        'The above copyright notice and this permission notice shall be included',
+        'THE SOFTWARE IS PROVIDED "AS IS"'
     )) {
         if ($licenseText.IndexOf($requiredText, [StringComparison]::Ordinal) -lt 0) {
-            throw "Root LICENSE does not contain the expected GPLv3 text: '$requiredText'."
+            throw "Root LICENSE does not contain the expected MIT text: '$requiredText'."
         }
     }
 
     $skiaNoticesPath = Join-Path $repositoryRoot 'THIRD-PARTY-LICENSES\SkiaSharp-HarfBuzz-THIRD-PARTY-NOTICES.txt'
     $skiaNotices = Get-Content -Raw -LiteralPath $skiaNoticesPath
-    if ($skiaNotices.IndexOf('DNG SDK License Agreement', [StringComparison]::Ordinal) -ge 0) {
-        throw @'
-Public GPL-3.0-only release is blocked: the current SkiaSharp Windows native asset includes Adobe DNG SDK code and the matching redistribution terms have not been cleared as GPL-3.0-only compatible. Obtain qualified license review or replace/rebuild the native asset without DNG, then update this gate with the recorded evidence.
-'@
+    foreach ($requiredDngNotice in @(
+        'This product includes DNG technology under license by Adobe Systems',
+        'DNG SDK License Agreement',
+        'include such notices in any copies of the Software',
+        'If you choose to distribute the Software in a commercial product'
+    )) {
+        if ($skiaNotices.IndexOf($requiredDngNotice, [StringComparison]::Ordinal) -lt 0) {
+            throw "The packaged SkiaSharp notice set is missing required Adobe DNG redistribution text: '$requiredDngNotice'."
+        }
     }
+    throw @'
+Public MIT release is blocked until the owner explicitly accepts the separately applicable Adobe DNG SDK agreement and its conditional commercial-product indemnity, qualified review clears the intended distribution, or a DNG-free native asset is used. Notice preservation alone does not resolve this owner/legal gate.
+'@
 }
 
 function Assert-VersionConsistency {
@@ -125,8 +134,14 @@ function Assert-PackagedContents {
         'THIRD-PARTY-LICENSES\DotNet-Runtime-THIRD-PARTY-NOTICES.txt',
         'THIRD-PARTY-LICENSES\System.IO.Pipelines-THIRD-PARTY-NOTICES.txt'
     )) {
-        if (-not (Test-Path -LiteralPath (Join-Path $publishDirectory $requiredPath) -PathType Leaf)) {
+        $sourcePath = Join-Path $repositoryRoot $requiredPath
+        $packagedPath = Join-Path $publishDirectory $requiredPath
+        if (-not (Test-Path -LiteralPath $packagedPath -PathType Leaf)) {
             throw "Required distribution notice '$requiredPath' was not packaged."
+        }
+        if ((Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256).Hash -ne
+            (Get-FileHash -LiteralPath $packagedPath -Algorithm SHA256).Hash) {
+            throw "Packaged distribution notice '$requiredPath' does not match its reviewed repository source."
         }
     }
     $forbiddenFiles = @(
@@ -164,9 +179,16 @@ function Assert-PackagedContents {
     if ($manifest.product -ne 'OmniBrille' -or $manifest.version -ne $Version) {
         throw 'Release manifest identity/version is inconsistent.'
     }
-    if ($manifest.licenseExpression -ne 'GPL-3.0-only' -or
+    if ($manifest.schemaVersion -ne 3 -or
+        $manifest.projectLicenseExpression -ne 'MIT' -or
         $manifest.sourceUrl -ne "https://github.com/nishdel/OmniBrille/tree/$($manifest.commitSha)") {
-        throw 'Release manifest GPL-3.0-only or corresponding-source metadata is invalid.'
+        throw 'Release manifest schema, MIT project license, or source metadata is invalid.'
+    }
+    $expectedSkiaNoticePath = 'THIRD-PARTY-LICENSES/SkiaSharp-HarfBuzz-THIRD-PARTY-NOTICES.txt'
+    $expectedSkiaNoticeHash = (Get-FileHash -LiteralPath (Join-Path $repositoryRoot ($expectedSkiaNoticePath.Replace('/', '\'))) -Algorithm SHA256).Hash
+    if ($manifest.distributionNotices.skiaDngNotice.path -ne $expectedSkiaNoticePath -or
+        $manifest.distributionNotices.skiaDngNotice.sha256 -ne $expectedSkiaNoticeHash) {
+        throw 'Release manifest does not bind the reviewed Skia/DNG notice path and bytes.'
     }
     if ($manifest.explorerProtocol.major -ne 1 -or $manifest.explorerProtocol.minor -ne 0) {
         throw 'Release manifest protocol compatibility is inconsistent.'
@@ -186,7 +208,7 @@ function Assert-PackagedContents {
     $dependencyManifest = Get-Content -Raw -LiteralPath $PackageResult.DependencyManifest | ConvertFrom-Json
     if ($dependencyManifest.product -ne 'OmniBrille' -or
         $dependencyManifest.version -ne $Version -or
-        $dependencyManifest.projectLicenseExpression -ne 'GPL-3.0-only') {
+        $dependencyManifest.projectLicenseExpression -ne 'MIT') {
         throw 'Runtime dependency manifest identity/version is inconsistent.'
     }
 
@@ -203,8 +225,9 @@ function Assert-PackagedContents {
         $releaseNotes.IndexOf('Unsigned release', [StringComparison]::OrdinalIgnoreCase) -lt 0) {
         throw 'Unsigned release notes do not disclose the signing state.'
     }
-    if ($releaseNotes.IndexOf('GPL-3.0-only', [StringComparison]::Ordinal) -lt 0) {
-        throw 'Release notes do not identify the GPL-3.0-only project license.'
+    if ($releaseNotes.IndexOf('MIT License', [StringComparison]::Ordinal) -lt 0 -or
+        $releaseNotes.IndexOf('Adobe DNG SDK agreement', [StringComparison]::Ordinal) -lt 0) {
+        throw 'Release notes do not distinguish the MIT project license from the bundled Adobe DNG SDK terms.'
     }
 }
 

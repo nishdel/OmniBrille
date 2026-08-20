@@ -12,7 +12,7 @@
     <Copyright>Copyright (c) 2026 OmniBrille Contributors</Copyright>
     <RepositoryUrl>https://github.com/nishdel/OmniBrille</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>

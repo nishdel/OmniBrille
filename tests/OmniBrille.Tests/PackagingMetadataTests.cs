@@ -15,11 +15,12 @@ public sealed class PackagingMetadataTests
         Assert.Equal("1.0.0.0", document.Descendants("FileVersion").Single().Value);
         Assert.Equal("1.0.0.0", document.Descendants("AssemblyVersion").Single().Value);
         Assert.Equal("OmniBrille", document.Descendants("Product").Single().Value);
-        Assert.Equal("GPL-3.0-only", document.Descendants("PackageLicenseExpression").Single().Value);
+        Assert.Equal("MIT", document.Descendants("PackageLicenseExpression").Single().Value);
         var license = File.ReadAllText(Path.Combine(root, "LICENSE"));
-        Assert.Contains("GNU GENERAL PUBLIC LICENSE", license, StringComparison.Ordinal);
-        Assert.Contains("Version 3, 29 June 2007", license, StringComparison.Ordinal);
-        Assert.Contains("END OF TERMS AND CONDITIONS", license, StringComparison.Ordinal);
+        Assert.Contains("MIT License", license, StringComparison.Ordinal);
+        Assert.Contains("Copyright (c) 2026 OmniBrille Contributors", license, StringComparison.Ordinal);
+        Assert.Contains("Permission is hereby granted, free of charge", license, StringComparison.Ordinal);
+        Assert.Contains("THE SOFTWARE IS PROVIDED \"AS IS\"", license, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -93,9 +94,18 @@ public sealed class PackagingMetadataTests
         Assert.Contains("Avalonia 12.1.1", notice, StringComparison.Ordinal);
         Assert.Contains("Inter-OFL-1.1.txt", notice, StringComparison.Ordinal);
         Assert.Contains("SkiaSharp-HarfBuzz-THIRD-PARTY-NOTICES.txt", notice, StringComparison.Ordinal);
+        Assert.Contains("native asset contains Adobe", notice, StringComparison.Ordinal);
+        Assert.Contains("DNG SDK License Agreement", notice, StringComparison.Ordinal);
         Assert.Contains("DotNet-Runtime-THIRD-PARTY-NOTICES.txt", notice, StringComparison.Ordinal);
         Assert.Contains("Tmds.DBus.Protocol 0.94.1", notice, StringComparison.Ordinal);
-        Assert.Contains("GPL-3.0-only", notice, StringComparison.Ordinal);
+        Assert.Contains("licensed under the MIT License", notice, StringComparison.Ordinal);
+        var skiaNotices = File.ReadAllText(Path.Combine(
+            root,
+            "THIRD-PARTY-LICENSES",
+            "SkiaSharp-HarfBuzz-THIRD-PARTY-NOTICES.txt"));
+        Assert.Contains("DNG SDK License Agreement", skiaNotices, StringComparison.Ordinal);
+        Assert.Contains("include such notices in any copies of the Software", skiaNotices, StringComparison.Ordinal);
+        Assert.Contains("If you choose to distribute the Software in a commercial product", skiaNotices, StringComparison.Ordinal);
         Assert.True(File.Exists(Path.Combine(root, "THIRD-PARTY-LICENSES", "ANGLE-LICENSE.txt")));
         Assert.True(File.Exists(Path.Combine(root, "THIRD-PARTY-LICENSES", "Inter-OFL-1.1.txt")));
         Assert.True(File.Exists(Path.Combine(root, "THIRD-PARTY-LICENSES", "Tmds.DBus-LICENSE.txt")));

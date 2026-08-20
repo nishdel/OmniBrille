@@ -129,9 +129,10 @@ jobs:
           if ($manifest.product -ne 'OmniBrille' -or $manifest.runtimeIdentifier -ne 'win-x64') {
             throw 'Manifest product or runtime does not identify the expected Windows x64 release.'
           }
-          if ($manifest.licenseExpression -ne 'GPL-3.0-only' -or
+          if ($manifest.schemaVersion -ne 3 -or
+              $manifest.projectLicenseExpression -ne 'MIT' -or
               $manifest.sourceUrl -ne "https://github.com/nishdel/OmniBrille/tree/${{ github.sha }}") {
-            throw 'Manifest license or corresponding-source URL does not match the release commit.'
+            throw 'Manifest schema, project license, or source/provenance URL does not match the release commit.'
           }
           if ($installer.Name -ne $manifest.installer.fileName -or
               $installer.Name -ne $expectedInstallerName -or
@@ -177,11 +178,29 @@ jobs:
               throw "Required installed distribution notice '$requiredNotice' was not found."
             }
           }
+          $installedSkiaNotice = Join-Path $installDirectory 'THIRD-PARTY-LICENSES\SkiaSharp-HarfBuzz-THIRD-PARTY-NOTICES.txt'
+          $installedSkiaNoticeHash = (Get-FileHash -LiteralPath $installedSkiaNotice -Algorithm SHA256).Hash.ToUpperInvariant()
+          if ($manifest.distributionNotices.skiaDngNotice.path -ne 'THIRD-PARTY-LICENSES/SkiaSharp-HarfBuzz-THIRD-PARTY-NOTICES.txt' -or
+              $manifest.distributionNotices.skiaDngNotice.sha256.ToUpperInvariant() -ne $installedSkiaNoticeHash) {
+            throw 'Installed Skia/DNG notice does not match the reviewed bytes bound by the release manifest.'
+          }
+          $installedSkiaNoticeText = Get-Content -Raw -LiteralPath $installedSkiaNotice
+          foreach ($requiredDngNotice in @(
+            'This product includes DNG technology under license by Adobe Systems',
+            'DNG SDK License Agreement',
+            'include such notices in any copies of the Software',
+            'If you choose to distribute the Software in a commercial product'
+          )) {
+            if ($installedSkiaNoticeText.IndexOf($requiredDngNotice, [StringComparison]::Ordinal) -lt 0) {
+              throw "Installed Skia notice is missing required Adobe DNG text: '$requiredDngNotice'."
+            }
+          }
           $installedLicense = Get-Content -Raw -LiteralPath (Join-Path $installDirectory 'LICENSE')
-          if ($installedLicense -notmatch 'GNU GENERAL PUBLIC LICENSE' -or
-              $installedLicense -notmatch 'Version 3, 29 June 2007' -or
-              $installedLicense -notmatch 'END OF TERMS AND CONDITIONS') {
-            throw 'Installed project license is not the expected GPLv3 text.'
+          if ($installedLicense -notmatch 'MIT License' -or
+              $installedLicense -notmatch 'Copyright \(c\) 2026 OmniBrille Contributors' -or
+              $installedLicense -notmatch 'Permission is hereby granted, free of charge' -or
+              $installedLicense -notmatch 'THE SOFTWARE IS PROVIDED "AS IS"') {
+            throw 'Installed project license is not the expected MIT text.'
           }
           $uninstallRoot = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall'
           $registration = @(Get-ChildItem -LiteralPath $uninstallRoot | ForEach-Object {

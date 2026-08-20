@@ -62,7 +62,9 @@ public sealed class ReleaseHardeningTests
         Assert.DoesNotContain("gh release", workflow, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("action-gh-release", workflow, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("create tag", workflow, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("current SkiaSharp Windows native asset includes Adobe DNG SDK code", releaseScript, StringComparison.Ordinal);
+        Assert.Contains("Packaged distribution notice", releaseScript, StringComparison.Ordinal);
+        Assert.Contains("required Adobe DNG redistribution text", releaseScript, StringComparison.Ordinal);
+        Assert.Contains("owner explicitly accepts the separately applicable Adobe DNG SDK agreement", releaseScript, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -76,14 +78,17 @@ public sealed class ReleaseHardeningTests
         Assert.Contains("Get-FileHash", metadataScript, StringComparison.Ordinal);
         Assert.Contains("safe.directory", metadataScript, StringComparison.Ordinal);
         Assert.Contains("explorerProtocol", metadataScript, StringComparison.Ordinal);
-        Assert.Contains("licenseExpression = 'GPL-3.0-only'", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("schemaVersion = 3", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("projectLicenseExpression = 'MIT'", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("distributionNotices", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("skiaDngNotice", metadataScript, StringComparison.Ordinal);
         Assert.Contains("sourceUrl", metadataScript, StringComparison.Ordinal);
         Assert.Contains("commitSha", metadataScript, StringComparison.Ordinal);
         Assert.Contains("release-notes.md", metadataScript, StringComparison.Ordinal);
         Assert.Contains("docs\\release-notes.md", metadataScript, StringComparison.Ordinal);
         Assert.Contains("not an exact packaged-file inventory", metadataScript, StringComparison.Ordinal);
         Assert.Contains("release-gate status is not recorded", metadataScript, StringComparison.Ordinal);
-        Assert.Contains("GPL-3.0-only", File.ReadAllText(Path.Combine(root, "docs", "release-notes.md")), StringComparison.Ordinal);
+        Assert.Contains("MIT License", File.ReadAllText(Path.Combine(root, "docs", "release-notes.md")), StringComparison.Ordinal);
         Assert.DoesNotContain("AuthorizationToken", metadataScript, StringComparison.Ordinal);
         Assert.DoesNotContain("UserProfile", metadataScript, StringComparison.Ordinal);
         Assert.Contains("Public release verification requires a maintainer-approved", File.ReadAllText(

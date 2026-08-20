@@ -16,7 +16,7 @@ The generated artifact-specific notes place the expected SHA-256 above this temp
 
 ## License and source
 
-OmniBrille is licensed under the **GNU General Public License version 3 only** (`GPL-3.0-only`). The release includes the full `LICENSE`; the corresponding source is available from the matching `v1.0.0` tag and source archives on the official GitHub Release. Bundled third-party components retain the licenses and notices shipped beside the application.
+OmniBrille project code is licensed under the **MIT License**. The release includes the full `LICENSE`, and source is available from the matching `v1.0.0` tag and source archives on the official GitHub Release. Bundled third-party components retain their own installed licenses and notices, including the Adobe DNG SDK agreement carried by SkiaSharp.
 
 ## Supported v1.0 experience
 

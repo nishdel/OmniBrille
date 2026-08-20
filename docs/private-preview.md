@@ -43,7 +43,7 @@ If the header identifies an unsigned preview, Windows may show **Unknown Publish
 - Context density depends on OmniSorSe's indexed intelligence. OmniBrille does not invent relationships.
 - Voice commands are English-only, use the default Windows input device, and have process-per-utterance model-load latency. Linux/macOS microphone capture is not validated.
 - Destructive file operations, automatic updating, cloud services, always-listening audio, and telemetry are absent. Real microphone hardware validation remains outstanding and is not claimed.
-- At the time of this historical preview, the repository had no selected public-distribution license. GPL-3.0-only was selected later for v1.0.
+- At the time of this historical preview, the repository had no selected public-distribution license. MIT was selected for v1.0 after an unshipped GPL release attempt.
 
 ## Safe feedback
 
