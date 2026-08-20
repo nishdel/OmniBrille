@@ -129,6 +129,9 @@ public sealed class ReleaseHardeningTests
         Assert.Contains("release-notes.md", metadataScript, StringComparison.Ordinal);
         Assert.Contains("docs\\release-notes.md", metadataScript, StringComparison.Ordinal);
         Assert.Contains("not an exact packaged-file inventory", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("assetOverrides", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("contributesPackagedFiles = $false", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("Suppress the transitive official DNG-bearing native runtime", metadataScript, StringComparison.Ordinal);
         Assert.Contains("release-gate status is not recorded", metadataScript, StringComparison.Ordinal);
         Assert.Contains("MIT License", File.ReadAllText(Path.Combine(root, "docs", "release-notes.md")), StringComparison.Ordinal);
         Assert.DoesNotContain("AuthorizationToken", metadataScript, StringComparison.Ordinal);

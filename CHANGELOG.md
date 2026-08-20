@@ -6,9 +6,9 @@ All notable OmniBrille changes are recorded here. The project uses SemVer-compat
 
 - No changes yet.
 
-## [1.0.0] - 2026-08-20
+## [1.0.0] - 2026-08-21
 
-Prepared first stable public release; not yet published. A public `0.8.0-preview.2` prerelease already existed on GitHub. The v1.0.0 candidate establishes the intended Windows x64 Standalone contract, MIT project license, and a pinned project-built SkiaSharp native dependency with unused Adobe DNG/RAW support excluded. Exact committed-installer, visual, hosted lifecycle, adversarial, and publication qualification remain.
+First stable public release. A public `0.8.0-preview.2` prerelease already existed on GitHub. v1.0.0 establishes the Windows x64 Standalone contract, MIT project license, and a pinned project-built SkiaSharp native dependency with unused Adobe DNG/RAW support excluded.
 
 ### Added
 

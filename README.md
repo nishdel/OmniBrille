@@ -10,13 +10,11 @@ OmniBrille is a Windows desktop file explorer that keeps the folder you are expl
 
 ## Download
 
-> **Release status:** v1.0.0 is not published yet. The DNG-free native renderer dependency has been produced and integrated, but the exact installer, visual, hosted lifecycle, and publication gates still must pass. Do not use or redistribute an older local preflight installer as the v1 release.
+[Download OmniBrille 1.0.0 for Windows x64](https://github.com/nishdel/OmniBrille/releases/download/v1.0.0/OmniBrille-1.0.0-win-x64-setup.exe), or review the checksum and supporting files on the official [v1.0.0 GitHub Release](https://github.com/nishdel/OmniBrille/releases/tag/v1.0.0). The installer is self-contained, installs for the current user, and does not require a separate .NET installation or administrator access. It can be removed from Windows Installed apps.
 
-After qualification, the official [GitHub Releases page](https://github.com/nishdel/OmniBrille/releases) will be the download source. The prepared installer is self-contained, installs for the current user, and does not require a separate .NET installation or administrator access. It can be removed from Windows Installed apps.
+> **Signing notice:** the v1.0.0 installer is unsigned. Windows may show **Unknown Publisher** or a SmartScreen reputation warning. Download only from the official GitHub Release, compare its SHA-256 with the attached checksum, and follow your organization’s security policy. A checksum detects corruption; it does not authenticate an unsigned publisher.
 
-> **Signing notice:** the authorized v1.0.0 installer will be unsigned. Windows may show **Unknown Publisher** or a SmartScreen reputation warning. Download only from the official GitHub Release after publication, compare its SHA-256 with the attached checksum, and follow your organization’s security policy. A checksum detects corruption; it does not authenticate an unsigned publisher.
-
-Windows x64 is the only v1.0 download target. Interactive preflight qualification was performed on Windows 10 22H2 x64; other Windows client versions were not separately validated. Ubuntu is covered by source build/tests only; Linux desktop packaging and interactive use are not validated. macOS is not validated.
+Windows x64 is the only v1.0 download target. Interactive release qualification was performed on Windows 10 22H2 x64; other Windows client versions were not separately validated. Ubuntu is covered by source build/tests only; Linux desktop packaging and interactive use are not validated. macOS is not validated.
 
 ## See it in action
 
@@ -68,7 +66,7 @@ The GitHub Release includes the release manifest, dependency graph, exact instal
 - Voice is optional, Windows-only in implementation, and lacks real-microphone validation.
 - There is no auto-update mechanism. The stable installer identity is designed for future in-place releases, but v1.0 does not claim a manually validated upgrade path.
 
-After publication, the official GitHub Release will contain the exact artifact notes. See [compatibility](COMPATIBILITY.md) for the prepared release contract.
+The official v1.0.0 GitHub Release contains the exact artifact notes and checksum. See [compatibility](COMPATIBILITY.md) for the released support contract.
 
 ## Keyboard essentials
 

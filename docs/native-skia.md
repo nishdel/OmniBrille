@@ -66,6 +66,22 @@ The script fails unless all of these are true:
 
 These are native-code provenance gates, not renderer qualification. Before adopting an output, OmniBrille must still run the High-risk renderer, visual, performance, build/test, packaging, exact-installer, install/relaunch/uninstall, and adversarial validation routed by [`engineering/risk-and-validation.md`](engineering/risk-and-validation.md).
 
+## v1.0 qualification evidence
+
+Release candidate `e7dc5981c10ae2f9a48f3b98f4d67073566aa1f2` exercised package 3.119.4.2 on Windows 10 build 19045 at 125% display scaling. The exact locally installed candidate completed Dark and Light graph rendering, text/icons/lines, structural Search, the synchronized accessible list, folder drill-down and Back, normal close/relaunch, and uninstall cleanup. The reviewed captures and their exact installer/native hashes are retained beside the [public screenshots](assets/screenshots/README.md). This was a visual/interaction review, not a pixel-equivalence test or manual screen-reader certification.
+
+The existing headless renderer-pressure test was run twice per binary on the same host and current managed application, with each value already the median of five warmed frames. Milliseconds are ranges across the two invocations:
+
+| Scene | DNG-free Full / Reduced / Search | Official DNG-bearing Full / Reduced / Search |
+|---|---|---|
+| 8-node Hybrid | 2.735–3.020 / 2.627–2.996 / 3.782–3.866 | 3.191–3.245 / 2.786–3.001 / 4.148–4.495 |
+| 24-node Hybrid | 3.889–3.980 / 3.760–3.770 / 6.678–6.710 | 3.877–4.013 / 3.784–3.847 / 6.748–6.829 |
+| 48-node Hybrid | 5.638–6.172 / 6.216–6.326 / 8.383–8.513 | 5.676–5.918 / 6.468–8.000 / 10.523–13.671 |
+
+All sampled DNG-free paths remained below the repository's 16.7 ms local engineering target, and no meaningful regression was observed. These same-host headless samples are proportionate regression evidence, not a guarantee for every GPU, filesystem, or machine.
+
+Hosted run [32428287100](https://github.com/nishdel/OmniBrille/actions/runs/32428287100) then rebuilt the accepted DLL hash, passed the complete release gate, produced an unsigned 1.0.0 candidate, and passed independent artifact integrity plus fresh-runner install, launch, normal close/relaunch, registration, uninstall, and cleanup. A final release commit must repeat the exact-artifact gate; an earlier candidate is never substituted for the published bytes.
+
 ## Upgrade procedure
 
 Do not reuse this binary with another managed SkiaSharp version.

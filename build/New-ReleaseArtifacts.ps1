@@ -177,6 +177,17 @@ $dependencies = [ordered]@{
     projectLicenseExpression = 'MIT'
     scope = 'desktop project resolved dependency graph; may include runtime-identifier alternatives not present in the win-x64 publish output'
     format = 'OmniBrille dependency graph; not an exact packaged-file inventory, SPDX document, or CycloneDX SBOM'
+    assetOverrides = @(
+        [ordered]@{
+            packageId = 'SkiaSharp.NativeAssets.Win32'
+            version = '3.119.4'
+            excludedAssets = 'all'
+            contributesPackagedFiles = $false
+            replacementPackageId = 'OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng'
+            replacementPackageVersion = '3.119.4.2'
+            reason = 'Suppress the transitive official DNG-bearing native runtime; the manifest binds the sole shipped win-x64 replacement DLL.'
+        }
+    )
     projects = @($projects)
 }
 $dependencies | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $dependencyPath -Encoding UTF8
