@@ -29,6 +29,7 @@ $expectedReplacementSha256 = 'AB054D5A4A8E82FACF9925BA106FDBE8BB83918F9AAABDB20B
 $variant = 'omnibrille-no-dng'
 $architecture = 'x64'
 $configuration = 'Release'
+$gnArguments = 'skia_use_dng_sdk=false extra_cflags += [ "/Brepro" ] extra_ldflags += [ "/Brepro" ]'
 
 if ([System.Environment]::OSVersion.Platform -ne [System.PlatformID]::Win32NT) {
     throw 'The pinned SkiaSharp Windows native build must run on Windows.'
@@ -317,7 +318,7 @@ Invoke-Logged -FilePath $dotnetCommand -ArgumentList @(
     "--configuration=$configuration",
     "--arch=$architecture",
     "--variant=$variant",
-    '--gnArgs=skia_use_dng_sdk=false',
+    "--gnArgs=$gnArguments",
     "--vsinstall=$VisualStudioInstall",
     "--llvm=$LlvmHome",
     "--python=$pythonCommand"
@@ -338,6 +339,14 @@ if (-not (Test-Path -LiteralPath $gnCommand -PathType Leaf) -or -not (Test-Path 
 $dngArgument = @(Invoke-Captured $gnCommand @('args', $gnOutput, '--list=skia_use_dng_sdk', '--short') $skiaRoot)
 if (($dngArgument -join "`n") -notmatch '(?m)^skia_use_dng_sdk\s*=\s*false\s*$') {
     throw "GN did not evaluate skia_use_dng_sdk=false:`n$($dngArgument -join [Environment]::NewLine)"
+}
+$compileFlags = @(Invoke-Captured $gnCommand @('args', $gnOutput, '--list=extra_cflags', '--short') $skiaRoot)
+if (($compileFlags -join "`n") -notmatch '(?i)/Brepro') {
+    throw "GN did not append /Brepro to extra_cflags:`n$($compileFlags -join [Environment]::NewLine)"
+}
+$linkFlags = @(Invoke-Captured $gnCommand @('args', $gnOutput, '--list=extra_ldflags', '--short') $skiaRoot)
+if (($linkFlags -join "`n") -notmatch '(?i)/Brepro') {
+    throw "GN did not append /Brepro to extra_ldflags:`n$($linkFlags -join [Environment]::NewLine)"
 }
 $evaluatedArguments = @(Invoke-Captured $gnCommand @('args', $gnOutput, '--list', '--short') $skiaRoot)
 $evaluatedArguments | Set-Content -LiteralPath (Join-Path $outputRoot 'evaluated-gn-args.txt') -Encoding utf8
@@ -412,6 +421,7 @@ $fileVersion = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($destination
 @(
     'PASS',
     'Evaluated GN argument: skia_use_dng_sdk=false',
+    'Deterministic compile and link flag: /Brepro',
     'DNG dependency source: not fetched',
     'GN closure: no dng_sdk, SkRawCodec, or PIEX dependency',
     "Binary markers absent: $($strongDngMarkers -join ', ')",
@@ -449,7 +459,7 @@ $provenance = [ordered]@{
     build = [ordered]@{
         upstreamTarget = 'externals-windows'
         variant = $variant
-        gnArgs = 'skia_use_dng_sdk=false'
+        gnArgs = $gnArguments
         evaluatedArgs = 'evaluated-gn-args.txt'
         dependencyClosure = 'gn-dependencies.txt'
         log = 'build.log'

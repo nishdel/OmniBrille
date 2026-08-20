@@ -82,7 +82,9 @@ public sealed class ReleaseHardeningTests
         Assert.Contains("64F27E6A38F1E9C222B6B40D103C60597EF112D08F1F5E6E1A535DA845EF53DD", buildScript, StringComparison.Ordinal);
         Assert.Contains("rollForward = 'disable'", buildScript, StringComparison.Ordinal);
         Assert.Contains("Get-NormalizedTextSha256 $globalJsonPath", buildScript, StringComparison.Ordinal);
-        Assert.Contains("--gnArgs=skia_use_dng_sdk=false", buildScript, StringComparison.Ordinal);
+        Assert.Contains("skia_use_dng_sdk=false extra_cflags += [ \"/Brepro\" ] extra_ldflags += [ \"/Brepro\" ]", buildScript, StringComparison.Ordinal);
+        Assert.Contains("GN did not append /Brepro to extra_cflags", buildScript, StringComparison.Ordinal);
+        Assert.Contains("GN did not append /Brepro to extra_ldflags", buildScript, StringComparison.Ordinal);
         Assert.Contains("Invoke-CapturedLine", buildScript, StringComparison.Ordinal);
         Assert.DoesNotContain(")[0].Trim()", buildScript, StringComparison.Ordinal);
         Assert.Contains("DNG or its RAW-only PIEX dependency was fetched", buildScript, StringComparison.Ordinal);
