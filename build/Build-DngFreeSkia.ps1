@@ -107,6 +107,24 @@ function Get-Sha256 {
     return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToUpperInvariant()
 }
 
+function Invoke-CapturedLine {
+    param(
+        [Parameter(Mandatory)]
+        [string] $FilePath,
+
+        [Parameter(Mandatory)]
+        [string[]] $ArgumentList,
+
+        [string] $WorkingDirectory = $checkoutRoot
+    )
+
+    $lines = @(Invoke-Captured -FilePath $FilePath -ArgumentList $ArgumentList -WorkingDirectory $WorkingDirectory)
+    if ($lines.Count -eq 0) {
+        throw "Command '$FilePath' produced no output."
+    }
+    return ([string] $lines[0]).Trim()
+}
+
 function Get-NormalizedExports {
     param(
         [Parameter(Mandatory)][string] $Dumpbin,
@@ -202,11 +220,11 @@ Invoke-Logged -FilePath $gitCommand -ArgumentList @(
     '-C', $checkoutRoot, 'submodule', 'update', '--init', 'externals/skia', 'externals/depot_tools'
 ) -WorkingDirectory $workRoot
 
-$actualSkiaSharpCommit = (Invoke-Captured $gitCommand @('rev-parse', 'HEAD'))[0].Trim()
+$actualSkiaSharpCommit = Invoke-CapturedLine $gitCommand @('rev-parse', 'HEAD')
 $skiaRoot = Join-Path $checkoutRoot 'externals\skia'
 $depotToolsRoot = Join-Path $checkoutRoot 'externals\depot_tools'
-$actualSkiaCommit = (Invoke-Captured $gitCommand @('-C', $skiaRoot, 'rev-parse', 'HEAD'))[0].Trim()
-$actualDepotToolsCommit = (Invoke-Captured $gitCommand @('-C', $depotToolsRoot, 'rev-parse', 'HEAD'))[0].Trim()
+$actualSkiaCommit = Invoke-CapturedLine $gitCommand @('-C', $skiaRoot, 'rev-parse', 'HEAD')
+$actualDepotToolsCommit = Invoke-CapturedLine $gitCommand @('-C', $depotToolsRoot, 'rev-parse', 'HEAD')
 if ($actualSkiaSharpCommit -ne $skiaSharpCommit -or
     $actualSkiaCommit -ne $skiaCommit -or
     $actualDepotToolsCommit -ne $depotToolsCommit) {
@@ -217,7 +235,7 @@ if ($initialStatus.Count -ne 0) {
     throw "Fresh SkiaSharp checkout was unexpectedly dirty:`n$($initialStatus -join [Environment]::NewLine)"
 }
 
-$dotnetVersion = (Invoke-Captured $dotnetCommand @('--version'))[0].Trim()
+$dotnetVersion = Invoke-CapturedLine $dotnetCommand @('--version')
 if ($dotnetVersion -ne $expectedDotnetSdk) {
     throw "SkiaSharp native build requires the pinned .NET SDK '$expectedDotnetSdk'; found '$dotnetVersion'."
 }

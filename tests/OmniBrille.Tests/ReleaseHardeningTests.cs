@@ -79,6 +79,8 @@ public sealed class ReleaseHardeningTests
         Assert.Contains("7dbfc07dd33181f84e0958afb7ee805c6c769f0b", buildScript, StringComparison.Ordinal);
         Assert.Contains("8fecc592a290769242d5098666cee8d29b7f0523", buildScript, StringComparison.Ordinal);
         Assert.Contains("--gnArgs=skia_use_dng_sdk=false", buildScript, StringComparison.Ordinal);
+        Assert.Contains("Invoke-CapturedLine", buildScript, StringComparison.Ordinal);
+        Assert.DoesNotContain(")[0].Trim()", buildScript, StringComparison.Ordinal);
         Assert.Contains("DNG or its RAW-only PIEX dependency was fetched", buildScript, StringComparison.Ordinal);
         Assert.Contains("native C export set differs", buildScript, StringComparison.Ordinal);
         Assert.Contains("Expected the project-built native DLL to be NotSigned", buildScript, StringComparison.Ordinal);
