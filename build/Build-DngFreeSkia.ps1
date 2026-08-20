@@ -25,6 +25,7 @@ $expectedGlobalJsonSha256 = '64F27E6A38F1E9C222B6B40D103C60597EF112D08F1F5E6E1A5
 $expectedLlvmVersion = '19.1.1'
 $expectedCakeVersion = '4.0.0'
 $expectedOfficialSha256 = '7DEC3BA900AB353491E6446F0083739924C6F8DD668832E2F09D38EBFFDBBE1C'
+$expectedReplacementSha256 = 'AB054D5A4A8E82FACF9925BA106FDBE8BB83918F9AAABDB20B6DA2FF75A80268'
 $variant = 'omnibrille-no-dng'
 $architecture = 'x64'
 $configuration = 'Release'
@@ -363,9 +364,11 @@ if (-not (Test-Path -LiteralPath $builtDll -PathType Leaf)) {
 $strongDngMarkers = @(
     'dng_pixel_buffer',
     'dng_negative',
+    'dng_priority_manager',
     'dng_sdk',
     'DNG SDK',
     'SkRawCodec',
+    'SkDngHost',
     'SkDngImage',
     '.?AVdng_'
 )
@@ -401,6 +404,9 @@ if ($signature.Status -ne [System.Management.Automation.SignatureStatus]::NotSig
 $destinationDll = Join-Path $outputRoot 'libSkiaSharp.dll'
 Copy-Item -LiteralPath $builtDll -Destination $destinationDll
 $replacementHash = Get-Sha256 $destinationDll
+if ($replacementHash -ne $expectedReplacementSha256) {
+    throw "Pinned DNG-free native hash changed from '$expectedReplacementSha256' to '$replacementHash'. Review the full proof bundle before updating the accepted asset."
+}
 $fileVersion = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($destinationDll)
 
 @(

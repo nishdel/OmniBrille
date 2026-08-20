@@ -5,6 +5,18 @@ namespace OmniBrille.Tests;
 public sealed class PackagingMetadataTests
 {
     [Fact]
+    public void WindowsNativeSkia_HasExpectedManagedAbiVersion()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        Assert.Equal(new Version(119, 0), SkiaSharp.SkiaSharpVersion.Native);
+        Assert.True(SkiaSharp.SkiaSharpVersion.CheckNativeLibraryCompatible(false));
+    }
+
+    [Fact]
     public void CentralVersion_IsStableAndConsistentWithFirstPublicRelease()
     {
         var root = FindRepositoryRoot();
@@ -90,12 +102,14 @@ public sealed class PackagingMetadataTests
         Assert.Contains("THIRD-PARTY-NOTICES.txt", desktop, StringComparison.Ordinal);
         Assert.Contains("LICENSE", desktop, StringComparison.Ordinal);
         Assert.Contains("THIRD-PARTY-LICENSES", desktop, StringComparison.Ordinal);
+        Assert.Contains("SkiaSharp.NativeAssets.Win32\" Version=\"3.119.4\" ExcludeAssets=\"all", desktop, StringComparison.Ordinal);
+        Assert.Contains("OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng\" Version=\"3.119.4.1", desktop, StringComparison.Ordinal);
         Assert.Contains("Copyright 2020 Mark Heath", notice, StringComparison.Ordinal);
         Assert.Contains("Avalonia 12.1.1", notice, StringComparison.Ordinal);
         Assert.Contains("Inter-OFL-1.1.txt", notice, StringComparison.Ordinal);
         Assert.Contains("SkiaSharp-HarfBuzz-THIRD-PARTY-NOTICES.txt", notice, StringComparison.Ordinal);
-        Assert.Contains("native asset contains Adobe", notice, StringComparison.Ordinal);
-        Assert.Contains("DNG SDK License Agreement", notice, StringComparison.Ordinal);
+        Assert.Contains("unused DNG/RAW codec excluded", notice, StringComparison.Ordinal);
+        Assert.DoesNotContain("DNG SDK License Agreement", notice, StringComparison.Ordinal);
         Assert.Contains("DotNet-Runtime-THIRD-PARTY-NOTICES.txt", notice, StringComparison.Ordinal);
         Assert.Contains("Tmds.DBus.Protocol 0.94.1", notice, StringComparison.Ordinal);
         Assert.Contains("licensed under the MIT License", notice, StringComparison.Ordinal);
@@ -103,9 +117,18 @@ public sealed class PackagingMetadataTests
             root,
             "THIRD-PARTY-LICENSES",
             "SkiaSharp-HarfBuzz-THIRD-PARTY-NOTICES.txt"));
-        Assert.Contains("DNG SDK License Agreement", skiaNotices, StringComparison.Ordinal);
-        Assert.Contains("include such notices in any copies of the Software", skiaNotices, StringComparison.Ordinal);
-        Assert.Contains("If you choose to distribute the Software in a commercial product", skiaNotices, StringComparison.Ordinal);
+        Assert.Contains("OMNIBRILLE DNG-FREE SKIASHARP 3.119.4 NOTICE", skiaNotices, StringComparison.Ordinal);
+        Assert.Contains("All other upstream notice sections are retained conservatively", skiaNotices, StringComparison.Ordinal);
+        Assert.DoesNotContain("DNG SDK License Agreement", skiaNotices, StringComparison.Ordinal);
+        Assert.DoesNotContain("# piex", skiaNotices, StringComparison.OrdinalIgnoreCase);
+        var nativePackage = Path.Combine(
+            root,
+            "packages",
+            "OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng.3.119.4.1.nupkg");
+        Assert.True(File.Exists(nativePackage));
+        Assert.Equal(
+            "D888FACDAFF8E704EB48FA1D812152E42747D91A6AF0C20EDCC6432929538A2B",
+            Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(nativePackage))));
         Assert.True(File.Exists(Path.Combine(root, "THIRD-PARTY-LICENSES", "ANGLE-LICENSE.txt")));
         Assert.True(File.Exists(Path.Combine(root, "THIRD-PARTY-LICENSES", "Inter-OFL-1.1.txt")));
         Assert.True(File.Exists(Path.Combine(root, "THIRD-PARTY-LICENSES", "Tmds.DBus-LICENSE.txt")));

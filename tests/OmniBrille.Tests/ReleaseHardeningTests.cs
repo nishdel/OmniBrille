@@ -63,8 +63,9 @@ public sealed class ReleaseHardeningTests
         Assert.DoesNotContain("action-gh-release", workflow, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("create tag", workflow, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Packaged distribution notice", releaseScript, StringComparison.Ordinal);
-        Assert.Contains("required Adobe DNG redistribution text", releaseScript, StringComparison.Ordinal);
-        Assert.Contains("owner explicitly accepts the separately applicable Adobe DNG SDK agreement", releaseScript, StringComparison.Ordinal);
+        Assert.Contains("tracked DNG-free SkiaSharp package", releaseScript, StringComparison.Ordinal);
+        Assert.Contains("Published libSkiaSharp.dll is not the reviewed project-built DNG-free unsigned binary", releaseScript, StringComparison.Ordinal);
+        Assert.DoesNotContain("owner explicitly accepts the separately applicable Adobe DNG SDK agreement", releaseScript, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -87,7 +88,11 @@ public sealed class ReleaseHardeningTests
         Assert.Contains("DNG or its RAW-only PIEX dependency was fetched", buildScript, StringComparison.Ordinal);
         Assert.Contains("native C export set differs", buildScript, StringComparison.Ordinal);
         Assert.Contains("Expected the project-built native DLL to be NotSigned", buildScript, StringComparison.Ordinal);
+        Assert.Contains("AB054D5A4A8E82FACF9925BA106FDBE8BB83918F9AAABDB20B6DA2FF75A80268", buildScript, StringComparison.Ordinal);
         Assert.Contains("Build-DngFreeSkia.ps1", workflow, StringComparison.Ordinal);
+        Assert.Contains("needs: build-dng-free-skia", workflow, StringComparison.Ordinal);
+        Assert.Contains("Installed Skia native binary does not match", workflow, StringComparison.Ordinal);
+        Assert.Contains("$manifest.schemaVersion -ne 4", workflow, StringComparison.Ordinal);
         Assert.Contains("OmniBrille-dng-free-skia-3.119.4", workflow, StringComparison.Ordinal);
         Assert.Contains("no upstream source branch or permanent fork", provenanceGuide, StringComparison.Ordinal);
         Assert.Contains("proof-bundle.sha256", provenanceGuide, StringComparison.Ordinal);
@@ -104,10 +109,12 @@ public sealed class ReleaseHardeningTests
         Assert.Contains("Get-FileHash", metadataScript, StringComparison.Ordinal);
         Assert.Contains("safe.directory", metadataScript, StringComparison.Ordinal);
         Assert.Contains("explorerProtocol", metadataScript, StringComparison.Ordinal);
-        Assert.Contains("schemaVersion = 3", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("schemaVersion = 4", metadataScript, StringComparison.Ordinal);
         Assert.Contains("projectLicenseExpression = 'MIT'", metadataScript, StringComparison.Ordinal);
         Assert.Contains("distributionNotices", metadataScript, StringComparison.Ordinal);
-        Assert.Contains("skiaDngNotice", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("skiaSharpNotice", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("nativeComponents", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("dngSdkIncluded = $false", metadataScript, StringComparison.Ordinal);
         Assert.Contains("sourceUrl", metadataScript, StringComparison.Ordinal);
         Assert.Contains("commitSha", metadataScript, StringComparison.Ordinal);
         Assert.Contains("release-notes.md", metadataScript, StringComparison.Ordinal);

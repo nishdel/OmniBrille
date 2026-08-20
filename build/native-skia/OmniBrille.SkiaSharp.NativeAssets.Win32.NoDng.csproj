@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <PackageId>OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng</PackageId>
+    <Version>3.119.4.1</Version>
+    <Authors>OmniBrille Contributors</Authors>
+    <Description>Project-built SkiaSharp 3.119.4 Windows x64 native asset with Adobe DNG/RAW support excluded.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>SkiaSharp;native;win-x64;DNG-free</PackageTags>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/nishdel/OmniBrille</RepositoryUrl>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <IsPackable>true</IsPackable>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+  </PropertyGroup>
+
+  <Target Name="ValidateNativeProofDirectory" BeforeTargets="Pack">
+    <Error Condition="'$(NativeProofDirectory)' == ''" Text="NativeProofDirectory is required." />
+    <Error Condition="!Exists('$(NativeProofDirectory)\libSkiaSharp.dll')" Text="The proven libSkiaSharp.dll was not found." />
+    <Error Condition="!Exists('$(NativeProofDirectory)\provenance.json')" Text="The native provenance manifest was not found." />
+    <Error Condition="!Exists('$(NativeProofDirectory)\proof-bundle.sha256')" Text="The native proof checksums were not found." />
+  </Target>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="" />
+    <None Include="..\..\THIRD-PARTY-LICENSES\SkiaSharp-HarfBuzz-LICENSE.txt" Pack="true" PackagePath="LICENSE.txt" />
+    <None Include="..\..\THIRD-PARTY-LICENSES\SkiaSharp-HarfBuzz-THIRD-PARTY-NOTICES.txt" Pack="true" PackagePath="THIRD-PARTY-NOTICES.txt" />
+    <None Include="$(NativeProofDirectory)\libSkiaSharp.dll" Pack="true" PackagePath="runtimes\win-x64\native\libSkiaSharp.dll" />
+    <None Include="$(NativeProofDirectory)\provenance.json" Pack="true" PackagePath="provenance\provenance.json" />
+    <None Include="$(NativeProofDirectory)\verification.txt" Pack="true" PackagePath="provenance\verification.txt" />
+    <None Include="$(NativeProofDirectory)\proof-bundle.sha256" Pack="true" PackagePath="provenance\proof-bundle.sha256" />
+    <None Include="$(NativeProofDirectory)\build.log" Pack="true" PackagePath="provenance\build.log" />
+    <None Include="$(NativeProofDirectory)\clang-version.txt" Pack="true" PackagePath="provenance\clang-version.txt" />
+    <None Include="$(NativeProofDirectory)\dotnet-info.txt" Pack="true" PackagePath="provenance\dotnet-info.txt" />
+    <None Include="$(NativeProofDirectory)\evaluated-gn-args.txt" Pack="true" PackagePath="provenance\evaluated-gn-args.txt" />
+    <None Include="$(NativeProofDirectory)\exports.txt" Pack="true" PackagePath="provenance\exports.txt" />
+    <None Include="$(NativeProofDirectory)\gn-dependencies.txt" Pack="true" PackagePath="provenance\gn-dependencies.txt" />
+    <None Include="$(NativeProofDirectory)\native-dependencies.txt" Pack="true" PackagePath="provenance\native-dependencies.txt" />
+    <None Include="$(NativeProofDirectory)\sdk-selection.patch" Pack="true" PackagePath="provenance\sdk-selection.patch" />
+    <None Include="$(NativeProofDirectory)\skia-deps-dng-removal.patch" Pack="true" PackagePath="provenance\skia-deps-dng-removal.patch" />
+  </ItemGroup>
+</Project>

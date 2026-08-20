@@ -10,7 +10,7 @@ OmniBrille is a Windows desktop file explorer that keeps the folder you are expl
 
 ## Download
 
-> **Release status:** v1.0.0 is not published yet. The MIT transition is complete, but publication is waiting for an explicit owner decision on the separately licensed Adobe DNG SDK terms bundled through SkiaSharp. Do not use or redistribute an older local preflight installer as the v1 release.
+> **Release status:** v1.0.0 is not published yet. The DNG-free native renderer dependency has been produced and integrated, but the exact installer, visual, hosted lifecycle, and publication gates still must pass. Do not use or redistribute an older local preflight installer as the v1 release.
 
 After qualification, the official [GitHub Releases page](https://github.com/nishdel/OmniBrille/releases) will be the download source. The prepared installer is self-contained, installs for the current user, and does not require a separate .NET installation or administrator access. It can be removed from Windows Installed apps.
 
@@ -103,7 +103,7 @@ Build the Windows installer with:
 
 ## License
 
-OmniBrille project code is licensed under the **MIT License**. See [`LICENSE`](LICENSE). Bundled third-party components remain under their own terms—including the Adobe DNG SDK terms carried by SkiaSharp—and their complete notices are preserved in [`THIRD-PARTY-NOTICES.txt`](THIRD-PARTY-NOTICES.txt) and [`THIRD-PARTY-LICENSES`](THIRD-PARTY-LICENSES).
+OmniBrille project code is licensed under the **MIT License**. See [`LICENSE`](LICENSE). Bundled third-party components remain under their own terms, preserved in [`THIRD-PARTY-NOTICES.txt`](THIRD-PARTY-NOTICES.txt) and [`THIRD-PARTY-LICENSES`](THIRD-PARTY-LICENSES). The Windows renderer uses a project-built SkiaSharp 3.119.4 native asset with Adobe DNG/RAW support excluded; its [source pins, build procedure, and verification](docs/native-skia.md) are maintained in the repository.
 
 ## Engineering documentation
 

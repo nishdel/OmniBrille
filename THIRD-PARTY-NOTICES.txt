@@ -15,11 +15,12 @@ texts and notices are installed in THIRD-PARTY-LICENSES beside OmniBrille.exe.
 - Avalonia ANGLE Windows native components 2.1.27548.20260419
   Project: https://github.com/AvaloniaUI/angle
   License and required notices: see ANGLE-LICENSE.txt
-- SkiaSharp 3.119.4 and HarfBuzzSharp 8.3.1.3, including Windows native assets
+- SkiaSharp 3.119.4 and HarfBuzzSharp 8.3.1.3, including a project-built
+  Windows x64 SkiaSharp native asset with the unused DNG/RAW codec excluded
   Project: https://github.com/mono/SkiaSharp
   License and required notices: see SkiaSharp-HarfBuzz-LICENSE.txt and
-  SkiaSharp-HarfBuzz-THIRD-PARTY-NOTICES.txt. The native asset contains Adobe
-  DNG SDK code governed by the complete DNG SDK License Agreement in that notice.
+  SkiaSharp-HarfBuzz-THIRD-PARTY-NOTICES.txt. Build provenance, upstream pins,
+  and exclusion verification are recorded in docs/native-skia.md in source.
 - MicroCom.Runtime 0.11.6
   Project: https://github.com/kekekeks/MicroCom
   License: MIT; see MicroCom-LICENSE.txt

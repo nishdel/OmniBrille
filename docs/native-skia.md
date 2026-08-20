@@ -4,7 +4,7 @@ OmniBrille's Windows renderer uses the managed SkiaSharp API selected by Avaloni
 
 This is authoritative provenance and upgrade guidance for the replacement native asset. It is not a fork of SkiaSharp and does not change OmniBrille's renderer design.
 
-Until the proof bundle has passed review and the separately named replacement package is selected by restore, this recipe is a candidate-build procedure rather than evidence that a packaged OmniBrille binary is DNG-free. The release gates must bind the reviewed native hash through restore, publish, installation, and the final installer.
+The accepted Windows x64 DLL has SHA-256 `AB054D5A4A8E82FACF9925BA106FDBE8BB83918F9AAABDB20B6DA2FF75A80268` and is stored in the distinctly named local package `OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng` 3.119.4.1 (package SHA-256 `D888FACDAFF8E704EB48FA1D812152E42747D91A6AF0C20EDCC6432929538A2B`). `NuGet.Config` maps that exact ID to the repository package source; Desktop explicitly excludes every asset from the transitive official Win32 native package. Release gates bind the reviewed hash through restore, publish, manifest, installation, and final-installer qualification.
 
 ## Pinned upstream source
 
@@ -42,9 +42,17 @@ The output directory contains at least:
 - `build.log` — checkout, tool restore, and upstream build log;
 - `skia-deps-dng-removal.patch`, `sdk-selection.patch`, `verification.txt`, supporting tool/dependency output, and `proof-bundle.sha256`.
 
+Create the repository package only from a reviewed proof directory:
+
+```powershell
+./build/New-DngFreeSkiaPackage.ps1 -ProofDirectory <proof-directory>
+```
+
+The package builder verifies every proof checksum, accepted native and notice hashes, DNG/RAW marker absence, ABI-comparison result, source-acquisition result, and `NotSigned` state before packing. It embeds the complete checksum-bound proof bundle rather than depending on the hosted workflow artifact's retention period. The target-aware notice is derived by `New-DngFreeSkiaNotice.ps1` from the exact official 3.119.4 notice; only the unfetched/unlinked DNG SDK and RAW-only PIEX sections are removed, and all other upstream sections remain conservatively.
+
 The script fails unless all of these are true:
 
-1. both upstream commits match the pins;
+1. all three upstream commits match the pins;
 2. exactly the reviewed DNG `DEPS` entry is removed before dependency sync;
 3. DNG source is not fetched;
 4. GN evaluates `skia_use_dng_sdk=false`;
@@ -52,6 +60,7 @@ The script fails unless all of these are true:
 6. strong DNG/RAW markers are absent from the resulting DLL;
 7. its normalized C export set equals the official 3.119.4 DLL;
 8. the project-built native DLL is `NotSigned`.
+9. the accepted output hash is exactly the reviewed value above.
 
 These are native-code provenance gates, not renderer qualification. Before adopting an output, OmniBrille must still run the High-risk renderer, visual, performance, build/test, packaging, exact-installer, install/relaunch/uninstall, and adversarial validation routed by [`engineering/risk-and-validation.md`](engineering/risk-and-validation.md).
 

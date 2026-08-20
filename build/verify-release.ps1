@@ -75,19 +75,23 @@ function Assert-DistributionLicense {
 
     $skiaNoticesPath = Join-Path $repositoryRoot 'THIRD-PARTY-LICENSES\SkiaSharp-HarfBuzz-THIRD-PARTY-NOTICES.txt'
     $skiaNotices = Get-Content -Raw -LiteralPath $skiaNoticesPath
-    foreach ($requiredDngNotice in @(
-        'This product includes DNG technology under license by Adobe Systems',
-        'DNG SDK License Agreement',
-        'include such notices in any copies of the Software',
-        'If you choose to distribute the Software in a commercial product'
-    )) {
-        if ($skiaNotices.IndexOf($requiredDngNotice, [StringComparison]::Ordinal) -lt 0) {
-            throw "The packaged SkiaSharp notice set is missing required Adobe DNG redistribution text: '$requiredDngNotice'."
+    $expectedSkiaNoticeHash = 'D865C31394CD46C76DDBA4405E96650D3EFA6066C553BD9BCF60D48B4DD6880B'
+    if ((Get-FileHash -LiteralPath $skiaNoticesPath -Algorithm SHA256).Hash -ne $expectedSkiaNoticeHash -or
+        $skiaNotices.IndexOf('OMNIBRILLE DNG-FREE SKIASHARP 3.119.4 NOTICE', [StringComparison]::Ordinal) -lt 0) {
+        throw 'The derived DNG-free SkiaSharp notice does not match the reviewed bytes and provenance header.'
+    }
+    foreach ($forbiddenDngNotice in @('DNG SDK License Agreement', '# DNG SDK', '# piex', 'external/dng_sdk', 'external/piex')) {
+        if ($skiaNotices.IndexOf($forbiddenDngNotice, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
+            throw "The DNG-free SkiaSharp notice still claims excluded component '$forbiddenDngNotice'."
         }
     }
-    throw @'
-Public MIT release is blocked until the owner explicitly accepts the separately applicable Adobe DNG SDK agreement and its conditional commercial-product indemnity, qualified review clears the intended distribution, or a DNG-free native asset is used. Notice preservation alone does not resolve this owner/legal gate.
-'@
+
+    $nativePackagePath = Join-Path $repositoryRoot 'packages\OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng.3.119.4.1.nupkg'
+    $expectedNativePackageHash = 'D888FACDAFF8E704EB48FA1D812152E42747D91A6AF0C20EDCC6432929538A2B'
+    if (-not (Test-Path -LiteralPath $nativePackagePath -PathType Leaf) -or
+        (Get-FileHash -LiteralPath $nativePackagePath -Algorithm SHA256).Hash -ne $expectedNativePackageHash) {
+        throw 'The tracked DNG-free SkiaSharp package is missing or differs from the reviewed package bytes.'
+    }
 }
 
 function Assert-VersionConsistency {
@@ -163,6 +167,23 @@ function Assert-PackagedContents {
         throw "Unexpected OmniSorSe binaries were packaged: $($unexpectedCompanionBinaries.Name -join ', ')"
     }
 
+    $publishedSkiaBinaries = @(Get-ChildItem -LiteralPath $publishDirectory -Recurse -Filter 'libSkiaSharp.dll' -File)
+    if ($publishedSkiaBinaries.Count -ne 1) {
+        throw "Expected exactly one published libSkiaSharp.dll; found $($publishedSkiaBinaries.Count)."
+    }
+    $expectedNativeHash = 'AB054D5A4A8E82FACF9925BA106FDBE8BB83918F9AAABDB20B6DA2FF75A80268'
+    $publishedSkia = $publishedSkiaBinaries[0]
+    if ((Get-FileHash -LiteralPath $publishedSkia.FullName -Algorithm SHA256).Hash -ne $expectedNativeHash -or
+        (Get-AuthenticodeSignature -LiteralPath $publishedSkia.FullName).Status -ne [System.Management.Automation.SignatureStatus]::NotSigned) {
+        throw 'Published libSkiaSharp.dll is not the reviewed project-built DNG-free unsigned binary.'
+    }
+    $publishedSkiaText = [System.Text.Encoding]::Latin1.GetString([System.IO.File]::ReadAllBytes($publishedSkia.FullName))
+    foreach ($forbiddenNativeMarker in @('dng_pixel_buffer', 'dng_negative', 'dng_priority_manager', 'dng_sdk', 'DNG SDK', 'SkRawCodec', 'SkDngHost', 'SkDngImage', '.?AVdng_')) {
+        if ($publishedSkiaText.IndexOf($forbiddenNativeMarker, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
+            throw "Published libSkiaSharp.dll contains excluded DNG/raw marker '$forbiddenNativeMarker'."
+        }
+    }
+
     $profilePath = [Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile)
     $textFiles = Get-ChildItem -LiteralPath $publishDirectory -Recurse -File |
         Where-Object { $_.Extension -in '.json','.config','.xml','.txt' }
@@ -179,16 +200,25 @@ function Assert-PackagedContents {
     if ($manifest.product -ne 'OmniBrille' -or $manifest.version -ne $Version) {
         throw 'Release manifest identity/version is inconsistent.'
     }
-    if ($manifest.schemaVersion -ne 3 -or
+    if ($manifest.schemaVersion -ne 4 -or
         $manifest.projectLicenseExpression -ne 'MIT' -or
         $manifest.sourceUrl -ne "https://github.com/nishdel/OmniBrille/tree/$($manifest.commitSha)") {
         throw 'Release manifest schema, MIT project license, or source metadata is invalid.'
     }
     $expectedSkiaNoticePath = 'THIRD-PARTY-LICENSES/SkiaSharp-HarfBuzz-THIRD-PARTY-NOTICES.txt'
     $expectedSkiaNoticeHash = (Get-FileHash -LiteralPath (Join-Path $repositoryRoot ($expectedSkiaNoticePath.Replace('/', '\'))) -Algorithm SHA256).Hash
-    if ($manifest.distributionNotices.skiaDngNotice.path -ne $expectedSkiaNoticePath -or
-        $manifest.distributionNotices.skiaDngNotice.sha256 -ne $expectedSkiaNoticeHash) {
-        throw 'Release manifest does not bind the reviewed Skia/DNG notice path and bytes.'
+    if ($manifest.distributionNotices.skiaSharpNotice.path -ne $expectedSkiaNoticePath -or
+        $manifest.distributionNotices.skiaSharpNotice.sha256 -ne $expectedSkiaNoticeHash) {
+        throw 'Release manifest does not bind the reviewed DNG-free SkiaSharp notice path and bytes.'
+    }
+    $expectedNativePackageHash = (Get-FileHash -LiteralPath (Join-Path $repositoryRoot 'packages\OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng.3.119.4.1.nupkg') -Algorithm SHA256).Hash
+    if ($manifest.nativeComponents.skiaSharp.nativePackageId -ne 'OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng' -or
+        $manifest.nativeComponents.skiaSharp.nativePackageVersion -ne '3.119.4.1' -or
+        $manifest.nativeComponents.skiaSharp.nativePackageSha256 -ne $expectedNativePackageHash -or
+        $manifest.nativeComponents.skiaSharp.nativeDllSha256 -ne $expectedNativeHash -or
+        $manifest.nativeComponents.skiaSharp.authenticodeStatus -ne 'NotSigned' -or
+        $manifest.nativeComponents.skiaSharp.dngSdkIncluded) {
+        throw 'Release manifest does not bind the reviewed DNG-free SkiaSharp package, DLL, signature state, and exclusion result.'
     }
     if ($manifest.explorerProtocol.major -ne 1 -or $manifest.explorerProtocol.minor -ne 0) {
         throw 'Release manifest protocol compatibility is inconsistent.'
@@ -226,8 +256,8 @@ function Assert-PackagedContents {
         throw 'Unsigned release notes do not disclose the signing state.'
     }
     if ($releaseNotes.IndexOf('MIT License', [StringComparison]::Ordinal) -lt 0 -or
-        $releaseNotes.IndexOf('Adobe DNG SDK agreement', [StringComparison]::Ordinal) -lt 0) {
-        throw 'Release notes do not distinguish the MIT project license from the bundled Adobe DNG SDK terms.'
+        $releaseNotes.IndexOf('DNG/RAW codec excluded', [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+        throw 'Release notes do not describe the MIT project license and project-built DNG-free SkiaSharp native asset.'
     }
 }
 

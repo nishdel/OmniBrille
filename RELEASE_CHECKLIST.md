@@ -8,8 +8,8 @@ Checkboxes are maintainer gates. Automation does not mark manual checks complete
 - [ ] `Directory.Build.props`, installer fallback, executable metadata, changelog, compatibility matrix, README, release notes, and artifact names all say `1.0.0`.
 - [x] The project owner selected MIT and the authoritative root `LICENSE` plus package metadata record that exact expression.
 - [ ] The exact installed application contains the same MIT license text and its manifest records `MIT` plus the release-commit source URL.
-- [x] Redistributed runtime licenses/notices were reviewed. The full Adobe DNG SDK agreement remains required because DNG code is compiled into the SkiaSharp native asset.
-- [ ] The owner explicitly accepts the separately applicable Adobe DNG SDK agreement, including its conditional indemnity for distribution in a “commercial product,” or qualified review/DNG-free native assets remove that uncertainty. The repository does not infer whether this release is a commercial product.
+- [x] Redistributed runtime licenses/notices were reviewed. The project-built SkiaSharp native asset excludes DNG/RAW; its derived notice omits only the unfetched/unlinked DNG SDK and RAW-only PIEX sections while retaining all other upstream notices conservatively.
+- [ ] The exact tracked DNG-free package, native DLL hash, provenance, unsigned signature state, and exclusion checks remain bound through final restore, publish, manifest, install, launch, and uninstall qualification.
 - [ ] Exact v1.0 screenshots were captured from the installed release candidate using non-private demo data and independently reviewed.
 - [ ] Any release blocker found by the checklist is fixed and the exact artifact is rebuilt; the gate is never lowered to fit an artifact.
 

@@ -54,6 +54,22 @@ if (-not (Test-Path -LiteralPath $skiaNoticePath -PathType Leaf)) {
     throw "Reviewed SkiaSharp distribution notice was not found at '$skiaNoticePath'."
 }
 $skiaNoticeHash = (Get-FileHash -LiteralPath $skiaNoticePath -Algorithm SHA256).Hash.ToUpperInvariant()
+$nativePackageRelativePath = 'packages\OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng.3.119.4.1.nupkg'
+$nativePackagePath = Join-Path $repositoryRoot $nativePackageRelativePath
+$publishedNativePath = Join-Path $repositoryRoot "artifacts\publish\$RuntimeIdentifier\libSkiaSharp.dll"
+$expectedNativeHash = 'AB054D5A4A8E82FACF9925BA106FDBE8BB83918F9AAABDB20B6DA2FF75A80268'
+foreach ($requiredNativePath in @($nativePackagePath, $publishedNativePath)) {
+    if (-not (Test-Path -LiteralPath $requiredNativePath -PathType Leaf)) {
+        throw "Reviewed DNG-free SkiaSharp artifact was not found at '$requiredNativePath'."
+    }
+}
+$nativePackageHash = (Get-FileHash -LiteralPath $nativePackagePath -Algorithm SHA256).Hash.ToUpperInvariant()
+$publishedNativeHash = (Get-FileHash -LiteralPath $publishedNativePath -Algorithm SHA256).Hash.ToUpperInvariant()
+$publishedNativeSignature = Get-AuthenticodeSignature -LiteralPath $publishedNativePath
+if ($publishedNativeHash -ne $expectedNativeHash -or
+    $publishedNativeSignature.Status -ne [System.Management.Automation.SignatureStatus]::NotSigned) {
+    throw "Published DNG-free SkiaSharp native asset is not the reviewed unsigned binary: '$publishedNativeHash' / '$($publishedNativeSignature.Status)'."
+}
 
 $workflowRunId = if ($env:GITHUB_RUN_ID -match '^\d+$') { $env:GITHUB_RUN_ID } else { $null }
 $workflowRepository = if ($env:GITHUB_REPOSITORY -match '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$') {
@@ -73,7 +89,7 @@ $workflow = if ($null -ne $workflowRunId -and $null -ne $workflowRepository) {
 Set-Content -LiteralPath $checksumPath -Encoding Ascii -Value "$hash *$($package.Name)"
 
 $manifest = [ordered]@{
-    schemaVersion = 3
+    schemaVersion = 4
     product = 'OmniBrille'
     version = $Version
     fileVersion = $NumericVersion
@@ -97,9 +113,23 @@ $manifest = [ordered]@{
     distributionNotices = [ordered]@{
         indexPath = 'THIRD-PARTY-NOTICES.txt'
         directory = 'THIRD-PARTY-LICENSES'
-        skiaDngNotice = [ordered]@{
+        skiaSharpNotice = [ordered]@{
             path = $skiaNoticeRelativePath.Replace('\', '/')
             sha256 = $skiaNoticeHash
+        }
+    }
+    nativeComponents = [ordered]@{
+        skiaSharp = [ordered]@{
+            managedVersion = '3.119.4'
+            nativePackageId = 'OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng'
+            nativePackageVersion = '3.119.4.1'
+            nativePackagePath = $nativePackageRelativePath.Replace('\', '/')
+            nativePackageSha256 = $nativePackageHash
+            nativeDllSha256 = $publishedNativeHash
+            authenticodeStatus = [string] $publishedNativeSignature.Status
+            upstreamCommit = 'f568ac94dd768ef9a2f593537cfde2dd0d348ef5'
+            dngSdkIncluded = $false
+            provenance = 'docs/native-skia.md'
         }
     }
     publishedRuntimeBytes = $PublishedBytes

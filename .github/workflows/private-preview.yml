@@ -83,6 +83,7 @@ jobs:
 
   validate-and-package:
     name: Windows release candidate (${{ inputs.signing }})
+    needs: build-dng-free-skia
     runs-on: windows-latest
     timeout-minutes: 30
     env:
@@ -190,7 +191,7 @@ jobs:
           if ($manifest.product -ne 'OmniBrille' -or $manifest.runtimeIdentifier -ne 'win-x64') {
             throw 'Manifest product or runtime does not identify the expected Windows x64 release.'
           }
-          if ($manifest.schemaVersion -ne 3 -or
+          if ($manifest.schemaVersion -ne 4 -or
               $manifest.projectLicenseExpression -ne 'MIT' -or
               $manifest.sourceUrl -ne "https://github.com/nishdel/OmniBrille/tree/${{ github.sha }}") {
             throw 'Manifest schema, project license, or source/provenance URL does not match the release commit.'
@@ -241,19 +242,32 @@ jobs:
           }
           $installedSkiaNotice = Join-Path $installDirectory 'THIRD-PARTY-LICENSES\SkiaSharp-HarfBuzz-THIRD-PARTY-NOTICES.txt'
           $installedSkiaNoticeHash = (Get-FileHash -LiteralPath $installedSkiaNotice -Algorithm SHA256).Hash.ToUpperInvariant()
-          if ($manifest.distributionNotices.skiaDngNotice.path -ne 'THIRD-PARTY-LICENSES/SkiaSharp-HarfBuzz-THIRD-PARTY-NOTICES.txt' -or
-              $manifest.distributionNotices.skiaDngNotice.sha256.ToUpperInvariant() -ne $installedSkiaNoticeHash) {
-            throw 'Installed Skia/DNG notice does not match the reviewed bytes bound by the release manifest.'
+          if ($manifest.distributionNotices.skiaSharpNotice.path -ne 'THIRD-PARTY-LICENSES/SkiaSharp-HarfBuzz-THIRD-PARTY-NOTICES.txt' -or
+              $manifest.distributionNotices.skiaSharpNotice.sha256.ToUpperInvariant() -ne $installedSkiaNoticeHash) {
+            throw 'Installed DNG-free SkiaSharp notice does not match the reviewed bytes bound by the release manifest.'
           }
           $installedSkiaNoticeText = Get-Content -Raw -LiteralPath $installedSkiaNotice
-          foreach ($requiredDngNotice in @(
-            'This product includes DNG technology under license by Adobe Systems',
-            'DNG SDK License Agreement',
-            'include such notices in any copies of the Software',
-            'If you choose to distribute the Software in a commercial product'
-          )) {
-            if ($installedSkiaNoticeText.IndexOf($requiredDngNotice, [StringComparison]::Ordinal) -lt 0) {
-              throw "Installed Skia notice is missing required Adobe DNG text: '$requiredDngNotice'."
+          if ($installedSkiaNoticeText.IndexOf('OMNIBRILLE DNG-FREE SKIASHARP 3.119.4 NOTICE', [StringComparison]::Ordinal) -lt 0) {
+            throw 'Installed Skia notice is missing the reviewed DNG-free provenance header.'
+          }
+          foreach ($forbiddenDngNotice in @('DNG SDK License Agreement', '# DNG SDK', '# piex', 'external/dng_sdk', 'external/piex')) {
+            if ($installedSkiaNoticeText.IndexOf($forbiddenDngNotice, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
+              throw "Installed Skia notice still claims excluded component '$forbiddenDngNotice'."
+            }
+          }
+          $installedSkia = Join-Path $installDirectory 'libSkiaSharp.dll'
+          $installedSkiaHash = (Get-FileHash -LiteralPath $installedSkia -Algorithm SHA256).Hash.ToUpperInvariant()
+          if ($manifest.nativeComponents.skiaSharp.nativePackageId -ne 'OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng' -or
+              $manifest.nativeComponents.skiaSharp.nativeDllSha256.ToUpperInvariant() -ne $installedSkiaHash -or
+              $manifest.nativeComponents.skiaSharp.authenticodeStatus -ne 'NotSigned' -or
+              [bool]$manifest.nativeComponents.skiaSharp.dngSdkIncluded -or
+              (Get-AuthenticodeSignature -LiteralPath $installedSkia).Status -ne 'NotSigned') {
+            throw 'Installed Skia native binary does not match the manifest-bound DNG-free unsigned asset.'
+          }
+          $installedSkiaBinaryText = [Text.Encoding]::Latin1.GetString([IO.File]::ReadAllBytes($installedSkia))
+          foreach ($forbiddenNativeMarker in @('dng_pixel_buffer', 'dng_negative', 'dng_priority_manager', 'dng_sdk', 'DNG SDK', 'SkRawCodec', 'SkDngHost', 'SkDngImage', '.?AVdng_')) {
+            if ($installedSkiaBinaryText.IndexOf($forbiddenNativeMarker, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
+              throw "Installed Skia native binary contains excluded DNG/raw marker '$forbiddenNativeMarker'."
             }
           }
           $installedLicense = Get-Content -Raw -LiteralPath (Join-Path $installDirectory 'LICENSE')

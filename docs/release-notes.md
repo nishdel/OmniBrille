@@ -16,7 +16,7 @@ The generated artifact-specific notes place the expected SHA-256 above this temp
 
 ## License and source
 
-OmniBrille project code is licensed under the **MIT License**. The release includes the full `LICENSE`, and source is available from the matching `v1.0.0` tag and source archives on the official GitHub Release. Bundled third-party components retain their own installed licenses and notices, including the Adobe DNG SDK agreement carried by SkiaSharp.
+OmniBrille project code is licensed under the **MIT License**. The release includes the full `LICENSE`, and source is available from the matching `v1.0.0` tag and source archives on the official GitHub Release. Bundled third-party components retain their own installed licenses and notices. The Windows renderer uses a project-built SkiaSharp 3.119.4 native asset with the unused Adobe DNG/RAW codec excluded; its exact upstream pins, build configuration, hash, and notice derivation are recorded in the release manifest and repository provenance guide.
 
 ## Supported v1.0 experience
 

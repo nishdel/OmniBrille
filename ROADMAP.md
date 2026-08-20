@@ -112,7 +112,7 @@ Status language is intentionally conservative: checked items exist in the applic
 - [x] Record explicit owner acceptance of a prominently disclosed unsigned v1.0.0; add Authenticode code signing in a future release.
 - [ ] Validate the exact release-commit artifact through local interaction and the hosted artifact-only workflow.
 - [ ] Complete independent release review, push the release commit/tag, publish the GitHub Release and metadata, and verify the public download.
-- [ ] Record explicit owner acceptance or qualified review of the SkiaSharp-bundled Adobe DNG SDK agreement, including its undefined “commercial product” indemnity condition, or use a DNG-free native asset. Preserve the complete human-readable agreement in every case where DNG remains compiled in.
+- [x] Replace the DNG-bearing official SkiaSharp Win32 runtime with a pinned, project-built DNG-free native package; preserve build provenance, target-aware notices, and fail-closed upgrade checks.
 - [ ] Treat Connected-mode broad compatibility, real voice hardware, interactive Linux/macOS, and screen-reader certification as follow-up unless separately validated.
 
 ## Unscheduled engineering follow-up

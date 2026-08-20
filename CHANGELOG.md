@@ -8,7 +8,7 @@ All notable OmniBrille changes are recorded here. The project uses SemVer-compat
 
 ## [1.0.0] - 2026-08-20
 
-Prepared first stable public release; not yet published. A public `0.8.0-preview.2` prerelease already existed on GitHub. The v1.0.0 candidate establishes the intended Windows x64 Standalone contract and MIT project license; explicit owner acceptance or qualified review of the bundled Adobe DNG SDK terms remains before exact committed-artifact qualification.
+Prepared first stable public release; not yet published. A public `0.8.0-preview.2` prerelease already existed on GitHub. The v1.0.0 candidate establishes the intended Windows x64 Standalone contract, MIT project license, and a pinned project-built SkiaSharp native dependency with unused Adobe DNG/RAW support excluded. Exact committed-installer, visual, hosted lifecycle, adversarial, and publication qualification remain.
 
 ### Added
 
@@ -23,6 +23,7 @@ Prepared first stable public release; not yet published. A public `0.8.0-preview
 - Version/product/installer metadata now identify stable `1.0.0` and describe OmniBrille as a standalone-first local spatial file explorer.
 - The established Inno Setup workflow is documented and gated for a public release candidate rather than only private previews.
 - Public claims limit downloadable/interactive support to Windows x64 Standalone. Connected mode is compatibility-dependent; voice lacks real-microphone validation; automated accessibility coverage is not described as certification.
+- Avalonia's managed SkiaSharp API is unchanged, but the DNG-bearing official Win32 native runtime is excluded in favor of a distinctly named, hash-bound DNG-free package built from pinned upstream source.
 
 ### Fixed
 
