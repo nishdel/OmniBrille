@@ -40,5 +40,6 @@
     <None Include="$(NativeProofDirectory)\native-dependencies.txt" Pack="true" PackagePath="provenance\native-dependencies.txt" />
     <None Include="$(NativeProofDirectory)\sdk-selection.patch" Pack="true" PackagePath="provenance\sdk-selection.patch" />
     <None Include="$(NativeProofDirectory)\skia-deps-dng-removal.patch" Pack="true" PackagePath="provenance\skia-deps-dng-removal.patch" />
+    <None Include="$(NativeProofDirectory)\windows-reproducibility.patch" Pack="true" PackagePath="provenance\windows-reproducibility.patch" />
   </ItemGroup>
 </Project>

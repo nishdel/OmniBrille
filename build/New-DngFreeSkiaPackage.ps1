@@ -17,7 +17,7 @@ $output = [System.IO.Path]::GetFullPath($OutputDirectory)
 $project = Join-Path $PSScriptRoot 'native-skia\OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng.csproj'
 $notice = Join-Path $PSScriptRoot '..\THIRD-PARTY-LICENSES\SkiaSharp-HarfBuzz-THIRD-PARTY-NOTICES.txt'
 
-foreach ($required in @('libSkiaSharp.dll', 'provenance.json', 'verification.txt', 'proof-bundle.sha256', 'sdk-selection.patch', 'skia-deps-dng-removal.patch')) {
+foreach ($required in @('libSkiaSharp.dll', 'provenance.json', 'verification.txt', 'proof-bundle.sha256', 'sdk-selection.patch', 'skia-deps-dng-removal.patch', 'windows-reproducibility.patch')) {
     if (-not (Test-Path -LiteralPath (Join-Path $proof $required) -PathType Leaf)) {
         throw "Native proof bundle is missing '$required'."
     }
@@ -93,7 +93,8 @@ try {
         'provenance/native-dependencies.txt',
         'provenance/provenance.json',
         'provenance/verification.txt',
-        'provenance/proof-bundle.sha256'
+        'provenance/proof-bundle.sha256',
+        'provenance/windows-reproducibility.patch'
     )
     foreach ($requiredEntry in $requiredEntries) {
         if ($requiredEntry -notin $entries) {

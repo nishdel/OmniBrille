@@ -15,7 +15,7 @@ The accepted Windows x64 DLL has SHA-256 `AB054D5A4A8E82FACF9925BA106FDBE8BB8391
 - Native ABI: Skia milestone 119, C increment 0
 - Build arguments: `skia_use_dng_sdk=false`, plus `/Brepro` in the compiler and linker flags
 
-Upstream's Windows Cake target exposes additional GN arguments and builds the same `SkiaSharp` native target used by the official package. At the pinned Skia commit, the optional `raw` target is enabled only when `skia_use_dng_sdk`, JPEG decoding, and PIEX are all enabled. Disabling DNG therefore removes the RAW/DNG codec and its DNG/PIEX link dependencies without changing the managed or exported C API. The recipe also appends `/Brepro` to compile and link flags because the upstream Windows target otherwise emits wall-clock timestamps in the PE and debug-directory metadata; reproducible native bytes are required before OmniBrille accepts a replacement hash.
+Upstream's Windows Cake target exposes additional GN arguments and builds the same `SkiaSharp` native target used by the official package. At the pinned Skia commit, the optional `raw` target is enabled only when `skia_use_dng_sdk`, JPEG decoding, and PIEX are all enabled. Disabling DNG therefore removes the RAW/DNG codec and its DNG/PIEX link dependencies without changing the managed or exported C API. A fail-closed local patch to that exact pinned Windows build file appends `/Brepro` to its existing compile and link flag arrays, because the unpatched target emits wall-clock timestamps in the PE and debug-directory metadata. The patch is retained in the proof bundle; reproducible native bytes are required before OmniBrille accepts a replacement hash.
 
 The build also removes the exact pinned DNG and RAW-only PIEX entries from Skia's local `DEPS` file before `git-sync-deps`. This is a fail-closed source-acquisition guard: the build fails if either upstream entry changes, and those unused sources are not downloaded. The generated patch is retained in the proof bundle; no upstream source branch or permanent fork is maintained. A second fail-closed patch changes upstream's `global.json` from `latestFeature` roll-forward to the exact reviewed .NET SDK, preventing an ambient hosted-runner SDK from silently changing the toolchain.
 
@@ -40,7 +40,7 @@ The output directory contains at least:
 - `gn-dependencies.txt` — the complete native target dependency closure;
 - `exports.txt` — normalized official/replacement export sets and equality result;
 - `build.log` — checkout, tool restore, and upstream build log;
-- `skia-deps-dng-removal.patch`, `sdk-selection.patch`, `verification.txt`, supporting tool/dependency output, and `proof-bundle.sha256`.
+- `skia-deps-dng-removal.patch`, `sdk-selection.patch`, `windows-reproducibility.patch`, `verification.txt`, supporting tool/dependency output, and `proof-bundle.sha256`.
 
 Create the repository package only from a reviewed proof directory:
 

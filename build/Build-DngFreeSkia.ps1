@@ -29,7 +29,7 @@ $expectedReplacementSha256 = 'AB054D5A4A8E82FACF9925BA106FDBE8BB83918F9AAABDB20B
 $variant = 'omnibrille-no-dng'
 $architecture = 'x64'
 $configuration = 'Release'
-$gnArguments = 'skia_use_dng_sdk=false extra_cflags += [ "/Brepro" ] extra_ldflags += [ "/Brepro" ]'
+$gnArguments = 'skia_use_dng_sdk=false'
 
 if ([System.Environment]::OSVersion.Platform -ne [System.PlatformID]::Win32NT) {
     throw 'The pinned SkiaSharp Windows native build must run on Windows.'
@@ -264,6 +264,20 @@ $globalJsonPatchedSha256 = Get-Sha256 $globalJsonPath
 $sdkSelectionPatch = @(Invoke-Captured $gitCommand @('diff', '--', 'global.json'))
 $sdkSelectionPatch | Set-Content -LiteralPath (Join-Path $outputRoot 'sdk-selection.patch') -Encoding utf8
 
+$windowsBuildPath = Join-Path $checkoutRoot 'native\windows\build.cake'
+$windowsBuildText = [System.IO.File]::ReadAllText($windowsBuildPath)
+$compileFlagNeedle = "'/Z7', '/guard:cf'"
+$linkFlagNeedle = "'/DEBUGTYPE:CV,FIXUP', '/guard:cf'"
+if ([regex]::Matches($windowsBuildText, [regex]::Escape($compileFlagNeedle)).Count -ne 1 -or
+    [regex]::Matches($windowsBuildText, [regex]::Escape($linkFlagNeedle)).Count -ne 1) {
+    throw 'Pinned SkiaSharp Windows compile/link flags changed. Review native/windows/build.cake before rebuilding.'
+}
+$windowsBuildText = $windowsBuildText.Replace($compileFlagNeedle, "'/Z7', '/Brepro', '/guard:cf'")
+$windowsBuildText = $windowsBuildText.Replace($linkFlagNeedle, "'/DEBUGTYPE:CV,FIXUP', '/Brepro', '/guard:cf'")
+[System.IO.File]::WriteAllText($windowsBuildPath, $windowsBuildText, [System.Text.UTF8Encoding]::new($false))
+$reproducibilityPatch = @(Invoke-Captured $gitCommand @('diff', '--', 'native/windows/build.cake'))
+$reproducibilityPatch | Set-Content -LiteralPath (Join-Path $outputRoot 'windows-reproducibility.patch') -Encoding utf8
+
 $dotnetVersion = Invoke-CapturedLine $dotnetCommand @('--version')
 if ($dotnetVersion -ne $expectedDotnetSdk) {
     throw "SkiaSharp native build requires the pinned .NET SDK '$expectedDotnetSdk'; found '$dotnetVersion'."
@@ -455,6 +469,7 @@ $provenance = [ordered]@{
         )
         patch = 'skia-deps-dng-removal.patch'
         sdkSelectionPatch = 'sdk-selection.patch'
+        reproducibilityPatch = 'windows-reproducibility.patch'
     }
     build = [ordered]@{
         upstreamTarget = 'externals-windows'

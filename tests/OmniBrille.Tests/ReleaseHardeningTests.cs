@@ -73,6 +73,8 @@ public sealed class ReleaseHardeningTests
     {
         var root = FindRepositoryRoot();
         var buildScript = File.ReadAllText(Path.Combine(root, "build", "Build-DngFreeSkia.ps1"));
+        var packageScript = File.ReadAllText(Path.Combine(root, "build", "New-DngFreeSkiaPackage.ps1"));
+        var packageProject = File.ReadAllText(Path.Combine(root, "build", "native-skia", "OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng.csproj"));
         var workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "private-preview.yml"));
         var provenanceGuide = File.ReadAllText(Path.Combine(root, "docs", "native-skia.md"));
 
@@ -82,7 +84,11 @@ public sealed class ReleaseHardeningTests
         Assert.Contains("64F27E6A38F1E9C222B6B40D103C60597EF112D08F1F5E6E1A535DA845EF53DD", buildScript, StringComparison.Ordinal);
         Assert.Contains("rollForward = 'disable'", buildScript, StringComparison.Ordinal);
         Assert.Contains("Get-NormalizedTextSha256 $globalJsonPath", buildScript, StringComparison.Ordinal);
-        Assert.Contains("skia_use_dng_sdk=false extra_cflags += [ \"/Brepro\" ] extra_ldflags += [ \"/Brepro\" ]", buildScript, StringComparison.Ordinal);
+        Assert.Contains("--gnArgs=$gnArguments", buildScript, StringComparison.Ordinal);
+        Assert.Contains("$gnArguments = 'skia_use_dng_sdk=false'", buildScript, StringComparison.Ordinal);
+        Assert.Contains("windows-reproducibility.patch", buildScript, StringComparison.Ordinal);
+        Assert.Contains("windows-reproducibility.patch", packageScript, StringComparison.Ordinal);
+        Assert.Contains("windows-reproducibility.patch", packageProject, StringComparison.Ordinal);
         Assert.Contains("GN did not append /Brepro to extra_cflags", buildScript, StringComparison.Ordinal);
         Assert.Contains("GN did not append /Brepro to extra_ldflags", buildScript, StringComparison.Ordinal);
         Assert.Contains("Invoke-CapturedLine", buildScript, StringComparison.Ordinal);
