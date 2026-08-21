@@ -17,15 +17,18 @@ public sealed class PackagingMetadataTests
     }
 
     [Fact]
-    public void CentralVersion_IsStableAndConsistentWithFirstPublicRelease()
+    public void CentralVersion_IsStableAndConsistentWithInstallerFallback()
     {
         var root = FindRepositoryRoot();
         var document = XDocument.Load(Path.Combine(root, "Directory.Build.props"));
+        var installer = File.ReadAllText(Path.Combine(root, "installer", "OmniBrille.iss"));
 
         Assert.Equal("1.1.0", document.Descendants("VersionPrefix").Single().Value);
         Assert.Equal(string.Empty, document.Descendants("VersionSuffix").Single().Value);
         Assert.Equal("1.1.0.0", document.Descendants("FileVersion").Single().Value);
         Assert.Equal("1.1.0.0", document.Descendants("AssemblyVersion").Single().Value);
+        Assert.Contains("#define AppVersion \"1.1.0\"", installer, StringComparison.Ordinal);
+        Assert.Contains("#define NumericVersion \"1.1.0.0\"", installer, StringComparison.Ordinal);
         Assert.Equal("OmniBrille", document.Descendants("Product").Single().Value);
         Assert.Equal("MIT", document.Descendants("PackageLicenseExpression").Single().Value);
         var license = File.ReadAllText(Path.Combine(root, "LICENSE"));
