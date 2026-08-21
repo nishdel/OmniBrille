@@ -19,7 +19,7 @@ Checkboxes are maintainer gates. Automation does not mark manual checks complete
 - [x] Search is collapsed initially, expands/focuses on click or `Ctrl+F`, and dismisses without duplicating session query/result state.
 - [x] Focus, selected/immediate, secondary, and ambient hierarchy matches the retained original concepts while using only admitted nodes/edges and deterministic presentation bands.
 - [x] Dark, Light, dense, nested/details, Search-expanded, loading, and minimum-size source-candidate states were inspected on the interactive Windows host.
-- [ ] Final corrected screenshots bind one exact installed candidate and non-private data and are independently reviewed at full size.
+- [x] Final corrected screenshots bind one exact installed candidate and non-private data and are independently reviewed at full size.
 - [x] Actual Windows UIA exposure, keyboard traversal, visible focus, reduced motion/effects, and 125% display scaling are recorded separately from automated 100/125/150/200% text-scale coverage; no screen-reader use is claimed.
 - [x] Same-host representative renderer timings, allocations, accepted-label changes, and bounded cache capacities were compared with the pre-change baseline; no material unexplained regression remains.
 

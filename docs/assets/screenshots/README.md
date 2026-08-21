@@ -2,22 +2,23 @@
 
 ## v1.1 visual-convergence candidate
 
-The `v1.1-*.png` files are real captures of an installed Windows x64 `1.1.0` candidate. They are not mockups, concept art, or AI-generated application imagery.
+The `v1.1-*.png` files are real captures of an installed Windows x64 `1.1.0` candidate after the sparse focus-plane correction. They are not mockups, concept art, or AI-generated application imagery.
 
 - Capture date: 2026-08-21.
 - Host: Windows 10 build 19045 at 125% display scaling.
-- Visible application commit: `e308c72db1a86fd3a096fc19dcdca29df7b55920`.
-- Installed candidate SHA-256: `57B47819F0F1A209D35A97B3066864E59018F78CA96BA9060D07081B13BC602B`.
+- Visible application commit: `6f9f2ee580ac91135bb1c01894d3490ac680ebe6`.
+- Installed candidate SHA-256: `7D0699F0F5EC80CCA79A1778318DA730A1C5B0958FE61D0E6A1DACBE95A5E0A0`.
 - Installed executable SHA-256: `962352CD1B7B521CA3FA76B76DC0F3EA31EA247183EFCAFB2F9FB70E68A94497`.
 - DNG-free native renderer SHA-256: `EBE9A21F29D2474129B06FFAB67B3E74474B7F6E0D0442F14B8BAC3CFF870619`.
 - Executable metadata: file version `1.1.0.0`, product version `1.1.0`.
-- Demo roots: `C:\Users\Public\OmniBrille Visual Demo` and its `09 Research` child.
+- Demo root: `C:\Users\Public\OmniBrille Visual Demo` and its `09 Research` child.
 - Data: purpose-built generic folders; no personal content, private or personal user-profile path, diagnostics, OmniSorSe session, or voice data.
 - Views: dense Dark Structure, dense Light Structure, structural Search for `Research`, nested focus/details, and the synchronized accessible list.
+- PNG SHA-256: Dark Structure `AABAD9329FE8DB789896765CB5B0DAE2347670243C0EBC41CE31E5A9C06339DD`; Light Structure `C42C4648A7CA41B9F1D6D1279217E32C890A8879BDA64A5C4E3A9C3BFE535EA6`; nested details `D75DB3A170AC81294D31AB1426BF430DA016AA6814155BE191320A8849EABF8B`; Search `2EE2D6734CA6AC442D5DF6B7D14892C4EF563588926C07CF74D1494A797B57B8`; accessible list `820B2E843A0B58AA08599CB2BF2FB77025A09D7C31BE27A60693BE8A1200466B`.
 
-The captures use a Per-Monitor-V2-aware process and the physical Win32 window bounds so the complete 125%-DPI window is represented. They use the documented fresh-user visual defaults: Reduced Motion off and Reduced Visual Effects off. They were inspected at full size for native window chrome; floating navigation, mode, Search, utility, zoom, status, voice, and details/list surfaces; graph nodes, labels, outlined glyphs, edges, focus reticle, Search emphasis, and theme contrast. The same installed candidate exercised arrow/Enter navigation, Alt+Left Back, `Ctrl+F` Search, `Ctrl+Shift+L` list access, normal close/relaunch, a real progressive 5,000-file load, the supported 820-by-520 logical minimum window, and both reduced settings enabled. The owner's pre-existing reduced preferences were backed up and restored byte-for-byte after capture. Automated headless coverage exercised 100/125/150/200% text scaling and the deterministic reduced-motion/effects contracts. No screen reader was used.
+The captures use `PrintWindow` from a Per-Monitor-V2-aware process and the physical Win32 window bounds so the complete 125%-DPI window is represented. They use the documented fresh-user visual defaults: Reduced Motion off and Reduced Visual Effects off. They were inspected at full size against the retained [original concept renders](../concepts/README.md) for complete native chrome; the crisp eight-node Structure focus plane; subdued secondary and atmospheric nodes; floating navigation, mode, Search, utility, zoom, status, voice, and details/list surfaces; outlined glyphs, truthful edges, focus reticle, Search promotion, and theme contrast. Search and accessible-list views show the bottom status surface yielding to their owning panels. The same installed candidate completed two normal close/relaunch cycles and clean uninstall; the owner's pre-existing preferences were backed up and restored byte-for-byte after capture. Automated headless coverage exercises 100/125/150/200% text scaling, exact graph/list/automation node parity, and deterministic reduced-motion/effects contracts. No screen reader was used.
 
-The images were captured before this provenance file and the PNGs themselves were committed. All five come from the same installed candidate after the first-run panel/status non-overlap correction; Search and accessible-list views show the bottom status surface yielding to the owning side panel. A later source change that can affect a represented state requires recapture. The eventual exact release installer must still be rebuilt from the final documentation/screenshot commit and separately pass installed-artifact and public-release qualification before these images can be described as release screenshots.
+All five images were recaptured from the same installed candidate after the sparse focus-plane and first-run panel/status corrections. A later source change that can affect a represented state requires recapture. The eventual exact release installer must still be rebuilt from the final documentation/screenshot commit and separately pass installed-artifact and public-release qualification before these images can be described as release screenshots.
 
 ## v1.0 release
 

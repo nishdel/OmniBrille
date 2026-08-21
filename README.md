@@ -18,11 +18,11 @@ Windows x64 is the only v1.0 download target. Interactive release qualification 
 
 ## See it in action
 
-![Dense Dark Structure view in OmniBrille's graph-first shell](docs/assets/screenshots/v1.1-dark-structure.png)
+![Focused Dark Structure plane in OmniBrille's graph-first shell](docs/assets/screenshots/v1.1-dark-structure.png)
 
-| Pale ice-blue Light theme | Compact Search within the selected root |
+| Sparse pale ice-blue Light plane | Compact Search within the selected root |
 |---|---|
-| ![Dense Light Structure view of the same demo workspace](docs/assets/screenshots/v1.1-light-structure.png) | ![Search results emphasized while unrelated graph nodes recede](docs/assets/screenshots/v1.1-search.png) |
+| ![Focused Light Structure plane with subdued surrounding nodes](docs/assets/screenshots/v1.1-light-structure.png) | ![Search results emphasized while unrelated graph nodes recede](docs/assets/screenshots/v1.1-search.png) |
 
 | Nested focus and integrated details | Accessible list synchronized with the bounded graph |
 |---|---|
