@@ -23,6 +23,7 @@ OmniBrille project code is licensed under the **MIT License**. The release inclu
 - The graph now fills the application client area, with compact floating navigation, mode, Search, utility, zoom, details, voice, and status surfaces.
 - Current Focus is smaller and clearer; selected/immediate/secondary/ambient graph states have stronger visual hierarchy without adding nodes or relationships.
 - Search is collapsed until requested by click or `Ctrl+F`, and the disabled Voice surface collapses to one quiet action.
+- First-run guidance and the bottom status surface yield when a secondary panel claims their space, keeping focused controls unobscured at the supported minimum size.
 - Dark and Light themes use a deeper navy/cyan and pale ice-blue visual system; the bounded loading data rain has a restrained focal aperture.
 - Filesystem behavior, Connected-mode contracts, Explorer Protocol v1, scene budgets, privacy, persistence, and destructive-operation policy are unchanged.
 

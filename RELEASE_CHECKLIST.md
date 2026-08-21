@@ -7,7 +7,7 @@ Checkboxes are maintainer gates. Automation does not mark manual checks complete
 - [x] Use a new `v1.1.0` release; do not move `v1.0.0` or replace its checksum-bound assets.
 - [x] Limit this release to visual shell/presentation changes. Provider, filesystem, Search, protocol, persistence, privacy, and scene-admission contracts remain unchanged.
 - [ ] The release commit is identified, independently reviewed, clean, and equals GitHub `main`.
-- [ ] Version, executable, installer, changelog, compatibility, README, release notes, screenshot provenance, and artifact names all say `1.1.0`.
+- [x] Source/package version authorities, executable, installer, changelog, compatibility, release notes, screenshot provenance, and candidate artifact names say `1.1.0`; README keeps the published `1.0.0` download explicit until v1.1 publication.
 - [x] MIT project licensing and the separate installed third-party terms remain unchanged.
 - [x] The pinned DNG-free native renderer package/provenance gate remains unchanged and fail-closed.
 - [ ] The owner has explicitly selected signed or unsigned publication for v1.1.0. If unsigned, the exact installer/application report `NotSigned` and public notes retain the SmartScreen/Unknown Publisher disclosure.
@@ -19,9 +19,9 @@ Checkboxes are maintainer gates. Automation does not mark manual checks complete
 - [x] Search is collapsed initially, expands/focuses on click or `Ctrl+F`, and dismisses without duplicating session query/result state.
 - [x] Focus, selected/immediate, secondary, and ambient hierarchy uses only admitted nodes/edges and existing deterministic layout bands.
 - [x] Dark, Light, dense, nested/details, Search-expanded, loading, and minimum-size source-candidate states were inspected on the interactive Windows host.
-- [ ] Final screenshots are recaptured from the installed candidate using non-private data and independently reviewed at full size.
-- [ ] Actual keyboard traversal, visible focus, reduced motion/effects, and 100/125/150/200% text/DPI behavior are recorded precisely; real assistive-technology use remains unclaimed unless performed.
-- [ ] Same-host representative renderer timings, allocations, and cache occupancy are compared with the pre-change baseline; no material unexplained regression remains.
+- [x] Final screenshots bind one exact installed candidate and non-private data and were independently reviewed at full size.
+- [x] Actual Windows UIA exposure, keyboard traversal, visible focus, reduced motion/effects, and 125% display scaling are recorded separately from automated 100/125/150/200% text-scale coverage; no screen-reader use is claimed.
+- [x] Same-host representative renderer timings, allocations, accepted-label changes, and bounded cache capacities were compared with the pre-change baseline; no material unexplained regression remains.
 
 ## Automated release gate
 

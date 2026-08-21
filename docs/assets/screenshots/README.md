@@ -6,17 +6,18 @@ The `v1.1-*.png` files are real captures of an installed Windows x64 `1.1.0` can
 
 - Capture date: 2026-08-21.
 - Host: Windows 10 build 19045 at 125% display scaling.
-- Visible application commit: `d4dfd83e14a855cf50a3b65290b0aacfdf75f845`.
-- Installed candidate SHA-256: `707CC4CF4D2F79A72FB61F492A59866DB799AF12C4711F985191440F3066CEA4`.
+- Visible application commit: `e308c72db1a86fd3a096fc19dcdca29df7b55920`.
+- Installed candidate SHA-256: `57B47819F0F1A209D35A97B3066864E59018F78CA96BA9060D07081B13BC602B`.
+- Installed executable SHA-256: `962352CD1B7B521CA3FA76B76DC0F3EA31EA247183EFCAFB2F9FB70E68A94497`.
 - DNG-free native renderer SHA-256: `EBE9A21F29D2474129B06FFAB67B3E74474B7F6E0D0442F14B8BAC3CFF870619`.
 - Executable metadata: file version `1.1.0.0`, product version `1.1.0`.
 - Demo roots: `C:\Users\Public\OmniBrille Visual Demo` and its `09 Research` child.
-- Data: purpose-built generic folders; no personal content, user-profile path, diagnostics, OmniSorSe session, or voice data.
+- Data: purpose-built generic folders; no personal content, private or personal user-profile path, diagnostics, OmniSorSe session, or voice data.
 - Views: dense Dark Structure, dense Light Structure, structural Search for `Research`, nested focus/details, and the synchronized accessible list.
 
 The captures use a Per-Monitor-V2-aware process and the physical Win32 window bounds so the complete 125%-DPI window is represented. They use the documented fresh-user visual defaults: Reduced Motion off and Reduced Visual Effects off. They were inspected at full size for native window chrome; floating navigation, mode, Search, utility, zoom, status, voice, and details/list surfaces; graph nodes, labels, outlined glyphs, edges, focus reticle, Search emphasis, and theme contrast. The same installed candidate exercised arrow/Enter navigation, Alt+Left Back, `Ctrl+F` Search, `Ctrl+Shift+L` list access, normal close/relaunch, a real progressive 5,000-file load, the supported 820-by-520 logical minimum window, and both reduced settings enabled. The owner's pre-existing reduced preferences were backed up and restored byte-for-byte after capture. Automated headless coverage exercised 100/125/150/200% text scaling and the deterministic reduced-motion/effects contracts. No screen reader was used.
 
-The images were captured before this provenance file and the PNGs themselves were committed. No visible application or native-renderer source is permitted to change after commit without recapturing them. The eventual exact release installer must still be rebuilt from the final documentation/screenshot commit and separately pass installed-artifact and public-release qualification before these images can be described as release screenshots.
+The images were captured before this provenance file and the PNGs themselves were committed. All five come from the same installed candidate after the first-run panel/status non-overlap correction; Search and accessible-list views show the bottom status surface yielding to the owning side panel. A later source change that can affect a represented state requires recapture. The eventual exact release installer must still be rebuilt from the final documentation/screenshot commit and separately pass installed-artifact and public-release qualification before these images can be described as release screenshots.
 
 ## v1.0 release
 
