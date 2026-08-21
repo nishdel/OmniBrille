@@ -1391,7 +1391,6 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             AccessibleOpenButton,
             IsContextualMode(_session.ViewMode) ? "Focus selected graph node" : "Open selected structural node");
         BackButton.IsEnabled = _session.CanGoBack && !_session.IsLoading;
-        UpdateWelcomePanelVisibility();
         ContextFilterButton.IsVisible = IsContextualMode(_session.ViewMode);
         if (!IsContextualMode(_session.ViewMode))
         {
@@ -1494,6 +1493,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         DiagnosticsPanel.IsVisible = _preferences.DiagnosticsVisible;
         UpdateDiagnostics();
         UpdateConnectionView();
+        UpdateWelcomePanelVisibility();
     }
 
     private void UpdateConnectionView()
