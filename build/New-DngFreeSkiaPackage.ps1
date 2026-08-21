@@ -48,6 +48,10 @@ $found = @($forbiddenMarkers | Where-Object { $binaryText.IndexOf($_, [StringCom
 if ($found.Count -gt 0) {
     throw "Native DLL contains excluded DNG/raw markers: $($found -join ', ')."
 }
+if ($binaryText.IndexOf('libSkiaSharp.pdb', [StringComparison]::Ordinal) -lt 0 -or
+    [regex]::IsMatch($binaryText, '(?i)[A-Z]:\\[^\x00\r\n]{1,300}\.pdb')) {
+    throw 'Native DLL must embed only the reviewed path-independent libSkiaSharp.pdb reference.'
+}
 
 $provenance = Get-Content -Raw -LiteralPath (Join-Path $proof 'provenance.json') | ConvertFrom-Json
 if ($provenance.artifact.sha256 -ne $expectedDllSha256 -or
@@ -56,7 +60,9 @@ if ($provenance.artifact.sha256 -ne $expectedDllSha256 -or
     $provenance.verification.piexDependencyFetched -or
     $provenance.verification.dngBuildArgument -or
     $provenance.verification.dngInGnDependencyClosure -or
-    $provenance.verification.dngMarkersInBinary) {
+    $provenance.verification.dngMarkersInBinary -or
+    $provenance.verification.absolutePdbPathInBinary -or
+    $provenance.build.embeddedPdbPath -ne 'libSkiaSharp.pdb') {
     throw 'Native provenance does not contain the required DNG-free and ABI-equivalence results.'
 }
 

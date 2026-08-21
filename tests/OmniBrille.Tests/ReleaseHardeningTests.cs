@@ -91,6 +91,9 @@ public sealed class ReleaseHardeningTests
         Assert.Contains("windows-reproducibility.patch", packageProject, StringComparison.Ordinal);
         Assert.Contains("GN did not append /Brepro to extra_cflags", buildScript, StringComparison.Ordinal);
         Assert.Contains("GN did not append /Brepro to extra_ldflags", buildScript, StringComparison.Ordinal);
+        Assert.Contains("/PDBALTPATH:libSkiaSharp.pdb", buildScript, StringComparison.Ordinal);
+        Assert.Contains("absolute Windows PDB path", buildScript, StringComparison.Ordinal);
+        Assert.Contains("absolutePdbPathInBinary", packageScript, StringComparison.Ordinal);
         Assert.Contains("Invoke-CapturedLine", buildScript, StringComparison.Ordinal);
         Assert.DoesNotContain(")[0].Trim()", buildScript, StringComparison.Ordinal);
         Assert.Contains("DNG or its RAW-only PIEX dependency was fetched", buildScript, StringComparison.Ordinal);

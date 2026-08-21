@@ -15,9 +15,9 @@ GitHub Actions run [32423416314](https://github.com/nishdel/OmniBrille/actions/r
 - Pinned `mono/skia` commit: `7dbfc07dd33181f84e0958afb7ee805c6c769f0b`
 - Pinned `depot_tools` commit: `8fecc592a290769242d5098666cee8d29b7f0523`
 - Native ABI: Skia milestone 119, C increment 0
-- Build arguments: `skia_use_dng_sdk=false`, plus `/Brepro` in the compiler and linker flags
+- Build arguments: `skia_use_dng_sdk=false`, `/Brepro` in the compiler and linker flags, and `/PDBALTPATH:libSkiaSharp.pdb` in the linker flags
 
-Upstream's Windows Cake target exposes additional GN arguments and builds the same `SkiaSharp` native target used by the official package. At the pinned Skia commit, the optional `raw` target is enabled only when `skia_use_dng_sdk`, JPEG decoding, and PIEX are all enabled. Disabling DNG therefore removes the RAW/DNG codec and its DNG/PIEX link dependencies without changing the managed or exported C API. A fail-closed local patch to that exact pinned Windows build file appends `/Brepro` to its existing compile and link flag arrays, because the unpatched target emits wall-clock timestamps in the PE and debug-directory metadata. The patch is retained in the proof bundle; reproducible native bytes are required before OmniBrille accepts a replacement hash.
+Upstream's Windows Cake target exposes additional GN arguments and builds the same `SkiaSharp` native target used by the official package. At the pinned Skia commit, the optional `raw` target is enabled only when `skia_use_dng_sdk`, JPEG decoding, and PIEX are all enabled. Disabling DNG therefore removes the RAW/DNG codec and its DNG/PIEX link dependencies without changing the managed or exported C API. A fail-closed local patch to that exact pinned Windows build file appends `/Brepro` to its existing compile and link flag arrays, because the unpatched target emits wall-clock timestamps in the PE and debug-directory metadata. It also sets the embedded CodeView reference to the literal `libSkiaSharp.pdb`; otherwise the absolute checkout directory becomes part of the DLL and byte reproduction depends on using the same build path. The build rejects any absolute Windows PDB path in the output. The patch is retained in the proof bundle; path-independent reproducible native bytes are required before OmniBrille accepts a replacement hash.
 
 The build also removes the exact pinned DNG and RAW-only PIEX entries from Skia's local `DEPS` file before `git-sync-deps`. This is a fail-closed source-acquisition guard: the build fails if either upstream entry changes, and those unused sources are not downloaded. The generated patch is retained in the proof bundle; no upstream source branch or permanent fork is maintained. A second fail-closed patch changes upstream's `global.json` from `latestFeature` roll-forward to the exact reviewed .NET SDK, preventing an ambient hosted-runner SDK from silently changing the toolchain.
 
@@ -57,12 +57,13 @@ The script fails unless all of these are true:
 1. all three upstream commits match the pins;
 2. exactly the reviewed DNG `DEPS` entry is removed before dependency sync;
 3. DNG source is not fetched;
-4. GN evaluates `skia_use_dng_sdk=false` and retains `/Brepro` in both compile and link flags;
+4. GN evaluates `skia_use_dng_sdk=false`, retains `/Brepro` in both compile and link flags, and retains the path-independent `/PDBALTPATH:libSkiaSharp.pdb` linker flag;
 5. the generated dependency closure/build files contain no DNG, `SkRawCodec`, or PIEX linkage;
 6. strong DNG/RAW markers are absent from the resulting DLL;
 7. its normalized C export set equals the official 3.119.4 DLL;
-8. the project-built native DLL is `NotSigned`.
-9. the accepted output hash is exactly the reviewed value above.
+8. the DLL embeds `libSkiaSharp.pdb` without an absolute build-machine path;
+9. the project-built native DLL is `NotSigned`;
+10. the accepted output hash is exactly the reviewed value above.
 
 These are native-code provenance gates, not renderer qualification. Before adopting an output, OmniBrille must still run the High-risk renderer, visual, performance, build/test, packaging, exact-installer, install/relaunch/uninstall, and adversarial validation routed by [`engineering/risk-and-validation.md`](engineering/risk-and-validation.md).
 

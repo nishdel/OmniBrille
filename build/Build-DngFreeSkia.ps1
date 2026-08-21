@@ -273,7 +273,7 @@ if ([regex]::Matches($windowsBuildText, [regex]::Escape($compileFlagNeedle)).Cou
     throw 'Pinned SkiaSharp Windows compile/link flags changed. Review native/windows/build.cake before rebuilding.'
 }
 $windowsBuildText = $windowsBuildText.Replace($compileFlagNeedle, "'/Z7', '/Brepro', '/guard:cf'")
-$windowsBuildText = $windowsBuildText.Replace($linkFlagNeedle, "'/DEBUGTYPE:CV,FIXUP', '/Brepro', '/guard:cf'")
+$windowsBuildText = $windowsBuildText.Replace($linkFlagNeedle, "'/DEBUGTYPE:CV,FIXUP', '/Brepro', '/PDBALTPATH:libSkiaSharp.pdb', '/guard:cf'")
 [System.IO.File]::WriteAllText($windowsBuildPath, $windowsBuildText, [System.Text.UTF8Encoding]::new($false))
 $reproducibilityPatch = @(Invoke-Captured $gitCommand @('diff', '--', 'native/windows/build.cake'))
 $reproducibilityPatch | Set-Content -LiteralPath (Join-Path $outputRoot 'windows-reproducibility.patch') -Encoding utf8
@@ -362,6 +362,9 @@ $linkFlags = @(Invoke-Captured $gnCommand @('args', $gnOutput, '--list=extra_ldf
 if (($linkFlags -join "`n") -notmatch '(?i)/Brepro') {
     throw "GN did not append /Brepro to extra_ldflags:`n$($linkFlags -join [Environment]::NewLine)"
 }
+if (($linkFlags -join "`n") -notmatch '(?i)/PDBALTPATH:libSkiaSharp\.pdb') {
+    throw "GN did not append the path-independent /PDBALTPATH:libSkiaSharp.pdb linker flag:`n$($linkFlags -join [Environment]::NewLine)"
+}
 $evaluatedArguments = @(Invoke-Captured $gnCommand @('args', $gnOutput, '--list', '--short') $skiaRoot)
 $evaluatedArguments | Set-Content -LiteralPath (Join-Path $outputRoot 'evaluated-gn-args.txt') -Encoding utf8
 
@@ -396,6 +399,16 @@ $strongDngMarkers = @(
     '.?AVdng_'
 )
 Assert-NoBinaryMarkers -Path $builtDll -Markers $strongDngMarkers
+
+$builtBinaryText = [System.Text.Encoding]::Latin1.GetString([System.IO.File]::ReadAllBytes($builtDll))
+$embeddedPdbPath = 'libSkiaSharp.pdb'
+if ($builtBinaryText.IndexOf($embeddedPdbPath, [StringComparison]::Ordinal) -lt 0) {
+    throw "The native DLL does not contain the required path-independent PDB reference '$embeddedPdbPath'."
+}
+$absolutePdbPathPattern = '(?i)[A-Z]:\\[^\x00\r\n]{1,300}\.pdb'
+if ([regex]::IsMatch($builtBinaryText, $absolutePdbPathPattern)) {
+    throw 'The native DLL still embeds an absolute Windows PDB path from its build machine.'
+}
 
 $officialExports = @(Get-NormalizedExports -Dumpbin $dumpbinCommand -Dll $officialReference)
 $replacementExports = @(Get-NormalizedExports -Dumpbin $dumpbinCommand -Dll $builtDll)
@@ -436,6 +449,7 @@ $fileVersion = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($destination
     'PASS',
     'Evaluated GN argument: skia_use_dng_sdk=false',
     'Deterministic compile and link flag: /Brepro',
+    'Embedded PDB reference: libSkiaSharp.pdb (no absolute build-machine path)',
     'DNG dependency source: not fetched',
     'GN closure: no dng_sdk, SkRawCodec, or PIEX dependency',
     "Binary markers absent: $($strongDngMarkers -join ', ')",
@@ -478,6 +492,7 @@ $provenance = [ordered]@{
         evaluatedArgs = 'evaluated-gn-args.txt'
         dependencyClosure = 'gn-dependencies.txt'
         log = 'build.log'
+        embeddedPdbPath = $embeddedPdbPath
     }
     toolchain = [ordered]@{
         dotnetSdk = $dotnetVersion
@@ -508,6 +523,7 @@ $provenance = [ordered]@{
         dngBuildArgument = $false
         dngInGnDependencyClosure = $false
         dngMarkersInBinary = $false
+        absolutePdbPathInBinary = $false
         normalizedExportsMatchOfficial = $true
         proof = 'verification.txt'
     }
