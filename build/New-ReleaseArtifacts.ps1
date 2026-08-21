@@ -57,10 +57,10 @@ if (-not (Test-Path -LiteralPath $skiaNoticePath -PathType Leaf)) {
     throw "Reviewed SkiaSharp distribution notice was not found at '$skiaNoticePath'."
 }
 $skiaNoticeHash = (Get-FileHash -LiteralPath $skiaNoticePath -Algorithm SHA256).Hash.ToUpperInvariant()
-$nativePackageRelativePath = 'packages\OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng.3.119.4.2.nupkg'
+$nativePackageRelativePath = 'packages\OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng.3.119.4.3.nupkg'
 $nativePackagePath = Join-Path $repositoryRoot $nativePackageRelativePath
 $publishedNativePath = Join-Path $repositoryRoot "artifacts\publish\$RuntimeIdentifier\libSkiaSharp.dll"
-$expectedNativeHash = 'A5A4C1EECE528A5BED7C98889435BD8214BBA610F963FE80E35256A91508B5DD'
+$expectedNativeHash = 'EBE9A21F29D2474129B06FFAB67B3E74474B7F6E0D0442F14B8BAC3CFF870619'
 foreach ($requiredNativePath in @($nativePackagePath, $publishedNativePath)) {
     if (-not (Test-Path -LiteralPath $requiredNativePath -PathType Leaf)) {
         throw "Reviewed DNG-free SkiaSharp artifact was not found at '$requiredNativePath'."
@@ -125,7 +125,7 @@ $manifest = [ordered]@{
         skiaSharp = [ordered]@{
             managedVersion = '3.119.4'
             nativePackageId = 'OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng'
-            nativePackageVersion = '3.119.4.2'
+            nativePackageVersion = '3.119.4.3'
             nativePackagePath = $nativePackageRelativePath.Replace('\', '/')
             nativePackageSha256 = $nativePackageHash
             nativeDllSha256 = $publishedNativeHash
@@ -187,7 +187,7 @@ $dependencies = [ordered]@{
             excludedAssets = 'all'
             contributesPackagedFiles = $false
             replacementPackageId = 'OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng'
-            replacementPackageVersion = '3.119.4.2'
+            replacementPackageVersion = '3.119.4.3'
             reason = 'Suppress the transitive official DNG-bearing native runtime; the manifest binds the sole shipped win-x64 replacement DLL.'
         }
     )

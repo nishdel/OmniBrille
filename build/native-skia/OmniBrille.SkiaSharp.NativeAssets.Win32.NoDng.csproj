@@ -2,7 +2,7 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <PackageId>OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng</PackageId>
-    <Version>3.119.4.2</Version>
+    <Version>3.119.4.3</Version>
     <Authors>OmniBrille Contributors</Authors>
     <Description>Project-built SkiaSharp 3.119.4 Windows x64 native asset with Adobe DNG/RAW support excluded.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

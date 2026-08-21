@@ -40,6 +40,6 @@
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.1" />
     <!-- Avalonia's managed SkiaSharp API remains unchanged. Replace only the optional-codec-bearing official native runtime. -->
     <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.119.4" ExcludeAssets="all" />
-    <PackageReference Include="OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng" Version="3.119.4.2" />
+    <PackageReference Include="OmniBrille.SkiaSharp.NativeAssets.Win32.NoDng" Version="3.119.4.3" />
   </ItemGroup>
 </Project>
