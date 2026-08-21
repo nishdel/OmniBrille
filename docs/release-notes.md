@@ -1,6 +1,6 @@
 ## Install on Windows
 
-OmniBrille 1.0.0 provides a self-contained Windows x64 installer. It installs for the current user at `%LOCALAPPDATA%\Programs\OmniBrille`, creates a Start Menu shortcut and uninstall entry, and requires no separately installed .NET runtime or administrator access.
+OmniBrille 1.1.0 provides a self-contained Windows x64 installer. It installs for the current user at `%LOCALAPPDATA%\Programs\OmniBrille`, creates a Start Menu shortcut and uninstall entry, and requires no separately installed .NET runtime or administrator access.
 
 OmniBrille installs no service, startup task, file association, telemetry component, updater, OmniSorSe binary, speech recognizer, or speech model.
 
@@ -9,16 +9,24 @@ OmniBrille installs no service, startup task, file association, telemetry compon
 Download the installer, `.sha256` sidecar, manifest, and these notes from the same GitHub Release. Calculate the hash independently:
 
 ```powershell
-Get-FileHash .\OmniBrille-1.0.0-win-x64-setup.exe -Algorithm SHA256
+Get-FileHash .\OmniBrille-1.1.0-win-x64-setup.exe -Algorithm SHA256
 ```
 
 The generated artifact-specific notes place the expected SHA-256 above this template content. The calculated value must match that value, the `.sha256` file, and the manifest. A checksum identifies the exact bytes; it does not authenticate an unsigned publisher.
 
 ## License and source
 
-OmniBrille project code is licensed under the **MIT License**. The release includes the full `LICENSE`, and source is available from the matching `v1.0.0` tag and source archives on the official GitHub Release. Bundled third-party components retain their own installed licenses and notices. The Windows renderer uses a project-built SkiaSharp 3.119.4 native asset with the unused Adobe DNG/RAW codec excluded; its exact upstream pins, build configuration, hash, and notice derivation are recorded in the release manifest and repository provenance guide.
+OmniBrille project code is licensed under the **MIT License**. The release includes the full `LICENSE`, and source is available from the matching `v1.1.0` tag and source archives on the official GitHub Release. Bundled third-party components retain their own installed licenses and notices. The Windows renderer uses a project-built SkiaSharp 3.119.4 native asset with the unused Adobe DNG/RAW codec excluded; its exact upstream pins, build configuration, hash, and notice derivation are recorded in the release manifest and repository provenance guide.
 
-## Supported v1.0 experience
+## What changed in v1.1
+
+- The graph now fills the application client area, with compact floating navigation, mode, Search, utility, zoom, details, voice, and status surfaces.
+- Current Focus is smaller and clearer; selected/immediate/secondary/ambient graph states have stronger visual hierarchy without adding nodes or relationships.
+- Search is collapsed until requested by click or `Ctrl+F`, and the disabled Voice surface collapses to one quiet action.
+- Dark and Light themes use a deeper navy/cyan and pale ice-blue visual system; the bounded loading data rain has a restrained focal aperture.
+- Filesystem behavior, Connected-mode contracts, Explorer Protocol v1, scene budgets, privacy, persistence, and destructive-operation policy are unchanged.
+
+## Supported v1.1 experience
 
 - Standalone selected-folder Structure navigation, bounded aggregation, Search, details, Dark/Light themes, reduced motion/effects, and the synchronized keyboard-friendly list.
 - Optional compatibility-dependent OmniSorSe Connected mode for authorized indexed Structure, Search, details, and server-authored Context/Hybrid data. See `COMPATIBILITY.md`; current-host validation is not implied by the installer alone.
@@ -28,9 +36,9 @@ OmniBrille project code is licensed under the **MIT License**. The release inclu
 
 - Windows x64 is the only download target. Interactive release qualification is recorded against Windows 10 22H2 x64; other Windows client versions are not separately validated.
 - Linux has source build/test coverage only; no package or interactive-runtime support is claimed. macOS runtime is unverified.
-- Connected mode depends on a compatible OmniSorSe build and is not the primary v1.0 support contract.
+- Connected mode depends on a compatible OmniSorSe build and is not the primary v1.1 support contract.
 - Automated keyboard, list, text-scaling, and automation coverage is not screen-reader certification.
-- Real microphone hardware validation remains outstanding; voice is outside the validated v1.0 contract.
+- Real microphone hardware validation remains outstanding; voice is outside the validated v1.1 contract.
 - Destructive file operations, automatic updating, cloud services, always-listening audio, and telemetry are intentionally absent.
 
 ## Privacy and support

@@ -284,9 +284,11 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         ConnectionPanel.IsVisible = !ConnectionPanel.IsVisible;
         if (ConnectionPanel.IsVisible)
         {
+            CollapseSearchEditor();
             SettingsPanel.IsVisible = false;
             AccessibleListPanel.IsVisible = false;
             ContextFilterPanel.IsVisible = false;
+            SearchResultsPanel.IsVisible = false;
             PopulateConnectedRoots();
             UpdateConnectionView();
         }
@@ -487,6 +489,47 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
 
     private async void OnSearchClick(object? sender, RoutedEventArgs e) => await RunSearchAsync();
 
+    private void OnSearchToggleClick(object? sender, RoutedEventArgs e)
+    {
+        if (SearchEditor.IsVisible)
+        {
+            CollapseSearchEditor();
+            SearchToggleButton.Focus();
+            return;
+        }
+
+        OpenSearchEditor();
+    }
+
+    private void OpenSearchEditor()
+    {
+        ConnectionPanel.IsVisible = false;
+        SettingsPanel.IsVisible = false;
+        AccessibleListPanel.IsVisible = false;
+        ContextFilterPanel.IsVisible = false;
+        SearchEditor.IsVisible = true;
+        AutomationProperties.SetName(SearchToggleButton, "Collapse Search");
+        SearchBox.Focus();
+        SearchBox.SelectAll();
+    }
+
+    private void CollapseSearchEditor()
+    {
+        SearchEditor.IsVisible = false;
+        AutomationProperties.SetName(SearchToggleButton, "Open Search");
+    }
+
+    private void CloseSearchEditor(bool clearSearch)
+    {
+        if (clearSearch)
+        {
+            ClearSearch();
+        }
+
+        CollapseSearchEditor();
+        SearchToggleButton.Focus();
+    }
+
     private async void OnSearchKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Key == Key.Enter)
@@ -496,8 +539,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         }
         else if (e.Key == Key.Escape)
         {
-            ClearSearch();
-            GraphScene.Focus();
+            CloseSearchEditor(clearSearch: true);
             e.Handled = true;
         }
     }
@@ -654,6 +696,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         }
 
         SearchBox.Text = query;
+        OpenSearchEditor();
         await _session.SearchAsync(query, cancellationToken);
         return VoiceActionResult.Completed(
             _session.ProviderMode == ExplorerProviderMode.Connected
@@ -765,9 +808,11 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         SettingsPanel.IsVisible = !SettingsPanel.IsVisible;
         if (SettingsPanel.IsVisible)
         {
+            CollapseSearchEditor();
             ConnectionPanel.IsVisible = false;
             AccessibleListPanel.IsVisible = false;
             ContextFilterPanel.IsVisible = false;
+            SearchResultsPanel.IsVisible = false;
             _detailsDismissed = true;
             DetailsPanel.IsVisible = false;
             ReducedMotionToggle.Focus();
@@ -808,8 +853,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
 
     private void OnCloseSearchClick(object? sender, RoutedEventArgs e)
     {
-        ClearSearch();
-        GraphScene.Focus();
+        CloseSearchEditor(clearSearch: true);
     }
 
     private void OnZoomInClick(object? sender, RoutedEventArgs e) => GraphScene.ZoomIn();
@@ -833,6 +877,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
 
     private void ShowAccessibleList()
     {
+        CollapseSearchEditor();
         AccessibleListPanel.IsVisible = true;
         ConnectionPanel.IsVisible = false;
         SettingsPanel.IsVisible = false;
@@ -979,6 +1024,10 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             ? string.Empty
             : $"“{_voice.TranscriptPreview}”";
         VoiceTranscriptText.IsVisible = VoiceTranscriptText.Text.Length > 0;
+        var showVoiceDetails = _voice.State != VoiceCapabilityState.Disabled || VoiceTranscriptText.IsVisible;
+        VoiceListeningRing.IsVisible = showVoiceDetails;
+        VoiceLevelIndicator.IsVisible = showVoiceDetails;
+        VoiceStatusStack.IsVisible = showVoiceDetails;
         if (VoiceTranscriptText.IsVisible)
         {
             _voiceTranscriptTimer.Start();
@@ -1041,6 +1090,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         ContextFilterPanel.IsVisible = !ContextFilterPanel.IsVisible;
         if (ContextFilterPanel.IsVisible)
         {
+            CollapseSearchEditor();
             ConnectionPanel.IsVisible = false;
             SettingsPanel.IsVisible = false;
             AccessibleListPanel.IsVisible = false;
@@ -1210,8 +1260,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         }
         else if (e.Key == Key.F && e.KeyModifiers.HasFlag(KeyModifiers.Control))
         {
-            SearchBox.Focus();
-            SearchBox.SelectAll();
+            OpenSearchEditor();
             e.Handled = true;
         }
         else if ((e.Key == Key.Left && e.KeyModifiers.HasFlag(KeyModifiers.Alt)) || e.Key == Key.BrowserBack)
@@ -1275,9 +1324,13 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
     {
         var neighborhood = _session.Neighborhood;
         var selected = _session.SelectedNode;
-        CurrentPathText.Text = string.IsNullOrEmpty(_session.CurrentPath)
+        var currentPath = string.IsNullOrEmpty(_session.CurrentPath)
             ? "No folder selected"
             : _session.CurrentPath;
+        CurrentPathText.Text = neighborhood?.Focus.Name ?? currentPath;
+        ToolTip.SetTip(CurrentPathText, currentPath);
+        AutomationProperties.SetName(FocusHud, $"Current focus: {CurrentPathText.Text}");
+        AutomationProperties.SetHelpText(FocusHud, currentPath);
         StatusText.Text = _session.Status;
         ViewModeStatusText.Text = _session.ViewMode.ToString().ToUpperInvariant();
         Title = $"OmniBrille — {_session.ViewMode}";
@@ -1363,7 +1416,9 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         var showSearchResults = results is not null &&
             _session.SearchQuery.Length > 0 &&
             !AccessibleListPanel.IsVisible &&
-            !ContextFilterPanel.IsVisible;
+            !ContextFilterPanel.IsVisible &&
+            !SettingsPanel.IsVisible &&
+            !ConnectionPanel.IsVisible;
         DetailsPanel.IsVisible = selected is not null &&
             !_detailsDismissed &&
             !SettingsPanel.IsVisible &&
@@ -1377,6 +1432,11 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
 
         SearchResultsList.ItemsSource = results?.Hits;
         SearchResultsPanel.IsVisible = showSearchResults;
+        if (showSearchResults)
+        {
+            SearchEditor.IsVisible = true;
+            AutomationProperties.SetName(SearchToggleButton, "Collapse Search");
+        }
         var hasSearchMatches = results is { Hits.Count: > 0 };
         SearchResultsList.IsVisible = hasSearchMatches;
         SearchEmptyState.IsVisible = results is not null && !hasSearchMatches;
@@ -1689,6 +1749,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         ConnectionPanel.IsVisible = false;
         AccessibleListPanel.IsVisible = false;
         ContextFilterPanel.IsVisible = false;
+        CollapseSearchEditor();
         _detailsDismissed = true;
         DetailsPanel.IsVisible = false;
         if (_session.SearchResult is not null)

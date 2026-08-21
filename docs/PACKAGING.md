@@ -14,20 +14,20 @@ MSIX was not selected because its identity/signing lifecycle would raise the fir
 
 ## Version and artifacts
 
-`Directory.Build.props` is the version authority for v1.0.0:
+`Directory.Build.props` is the version authority for the current v1.1.0 candidate:
 
-- semantic/informational version: `1.0.0`;
-- assembly version: `1.0.0.0`;
-- Windows file and installer version: `1.0.0.0`.
+- semantic/informational version: `1.1.0`;
+- assembly version: `1.1.0.0`;
+- Windows file and installer version: `1.1.0.0`.
 
 The package is self-contained, non-trimmed, multi-file, and `win-x64`. Users do not need a separate .NET runtime. The retained multi-file deployment avoids first-release risk around Avalonia XAML, reflection, and native-library loading.
 
 ```text
-OmniBrille-1.0.0-win-x64-setup.exe
-OmniBrille-1.0.0-win-x64-setup.exe.sha256
-OmniBrille-1.0.0-win-x64-setup-manifest.json
-OmniBrille-1.0.0-win-x64-setup-dependencies.json
-OmniBrille-1.0.0-win-x64-setup-release-notes.md
+OmniBrille-1.1.0-win-x64-setup.exe
+OmniBrille-1.1.0-win-x64-setup.exe.sha256
+OmniBrille-1.1.0-win-x64-setup-manifest.json
+OmniBrille-1.1.0-win-x64-setup-dependencies.json
+OmniBrille-1.1.0-win-x64-setup-release-notes.md
 ```
 
 The manifest binds the installer to version, release commit, UTC build time, runtime/deployment, Explorer Protocol version, size, checksum, signing state, and—when built in Actions—the workflow run. The dependency document is a sanitized project dependency graph; it is neither an exact packaged-file inventory nor a formal SPDX/CycloneDX SBOM. The generated notes bind the same exact artifact to its install, support, and limitation guidance.
@@ -86,8 +86,8 @@ The installer owns its application directory, Start Menu shortcut, and uninstall
 
 Safe UI preferences remain at `%LOCALAPPDATA%\OmniBrille\visual-preferences.json` and intentionally survive upgrade/uninstall. They may include theme, effects, diagnostics, and optional voice configuration paths. Selected roots, queries, audio, transcripts, grants, bearer tokens, endpoints, connected node IDs, and Context caches are not persisted. User content, OmniSorSe state, and external voice components are never removed.
 
-Forward in-place upgrade is supported through the stable application ID. Downgrade is neither blocked nor promised. A public release must validate the exact installer’s fresh install, representative Standalone interaction, normal close/relaunch, and uninstall. Prior preview lifecycle measurements are historical evidence, not proof for v1.0.0.
+Forward in-place upgrade is supported through the stable application ID. Downgrade is neither blocked nor promised. A public release must validate the exact installer’s fresh install, representative Standalone interaction, normal close/relaunch, and uninstall. Earlier release lifecycle measurements are historical evidence, not proof for a new exact artifact.
 
 ## Publication boundary
 
-The owner selects and records the project license. Independent release review then checks the exact artifact, validation record, screenshots, public claims, release notes, signing disclosure, compatibility language, and repository state. Only after all mandatory gates pass may a normal `v1.0.0` tag and GitHub Release be created. Never retag a different commit or replace an attached installer without changing the release/version and rerunning validation.
+The owner selects and records the project license. Independent release review then checks the exact artifact, validation record, screenshots, public claims, release notes, signing disclosure, compatibility language, and repository state. Only after all mandatory gates pass may the intended version tag and GitHub Release be created. Never retag a different commit or replace an attached installer without changing the release/version and rerunning validation.

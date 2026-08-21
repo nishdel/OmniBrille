@@ -50,6 +50,33 @@ public sealed class GraphPresentationPolicyTests
     }
 
     [Fact]
+    public void Evaluate_PreservesEmphasizedNodesAndRecedesOuterDensityBands()
+    {
+        var node = Node("node");
+        var immediate = GraphPresentationPolicy.Evaluate(
+            node,
+            new GraphLayoutNode(node.Id, 0, 0, 0.9, 0.98, 1),
+            Context());
+        var secondary = GraphPresentationPolicy.Evaluate(
+            node,
+            new GraphLayoutNode(node.Id, 0, 0, 0.65, 0.68, 2),
+            Context());
+        var ambient = GraphPresentationPolicy.Evaluate(
+            node,
+            new GraphLayoutNode(node.Id, 0, 0, 0.45, 0.4, 3),
+            Context());
+        var selectedAmbient = GraphPresentationPolicy.Evaluate(
+            node,
+            new GraphLayoutNode(node.Id, 0, 0, 0.45, 0.4, 3),
+            Context(selected: node.Id));
+
+        Assert.True(immediate.OpacityMultiplier > secondary.OpacityMultiplier);
+        Assert.True(secondary.OpacityMultiplier > ambient.OpacityMultiplier);
+        Assert.True(immediate.GlowMultiplier > secondary.GlowMultiplier);
+        Assert.True(selectedAmbient.OpacityMultiplier > ambient.OpacityMultiplier);
+    }
+
+    [Fact]
     public void ResolveLabels_KeepsRequiredLabelsAndRejectsLowerPriorityCollisions()
     {
         LabelCandidate[] candidates =

@@ -90,17 +90,30 @@ public static class GraphPresentationPolicy
             level = GraphLevelOfDetail.Labeled;
         }
 
+        var emphasized = isFocus || isSelected || isHighlighted || isHovered;
         var unrelatedSearchNode = context.SearchActive &&
             !isFocus &&
             !isSelected &&
             !isHighlighted;
-        var opacityMultiplier = unrelatedSearchNode ? 0.3 : 1;
+        var hierarchyMultiplier = emphasized
+            ? Math.Min(2.5, 1 / Math.Max(0.4, layout.Opacity))
+            : layout.Depth switch
+            {
+                <= 1 => 1,
+                2 => 0.82,
+                _ => 0.58,
+            };
+        var opacityMultiplier = unrelatedSearchNode ? hierarchyMultiplier * 0.3 : hierarchyMultiplier;
         if (node.Kind == ExplorerNodeKind.Context)
         {
             opacityMultiplier *= 0.72;
         }
 
-        var glowMultiplier = context.ReducedEffects ? 0.28 : required || isFocus ? 1 : 0.62;
+        var glowMultiplier = context.ReducedEffects
+            ? emphasized ? 0.4 : 0.22
+            : isFocus ? 1.2
+            : required ? 1
+            : layout.Depth <= 1 ? 0.62 : 0.36;
         var edgeMultiplier = unrelatedSearchNode ? 0.35 : isHighlighted ? 1.3 : 1;
         return new GraphNodePresentation(
             level,

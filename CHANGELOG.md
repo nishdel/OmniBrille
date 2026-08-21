@@ -6,6 +6,31 @@ All notable OmniBrille changes are recorded here. The project uses SemVer-compat
 
 - No changes yet.
 
+## [1.1.0] - 2026-08-21
+
+Visual-convergence release. v1.1.0 preserves the v1.0 Standalone, Connected, protocol, privacy, and bounded-scene contracts while making the spatial graph the primary application surface.
+
+### Added
+
+- Reusable floating-surface, compact-control, segmented-mode, icon-button, and focus-chip styles for one coherent graph-native shell.
+- A collapsed Search trigger that expands on click or `Ctrl+F`, returns focus predictably on dismissal, and continues to use the existing bounded Search authority.
+- A focus reticle and explicit immediate/secondary/ambient presentation bands derived only from already-admitted layout and selection state.
+- A restrained aperture treatment for the existing bounded data-rain loading identity.
+
+### Changed
+
+- Replaced the reserved two-row toolbar and full-width footer with compact floating navigation, mode, utility, zoom, voice, status, details, Search, and accessibility surfaces over a full-client graph.
+- The Current Focus chip prioritizes the focused item name while retaining the full authorized path in tooltip and automation help.
+- Structural edge styling now considers both endpoints, avoiding presentation differences caused only by edge orientation.
+- Dark and Light themes now use deeper navy/cyan and pale ice-blue surface hierarchies with reduced hard rectangular chrome.
+- Voice-disabled presentation collapses to one compact action; active voice states retain their level, status, transcript, and cancellation feedback.
+
+### Accessibility and performance
+
+- Minimum-window and 100/125/150/200% text-scale tests now cover the floating shell and expandable Search rather than the superseded two-row header.
+- Existing keyboard, graph/list automation parity, reduced-motion/effects, density, cache, and renderer-profile suites remain in force.
+- Scene admission, layout coordinates, node/edge counts, filesystem authority, protocol behavior, persistence, and public interfaces are unchanged.
+
 ## [1.0.0] - 2026-08-21
 
 First stable public release. A public `0.8.0-preview.2` prerelease already existed on GitHub. v1.0.0 establishes the Windows x64 Standalone contract, MIT project license, and a pinned project-built SkiaSharp native dependency with unused Adobe DNG/RAW support excluded.

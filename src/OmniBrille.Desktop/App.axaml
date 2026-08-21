@@ -16,10 +16,11 @@
     </Style>
     <Style Selector="Button.hud">
       <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource HairlineBrush}" />
       <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="4" />
-      <Setter Property="Padding" Value="12,8" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="Padding" Value="11,7" />
+      <Setter Property="MinHeight" Value="32" />
     </Style>
     <Style Selector="Button.hud:pointerover /template/ ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
@@ -28,15 +29,45 @@
       <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
     </Style>
     <Style Selector="Button.compact">
-      <Setter Property="Padding" Value="7,3" />
+      <Setter Property="Padding" Value="8,4" />
       <Setter Property="MinWidth" Value="0" />
-      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="MinHeight" Value="28" />
+    </Style>
+    <Style Selector="Button.icon">
+      <Setter Property="FontSize" Value="15" />
+      <Setter Property="FontWeight" Value="Light" />
+      <Setter Property="Width" Value="34" />
+      <Setter Property="Height" Value="34" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinWidth" Value="34" />
+      <Setter Property="MinHeight" Value="34" />
     </Style>
     <Style Selector="RadioButton.hud">
       <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
       <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="Padding" Value="9,7" />
+      <Setter Property="Padding" Value="12,6" />
+      <Setter Property="MinHeight" Value="30" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Name="PART_LayoutRoot"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="10"
+                  Padding="{TemplateBinding Padding}">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+    </Style>
+    <Style Selector="RadioButton.hud:pointerover">
+      <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+    </Style>
+    <Style Selector="RadioButton.hud:focus">
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
     </Style>
     <Style Selector="RadioButton.hud:checked">
       <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
@@ -44,22 +75,39 @@
     </Style>
     <Style Selector="TextBox.hud">
       <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="BorderBrush" Value="{DynamicResource HairlineBrush}" />
+      <Setter Property="CornerRadius" Value="12" />
     </Style>
     <Style Selector="TextBox.hud:focus-within">
       <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
     </Style>
     <Style Selector="ComboBox.hud">
       <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="BorderBrush" Value="{DynamicResource HairlineBrush}" />
+      <Setter Property="CornerRadius" Value="12" />
     </Style>
     <Style Selector="ComboBox.hud:focus">
       <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
     </Style>
     <Style Selector="CheckBox">
       <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+    </Style>
+    <Style Selector="Border.floating">
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource HairlineBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="14" />
+    </Style>
+    <Style Selector="Border.panel">
+      <Setter Property="Background" Value="{DynamicResource SurfaceStrongBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="14" />
+    </Style>
+    <Style Selector="TextBlock.eyebrow">
+      <Setter Property="FontSize" Value="9" />
+      <Setter Property="LetterSpacing" Value="1.7" />
+      <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
     </Style>
   </Application.Styles>
 
@@ -71,6 +119,7 @@
           <SolidColorBrush x:Key="SurfaceBrush" Color="#D90A1830" />
           <SolidColorBrush x:Key="SurfaceStrongBrush" Color="#F20A1830" />
           <SolidColorBrush x:Key="BorderBrush" Color="#426DA8" />
+          <SolidColorBrush x:Key="HairlineBrush" Color="#5A527FAB" />
           <SolidColorBrush x:Key="AccentBrush" Color="#32C8FF" />
           <SolidColorBrush x:Key="AccentSoftBrush" Color="#2632C8FF" />
           <SolidColorBrush x:Key="PrimaryTextBrush" Color="#EAF7FF" />
@@ -80,10 +129,11 @@
           <SolidColorBrush x:Key="LoadingTextBrush" Color="#B9EAFF" />
         </ResourceDictionary>
         <ResourceDictionary x:Key="Light">
-          <SolidColorBrush x:Key="AppBackgroundBrush" Color="#EAF5FF" />
-          <SolidColorBrush x:Key="SurfaceBrush" Color="#E6F8FCFF" />
-          <SolidColorBrush x:Key="SurfaceStrongBrush" Color="#FAFFFFFF" />
-          <SolidColorBrush x:Key="BorderBrush" Color="#6D9FC9" />
+          <SolidColorBrush x:Key="AppBackgroundBrush" Color="#E8F4FE" />
+          <SolidColorBrush x:Key="SurfaceBrush" Color="#D9EFF8FF" />
+          <SolidColorBrush x:Key="SurfaceStrongBrush" Color="#F7F4FAFF" />
+          <SolidColorBrush x:Key="BorderBrush" Color="#6D87B8D8" />
+          <SolidColorBrush x:Key="HairlineBrush" Color="#7293B5D1" />
           <SolidColorBrush x:Key="AccentBrush" Color="#006FCA" />
           <SolidColorBrush x:Key="AccentSoftBrush" Color="#260079D8" />
           <SolidColorBrush x:Key="PrimaryTextBrush" Color="#082B4C" />

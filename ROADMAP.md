@@ -115,6 +115,18 @@ Status language is intentionally conservative: checked items exist in the applic
 - [x] Replace the DNG-bearing official SkiaSharp Win32 runtime with a pinned, project-built DNG-free native package; preserve build provenance, target-aware notices, and fail-closed upgrade checks.
 - [ ] Treat Connected-mode broad compatibility, real voice hardware, interactive Linux/macOS, and screen-reader certification as follow-up unless separately validated.
 
+## Stage 13 — Graph-first visual convergence (release candidate)
+
+- [x] Replace the reserved two-row application header and full-width footer with reusable compact floating surfaces over a full-client graph.
+- [x] Add a centered Current Focus chip, segmented mode selector, collapsed/expandable Search, compact navigation/zoom/Voice/status controls, and integrated secondary panels without duplicating session state.
+- [x] Strengthen focus/immediate/secondary/ambient hierarchy from existing bounded layout and interaction data only; preserve node/edge admission and filesystem meaning.
+- [x] Refine the deep navy/cyan and pale ice-blue themes plus the bounded data-rain identity without adding blur, unbounded resources, or a second animation loop.
+- [x] Extend minimum-window, Search focus/dismissal, text-scale, hierarchy, keyboard, automation, reduced-effects, and renderer-profile validation.
+- [ ] Capture and independently review the final installed v1.1.0 screenshot set using non-private data.
+- [ ] Complete exact-artifact and hosted lifecycle qualification for v1.1.0.
+- [ ] Record the v1.1.0 signing decision before publication; the owner’s prior unsigned authorization applies specifically to v1.0.0.
+- [ ] Publish v1.1.0 only after all release gates pass. The existing v1.0.0 tag and artifacts are immutable historical release evidence.
+
 ## Unscheduled engineering follow-up
 
 - [ ] Correct `NavigationState` to compare Connected opaque targets with ordinal semantics and add a Windows regression covering IDs that differ only by case, including Back/history coherence. Current provider/session behavior can apply the new scene while retaining the old target. Route through Architecture/Integration, Implementation, and independent adversarial review.

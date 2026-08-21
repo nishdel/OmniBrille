@@ -530,8 +530,11 @@ public sealed class GraphSceneControl : Control
 
             var start = ToCanvas(source);
             var end = ToCanvas(target);
-            var presentation = presentations[edge.TargetId];
-            var opacity = Math.Min(source.Opacity, target.Opacity) * presentation.OpacityMultiplier;
+            var sourcePresentation = presentations[edge.SourceId];
+            var targetPresentation = presentations[edge.TargetId];
+            var opacity = Math.Min(source.Opacity, target.Opacity) *
+                Math.Min(sourcePresentation.OpacityMultiplier, targetPresentation.OpacityMultiplier);
+            var edgeDepth = Math.Max(source.Depth, target.Depth);
             if (edge.Kind == ExplorerGraphEdgeKind.Contextual)
             {
                 var selected = _selectedNodeId is not null &&
@@ -567,25 +570,34 @@ public sealed class GraphSceneControl : Control
 
             if (!ReducedEffects)
             {
+                var selected = _selectedNodeId is not null &&
+                    (ExplorerIdentity.Equals(edge.SourceId, _selectedNodeId) ||
+                     ExplorerIdentity.Equals(edge.TargetId, _selectedNodeId));
                 context.DrawLine(
-                    Pen(palette.EdgeGlow, ToByte(28 * opacity * presentation.GlowMultiplier), 4.5),
+                    Pen(
+                        selected ? palette.Selection : palette.EdgeGlow,
+                        ToByte((selected ? 52 : 26) * opacity * Math.Max(sourcePresentation.GlowMultiplier, targetPresentation.GlowMultiplier)),
+                        selected ? 5.5 : 4.2),
                     start,
                     end);
             }
 
+            var emphasized = _selectedNodeId is not null &&
+                (ExplorerIdentity.Equals(edge.SourceId, _selectedNodeId) ||
+                 ExplorerIdentity.Equals(edge.TargetId, _selectedNodeId));
             context.DrawLine(
                 Pen(
-                    palette.Edge,
-                    ToByte(190 * opacity * presentation.EdgeMultiplier),
-                    target.Depth == 1 ? 1.25 : 0.82),
+                    emphasized ? palette.Selection : palette.Edge,
+                    ToByte((emphasized ? 225 : 182) * opacity * Math.Min(sourcePresentation.EdgeMultiplier, targetPresentation.EdgeMultiplier)),
+                    emphasized ? 1.6 : edgeDepth == 1 ? 1.2 : edgeDepth == 2 ? 0.82 : 0.62),
                 start,
                 end);
             context.DrawEllipse(
                 Brush(palette.EdgeGlow, ToByte(220 * opacity)),
                 null,
                 end,
-                target.Depth == 1 ? 2.1 : 1.25,
-                target.Depth == 1 ? 2.1 : 1.25);
+                edgeDepth == 1 ? 2.1 : 1.2,
+                edgeDepth == 1 ? 2.1 : 1.2);
         }
     }
 
@@ -666,6 +678,16 @@ public sealed class GraphSceneControl : Control
                 center,
                 halfWidth + 12,
                 halfHeight + 12);
+        }
+
+        if (isFocus)
+        {
+            DrawFocusReticle(
+                context,
+                center,
+                halfWidth + 17,
+                halfHeight + 15,
+                Pen(color, ToByte((ReducedEffects ? 185 : 235) * opacity), 1.15));
         }
 
         switch (node.Kind)
@@ -776,6 +798,24 @@ public sealed class GraphSceneControl : Control
             context.DrawLine(stroke, new Point(center.X + 2, center.Y - 3), new Point(center.X + 5, center.Y));
             context.DrawLine(stroke, new Point(center.X + 2, center.Y + 3), new Point(center.X + 5, center.Y));
         }
+    }
+
+    private static void DrawFocusReticle(
+        DrawingContext context,
+        Point center,
+        double halfWidth,
+        double halfHeight,
+        Pen pen)
+    {
+        const double arm = 8;
+        context.DrawLine(pen, new Point(center.X - halfWidth, center.Y - halfHeight), new Point(center.X - halfWidth + arm, center.Y - halfHeight));
+        context.DrawLine(pen, new Point(center.X - halfWidth, center.Y - halfHeight), new Point(center.X - halfWidth, center.Y - halfHeight + arm));
+        context.DrawLine(pen, new Point(center.X + halfWidth, center.Y - halfHeight), new Point(center.X + halfWidth - arm, center.Y - halfHeight));
+        context.DrawLine(pen, new Point(center.X + halfWidth, center.Y - halfHeight), new Point(center.X + halfWidth, center.Y - halfHeight + arm));
+        context.DrawLine(pen, new Point(center.X - halfWidth, center.Y + halfHeight), new Point(center.X - halfWidth + arm, center.Y + halfHeight));
+        context.DrawLine(pen, new Point(center.X - halfWidth, center.Y + halfHeight), new Point(center.X - halfWidth, center.Y + halfHeight - arm));
+        context.DrawLine(pen, new Point(center.X + halfWidth, center.Y + halfHeight), new Point(center.X + halfWidth - arm, center.Y + halfHeight));
+        context.DrawLine(pen, new Point(center.X + halfWidth, center.Y + halfHeight), new Point(center.X + halfWidth, center.Y + halfHeight - arm));
     }
 
     private IReadOnlyDictionary<string, GraphLayoutNode> CurrentLayout()

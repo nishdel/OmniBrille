@@ -38,6 +38,8 @@ public sealed class MainWindowHeadlessTests
         Assert.Equal("Run Standalone Search", AutomationProperties.GetName(window.FindControl<Button>("SearchButton")!));
         Assert.Equal("Standalone Search results", AutomationProperties.GetName(window.FindControl<ListBox>("SearchResultsList")!));
         Assert.Equal("Theme", AutomationProperties.GetName(window.FindControl<ComboBox>("ThemePicker")!));
+        Assert.False(window.FindControl<Border>("SearchEditor")!.IsVisible);
+        Assert.Equal("Open Search", AutomationProperties.GetName(window.FindControl<Button>("SearchToggleButton")!));
         Assert.True(window.FindControl<Border>("WelcomePanel")!.IsVisible);
         Assert.Equal("First-run guidance", AutomationProperties.GetName(window.FindControl<Border>("WelcomePanel")!));
         Assert.Contains("Context and Hybrid", window.FindControl<TextBlock>("WelcomeCompanionText")!.Text, StringComparison.Ordinal);
@@ -50,18 +52,27 @@ public sealed class MainWindowHeadlessTests
     }
 
     [AvaloniaFact]
-    public void MinimumWindow_UsesBoundedTwoRowHudWithoutHorizontalOverflow()
+    public void MinimumWindow_KeepsFloatingShellControlsReachableOverUsableGraph()
     {
         using var window = CreateWindow(out _, out _);
         window.Width = window.MinWidth;
         window.Height = window.MinHeight;
         window.Show();
 
-        var header = window.FindControl<Grid>("HeaderLayout")!;
-        Assert.InRange(header.DesiredSize.Width, 1, window.ClientSize.Width - 31);
-        Assert.True(window.FindControl<Button>("ChooseFolderButton")!.IsEffectivelyVisible);
-        Assert.True(window.FindControl<Button>("AccessibleListButton")!.IsEffectivelyVisible);
-        Assert.True(window.FindControl<Button>("SettingsButton")!.IsEffectivelyVisible);
+        var shell = window.FindControl<Grid>("HeaderLayout")!;
+        var graph = window.FindControl<GraphSceneControl>("GraphScene")!;
+        Assert.Equal(window.ClientSize, shell.Bounds.Size);
+        Assert.InRange(graph.Bounds.Width, 700, window.ClientSize.Width);
+        Assert.InRange(graph.Bounds.Height, 420, window.ClientSize.Height);
+        foreach (var name in new[] { "ChooseFolderButton", "SearchToggleButton", "AccessibleListButton", "SettingsButton" })
+        {
+            var control = window.FindControl<Button>(name)!;
+            Assert.True(control.IsEffectivelyVisible);
+            Assert.True(control.Bounds.Width > 0);
+            Assert.True(control.Bounds.Height > 0);
+        }
+
+        Assert.False(window.FindControl<Border>("SearchEditor")!.IsVisible);
     }
 
     [AvaloniaFact]
@@ -101,7 +112,7 @@ public sealed class MainWindowHeadlessTests
 
         var report = window.CreateSanitizedDiagnosticsReport();
         Assert.Contains("OmniBrille safe diagnostics", report, StringComparison.Ordinal);
-        Assert.Contains("1.0.0", report, StringComparison.Ordinal);
+        Assert.Contains("1.1.0", report, StringComparison.Ordinal);
         Assert.Contains("Provider: Connected", report, StringComparison.Ordinal);
         Assert.DoesNotContain("one-time-handoff", report, StringComparison.Ordinal);
         Assert.DoesNotContain("private search query", report, StringComparison.Ordinal);
@@ -158,7 +169,8 @@ public sealed class MainWindowHeadlessTests
         Assert.False(window.FindControl<Border>("InitialLoadingOverlay")!.IsVisible);
         Assert.False(window.FindControl<Border>("WelcomePanel")!.IsVisible);
         Assert.True(window.FindControl<Border>("DetailsPanel")!.IsVisible);
-        Assert.Equal(root, window.FindControl<TextBlock>("CurrentPathText")!.Text);
+        Assert.Equal(Path.GetFileName(root), window.FindControl<TextBlock>("CurrentPathText")!.Text);
+        Assert.Equal(root, ToolTip.GetTip(window.FindControl<TextBlock>("CurrentPathText")!));
     }
 
     [AvaloniaFact]
@@ -246,7 +258,11 @@ public sealed class MainWindowHeadlessTests
         Assert.Equal(root, session.CurrentPath);
 
         window.KeyPress(Key.F, RawInputModifiers.Control, PhysicalKey.F, "f");
+        Assert.True(window.FindControl<Border>("SearchEditor")!.IsVisible);
         Assert.True(window.FindControl<TextBox>("SearchBox")!.IsFocused);
+        window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+        Assert.False(window.FindControl<Border>("SearchEditor")!.IsVisible);
+        Assert.True(window.FindControl<Button>("SearchToggleButton")!.IsFocused);
     }
 
     [AvaloniaFact]
@@ -611,6 +627,14 @@ public sealed class MainWindowHeadlessTests
         var graph = window.FindControl<GraphSceneControl>("GraphScene")!;
         graph.TextScale = scale;
         graph.ResetView();
+        window.FindControl<Button>("SearchToggleButton")!
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        using (window.CaptureRenderedFrame())
+        {
+        }
+
+        Assert.True(window.FindControl<Border>("SearchEditor")!.IsVisible);
+        Assert.True(window.FindControl<TextBox>("SearchBox")!.Bounds.Height > 0);
         window.FindControl<Button>("AccessibleListButton")!
             .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         using (window.CaptureRenderedFrame())
@@ -618,7 +642,7 @@ public sealed class MainWindowHeadlessTests
         }
 
         Assert.True(window.FindControl<Button>("ChooseFolderButton")!.Bounds.Height > 0);
-        Assert.True(window.FindControl<TextBox>("SearchBox")!.Bounds.Height > 0);
+        Assert.False(window.FindControl<Border>("SearchEditor")!.IsVisible);
         Assert.True(window.FindControl<Border>("AccessibleListPanel")!.IsVisible);
         Assert.True(window.FindControl<ListBox>("AccessibleNodesList")!.Bounds.Height > 0);
         Assert.True(graph.Diagnostics.Labels <= GraphPresentationPolicy.RecommendedLabelBudget(1, 48, scale));

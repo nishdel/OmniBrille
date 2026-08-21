@@ -4,6 +4,8 @@ OmniBrille uses capability negotiation and Explorer Protocol major-version valid
 
 | OmniBrille | OmniSorSe | Explorer Protocol | Platform | Status |
 |---|---|---|---|---|
+| 1.1.0 candidate | not installed | n/a | Windows 10 22H2 x64 | Standalone selected-root Structure, Search, details, themes, preferences, and synchronized accessible list exercised in the redesigned graph-first shell; exact installed-artifact qualification remains a release gate |
+| 1.1.0 candidate | committed v2.5 RC `59be07c6cebff12072cbf18701fb16cb11801287` | v1.0 | Windows 10 22H2 x64 | Managed protocol/session implementation is unchanged from 1.0.0 and automated Connected coverage passes, but the candidate has not been revalidated with this host. Connected remains compatibility-dependent rather than the primary support contract |
 | 1.0.0 | not installed | n/a | Windows 10 22H2 x64 | Public support contract: Standalone selected-root Structure, Search, details, themes, preferences, and synchronized accessible list. Other Windows client versions have not been separately qualified |
 | 1.0.0 | committed v2.5 RC `59be07c6cebff12072cbf18701fb16cb11801287` | v1.0 | Windows 10 22H2 x64 | Compatibility is strongly supported by unchanged client implementation and earlier installed validation, but the 1.0.0 artifact was not revalidated with this host. Connected remains compatibility-dependent rather than the primary v1 support contract |
 | 0.8.0-preview.2 | committed v2.5 RC `59be07c6cebff12072cbf18701fb16cb11801287` | v1.0 | Windows x64 | Connected Structure/details/Context/Hybrid compatibility retained; Search uses session scope and fails safely when the companion response is unavailable |

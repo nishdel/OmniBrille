@@ -11,6 +11,11 @@ namespace OmniBrille.Desktop.Rendering;
 
 public sealed class DataRainControl : Control
 {
+    private static readonly Pen DarkAperturePen = new(new SolidColorBrush(Color.Parse("#7832C8FF")), 1);
+    private static readonly Pen DarkApertureSoftPen = new(new SolidColorBrush(Color.Parse("#3032C8FF")), 1);
+    private static readonly Pen LightAperturePen = new(new SolidColorBrush(Color.Parse("#78006FCA")), 1);
+    private static readonly Pen LightApertureSoftPen = new(new SolidColorBrush(Color.Parse("#30006FCA")), 1);
+
     private static readonly string[][] Streams =
     [
         ["PATH", "0", "1", "0x03EF", "NODE", "1", "0"],
@@ -85,6 +90,8 @@ public sealed class DataRainControl : Control
             return;
         }
 
+        DrawAperture(context);
+
         var streamCount = ReducedMotion
             ? ReducedEffects ? 2 : 3
             : ReducedEffects ? 5 : Streams.Length;
@@ -97,8 +104,10 @@ public sealed class DataRainControl : Control
             var tokenCount = ReducedMotion ? Math.Min(2, tokens.Length) : tokens.Length;
             for (var tokenIndex = 0; tokenIndex < tokenCount; tokenIndex++)
             {
-                var alpha = (byte)Math.Clamp(34 + (tokenIndex * 18) + ((streamIndex * 11) % 46), 30, 155);
-                var color = Color.FromArgb(alpha, 48, streamIndex % 3 == 0 ? (byte)202 : (byte)142, 255);
+                var alpha = (byte)Math.Clamp(54 + (tokenIndex * 18) + ((streamIndex * 11) % 46), 48, 185);
+                var color = ActualThemeVariant == Avalonia.Styling.ThemeVariant.Light
+                    ? Color.FromArgb(alpha, 0, streamIndex % 3 == 0 ? (byte)111 : (byte)86, 190)
+                    : Color.FromArgb(alpha, 48, streamIndex % 3 == 0 ? (byte)202 : (byte)142, 255);
                 var key = new DataTokenKey(tokens[tokenIndex], tokenIndex % 3 == 0 ? 10 : 9, color);
                 var text = _textCache.GetOrAdd(key, static item => new FormattedText(
                     item.Text,
@@ -116,6 +125,28 @@ public sealed class DataRainControl : Control
         _renderedTokenCount = renderedTokens;
         clock.Stop();
         _lastRenderDuration = clock.Elapsed;
+    }
+
+    private void DrawAperture(DrawingContext context)
+    {
+        var center = new Point(Bounds.Width / 2, Bounds.Height * 0.46);
+        var strong = ActualThemeVariant == Avalonia.Styling.ThemeVariant.Light
+            ? LightAperturePen
+            : DarkAperturePen;
+        var soft = ActualThemeVariant == Avalonia.Styling.ThemeVariant.Light
+            ? LightApertureSoftPen
+            : DarkApertureSoftPen;
+        context.DrawEllipse(null, strong, center, 42, 42);
+        if (ReducedEffects)
+        {
+            return;
+        }
+
+        context.DrawEllipse(null, soft, center, 76, 76);
+        context.DrawLine(strong, new Point(center.X - 58, center.Y), new Point(center.X - 48, center.Y));
+        context.DrawLine(strong, new Point(center.X + 48, center.Y), new Point(center.X + 58, center.Y));
+        context.DrawLine(strong, new Point(center.X, center.Y - 58), new Point(center.X, center.Y - 48));
+        context.DrawLine(strong, new Point(center.X, center.Y + 48), new Point(center.X, center.Y + 58));
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
