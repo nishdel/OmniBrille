@@ -95,14 +95,14 @@ public sealed class RadialGraphLayout : IGraphLayoutEngine
     private static GraphSlot[] CreateSlots(int count)
     {
         var slots = new List<GraphSlot>(count);
-        var innerCount = Math.Min(12, count);
+        var innerCount = Math.Min(8, count);
         AddRing(slots, innerCount, 0.31, 0.28, 0.84, 0.98, 1, -Math.PI / 2);
 
-        var middleCount = Math.Min(18, count - slots.Count);
-        AddRing(slots, middleCount, 0.49, 0.43, 0.64, 0.68, 2, (-Math.PI / 2) + 0.14);
+        var middleCount = Math.Min(16, count - slots.Count);
+        AddRing(slots, middleCount, 0.5, 0.43, 0.58, 0.52, 2, (-Math.PI / 2) + 0.14);
 
         var outerCount = count - slots.Count;
-        AddRing(slots, outerCount, 0.65, 0.56, 0.46, 0.34, 3, (-Math.PI / 2) + 0.08);
+        AddRing(slots, outerCount, 0.67, 0.57, 0.32, 0.26, 3, (-Math.PI / 2) + 0.08);
         return [.. slots];
     }
 

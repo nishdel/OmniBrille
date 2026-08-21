@@ -22,6 +22,7 @@ Visual-convergence release. v1.1.0 preserves the v1.0 Standalone, Connected, pro
 - Replaced the reserved two-row toolbar and full-width footer with compact floating navigation, mode, utility, zoom, voice, status, details, Search, and accessibility surfaces over a full-client graph.
 - The Current Focus chip prioritizes the focused item name while retaining the full authorized path in tooltip and automation help.
 - Structural edge styling now considers both endpoints, avoiding presentation differences caused only by edge orientation.
+- Dense Structure scenes now keep at most eight children in the crisp labeled focus plane, recede the next 16 to subdued glyphs, and treat the remaining bounded siblings as faint point context. Selection, hover, and Search restore any receding node and its real connection.
 - Dark and Light themes now use deeper navy/cyan and pale ice-blue surface hierarchies with reduced hard rectangular chrome.
 - Voice-disabled presentation collapses to one compact action; active voice states retain their level, status, transcript, and cancellation feedback.
 
@@ -30,7 +31,7 @@ Visual-convergence release. v1.1.0 preserves the v1.0 Standalone, Connected, pro
 - Minimum-window and 100/125/150/200% text-scale tests now cover the floating shell and expandable Search rather than the superseded two-row header.
 - First-run guidance now yields while a secondary panel is open, and the bottom status surface yields when a side panel claims its space, so neither can obscure focused controls at the supported minimum size.
 - Existing keyboard, graph/list automation parity, reduced-motion/effects, density, cache, and renderer-profile suites remain in force.
-- Scene admission, layout coordinates, node/edge counts, filesystem authority, protocol behavior, persistence, and public interfaces are unchanged.
+- Scene admission, node/edge counts, filesystem authority, protocol behavior, persistence, and public interfaces are unchanged. Structure's deterministic radial presentation bands were retuned without changing graph membership or navigation.
 
 ## [1.0.0] - 2026-08-21
 

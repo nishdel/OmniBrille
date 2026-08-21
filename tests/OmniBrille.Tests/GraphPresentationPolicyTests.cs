@@ -43,9 +43,15 @@ public sealed class GraphPresentationPolicyTests
 
         var normal = GraphPresentationPolicy.Evaluate(node, layout, Context());
         var searching = GraphPresentationPolicy.Evaluate(node, layout, Context(searchActive: true));
+        var searchHovered = GraphPresentationPolicy.Evaluate(
+            node,
+            layout,
+            Context(hovered: node.Id, searchActive: true));
         var reduced = GraphPresentationPolicy.Evaluate(node, layout, Context(reducedEffects: true));
 
         Assert.True(searching.OpacityMultiplier < normal.OpacityMultiplier);
+        Assert.True(searchHovered.OpacityMultiplier > searching.OpacityMultiplier);
+        Assert.True(searchHovered.EdgeMultiplier > searching.EdgeMultiplier);
         Assert.True(reduced.GlowMultiplier < normal.GlowMultiplier);
     }
 
@@ -69,11 +75,31 @@ public sealed class GraphPresentationPolicyTests
             node,
             new GraphLayoutNode(node.Id, 0, 0, 0.45, 0.4, 3),
             Context(selected: node.Id));
+        var hoveredAmbient = GraphPresentationPolicy.Evaluate(
+            node,
+            new GraphLayoutNode(node.Id, 0, 0, 0.45, 0.4, 3),
+            Context(hovered: node.Id));
+        var highlightedAmbient = GraphPresentationPolicy.Evaluate(
+            node,
+            new GraphLayoutNode(node.Id, 0, 0, 0.32, 0.26, 3),
+            Context(highlights: new HashSet<string> { node.Id }, searchActive: true));
 
         Assert.True(immediate.OpacityMultiplier > secondary.OpacityMultiplier);
         Assert.True(secondary.OpacityMultiplier > ambient.OpacityMultiplier);
         Assert.True(immediate.GlowMultiplier > secondary.GlowMultiplier);
+        Assert.True(immediate.EdgeMultiplier > secondary.EdgeMultiplier);
+        Assert.True(secondary.EdgeMultiplier > ambient.EdgeMultiplier);
+        Assert.Equal(GraphLevelOfDetail.Focused, selectedAmbient.LevelOfDetail);
+        Assert.True(selectedAmbient.LabelIsRequired);
         Assert.True(selectedAmbient.OpacityMultiplier > ambient.OpacityMultiplier);
+        Assert.True(selectedAmbient.EdgeMultiplier > ambient.EdgeMultiplier);
+        Assert.Equal(GraphLevelOfDetail.Focused, hoveredAmbient.LevelOfDetail);
+        Assert.True(hoveredAmbient.LabelIsRequired);
+        Assert.True(hoveredAmbient.OpacityMultiplier > ambient.OpacityMultiplier);
+        Assert.True(hoveredAmbient.EdgeMultiplier > ambient.EdgeMultiplier);
+        Assert.Equal(GraphLevelOfDetail.Focused, highlightedAmbient.LevelOfDetail);
+        Assert.True(highlightedAmbient.LabelIsRequired);
+        Assert.True(highlightedAmbient.EdgeMultiplier > ambient.EdgeMultiplier);
     }
 
     [Fact]

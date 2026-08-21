@@ -535,13 +535,29 @@ public sealed class GraphSceneControl : Control
             var opacity = Math.Min(source.Opacity, target.Opacity) *
                 Math.Min(sourcePresentation.OpacityMultiplier, targetPresentation.OpacityMultiplier);
             var edgeDepth = Math.Max(source.Depth, target.Depth);
+            var selected = _selectedNodeId is not null &&
+                !ExplorerIdentity.Equals(_selectedNodeId, _neighborhood.FocusNodeId) &&
+                (ExplorerIdentity.Equals(edge.SourceId, _selectedNodeId) ||
+                 ExplorerIdentity.Equals(edge.TargetId, _selectedNodeId));
+            var hovered = _hoveredNodeId is not null &&
+                !ExplorerIdentity.Equals(_hoveredNodeId, _neighborhood.FocusNodeId) &&
+                (ExplorerIdentity.Equals(edge.SourceId, _hoveredNodeId) ||
+                 ExplorerIdentity.Equals(edge.TargetId, _hoveredNodeId));
+            var highlighted =
+                (!ExplorerIdentity.Equals(edge.SourceId, _neighborhood.FocusNodeId) &&
+                 _highlights.Contains(edge.SourceId)) ||
+                (!ExplorerIdentity.Equals(edge.TargetId, _neighborhood.FocusNodeId) &&
+                 _highlights.Contains(edge.TargetId));
+            var emphasized = selected || hovered || highlighted;
+            if (emphasized)
+            {
+                opacity = Math.Max(opacity, 0.64);
+            }
+
             if (edge.Kind == ExplorerGraphEdgeKind.Contextual)
             {
-                var selected = _selectedNodeId is not null &&
-                    (ExplorerIdentity.Equals(edge.SourceId, _selectedNodeId) ||
-                     ExplorerIdentity.Equals(edge.TargetId, _selectedNodeId));
                 var strength = Math.Clamp((edge.Relationship?.Strength ?? 50) / 100d, 0.35, 1);
-                if (!ReducedEffects && selected)
+                if (!ReducedEffects && emphasized)
                 {
                     context.DrawLine(
                         Pen(palette.ContextEdgeGlow, ToByte(58 * opacity), 5),
@@ -553,51 +569,48 @@ public sealed class GraphSceneControl : Control
                     context,
                     Pen(
                         palette.ContextEdge,
-                        ToByte((selected ? 235 : 155) * opacity * strength),
-                        selected ? 1.65 : 0.95),
+                        ToByte((emphasized ? 235 : 155) * opacity * strength),
+                        emphasized ? 1.65 : 0.95),
                     start,
                     end,
                     ReducedEffects ? 7 : 6,
                     ReducedEffects ? 6 : 4);
                 context.DrawEllipse(
-                    Brush(palette.ContextEdgeGlow, ToByte((selected ? 235 : 170) * opacity)),
+                    Brush(palette.ContextEdgeGlow, ToByte((emphasized ? 235 : 170) * opacity)),
                     null,
                     end,
-                    selected ? 2.4 : 1.55,
-                    selected ? 2.4 : 1.55);
+                    emphasized ? 2.4 : 1.55,
+                    emphasized ? 2.4 : 1.55);
                 continue;
             }
 
-            if (!ReducedEffects)
+            if (!ReducedEffects && (edgeDepth <= 1 || emphasized))
             {
-                var selected = _selectedNodeId is not null &&
-                    (ExplorerIdentity.Equals(edge.SourceId, _selectedNodeId) ||
-                     ExplorerIdentity.Equals(edge.TargetId, _selectedNodeId));
                 context.DrawLine(
                     Pen(
-                        selected ? palette.Selection : palette.EdgeGlow,
-                        ToByte((selected ? 52 : 26) * opacity * Math.Max(sourcePresentation.GlowMultiplier, targetPresentation.GlowMultiplier)),
-                        selected ? 5.5 : 4.2),
+                        emphasized ? palette.Selection : palette.EdgeGlow,
+                        ToByte((emphasized ? 52 : 26) * opacity * Math.Max(sourcePresentation.GlowMultiplier, targetPresentation.GlowMultiplier)),
+                        emphasized ? 5.5 : 4.2),
                     start,
                     end);
             }
 
-            var emphasized = _selectedNodeId is not null &&
-                (ExplorerIdentity.Equals(edge.SourceId, _selectedNodeId) ||
-                 ExplorerIdentity.Equals(edge.TargetId, _selectedNodeId));
+            var edgeMultiplier = emphasized
+                ? 1
+                : Math.Min(sourcePresentation.EdgeMultiplier, targetPresentation.EdgeMultiplier);
             context.DrawLine(
                 Pen(
                     emphasized ? palette.Selection : palette.Edge,
-                    ToByte((emphasized ? 225 : 182) * opacity * Math.Min(sourcePresentation.EdgeMultiplier, targetPresentation.EdgeMultiplier)),
-                    emphasized ? 1.6 : edgeDepth == 1 ? 1.2 : edgeDepth == 2 ? 0.82 : 0.62),
+                    ToByte((emphasized ? 225 : 182) * opacity * edgeMultiplier),
+                    emphasized ? 1.6 : edgeDepth == 1 ? 1.2 : edgeDepth == 2 ? 0.76 : 0.52),
                 start,
                 end);
             context.DrawEllipse(
-                Brush(palette.EdgeGlow, ToByte(220 * opacity)),
+                Brush(palette.EdgeGlow, ToByte(220 * opacity * edgeMultiplier)),
                 null,
                 end,
-                edgeDepth == 1 ? 2.1 : 1.2,
-                edgeDepth == 1 ? 2.1 : 1.2);
+                emphasized || edgeDepth == 1 ? 2.1 : 1.2,
+                emphasized || edgeDepth == 1 ? 2.1 : 1.2);
         }
     }
 

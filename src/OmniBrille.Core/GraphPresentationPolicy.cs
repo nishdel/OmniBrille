@@ -91,10 +91,7 @@ public static class GraphPresentationPolicy
         }
 
         var emphasized = isFocus || isSelected || isHighlighted || isHovered;
-        var unrelatedSearchNode = context.SearchActive &&
-            !isFocus &&
-            !isSelected &&
-            !isHighlighted;
+        var unrelatedSearchNode = context.SearchActive && !emphasized;
         var hierarchyMultiplier = emphasized
             ? Math.Min(2.5, 1 / Math.Max(0.4, layout.Opacity))
             : layout.Depth switch
@@ -114,7 +111,19 @@ public static class GraphPresentationPolicy
             : isFocus ? 1.2
             : required ? 1
             : layout.Depth <= 1 ? 0.62 : 0.36;
-        var edgeMultiplier = unrelatedSearchNode ? 0.35 : isHighlighted ? 1.3 : 1;
+        var edgeMultiplier = isSelected || isHighlighted || isHovered
+            ? 1.3
+            : layout.Depth switch
+            {
+                <= 1 => 1,
+                2 => 0.48,
+                _ => 0.16,
+            };
+        if (unrelatedSearchNode)
+        {
+            edgeMultiplier = Math.Min(edgeMultiplier, 0.35);
+        }
+
         return new GraphNodePresentation(
             level,
             labelPriority,

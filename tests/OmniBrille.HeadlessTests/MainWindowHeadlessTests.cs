@@ -700,6 +700,52 @@ public sealed class MainWindowHeadlessTests
     }
 
     [AvaloniaFact]
+    public async Task DenseStructure_UsesSparseFocusPlaneWithoutDroppingAccessibleNodes()
+    {
+        using var window = CreateWindow(out var session, out _);
+        window.Show();
+        var root = Path.Combine(Path.GetTempPath(), "OmniBrilleSparseFocusPlane");
+        var provider = new DenseProvider(root, 47);
+        await session.OpenRootAsync(provider, provider);
+        var graph = window.FindControl<GraphSceneControl>("GraphScene")!;
+        graph.ReducedMotion = true;
+        graph.SetScene(session.Neighborhood, session.Neighborhood!.FocusNodeId, new HashSet<string>(), animate: false);
+        using (window.CaptureRenderedFrame())
+        {
+        }
+
+        Assert.Equal(48, graph.Diagnostics.Nodes);
+        Assert.Equal(47, graph.Diagnostics.Edges);
+        Assert.Equal(9, graph.Diagnostics.Labels);
+        var expectedIds = session.Neighborhood.Nodes
+            .Select(node => node.Id)
+            .OrderBy(id => id, StringComparer.Ordinal)
+            .ToArray();
+        var graphPeers = ControlAutomationPeer.CreatePeerForElement(graph).GetChildren();
+        Assert.Equal(session.Neighborhood.Nodes.Count, graphPeers.Count);
+        var graphPeerIds = graphPeers
+            .Select(peer => Assert.IsType<string>(peer.GetAutomationId()))
+            .Select(id =>
+            {
+                Assert.StartsWith("GraphNode:", id, StringComparison.Ordinal);
+                return id["GraphNode:".Length..];
+            })
+            .OrderBy(id => id, StringComparer.Ordinal)
+            .ToArray();
+        Assert.Equal(expectedIds, graphPeerIds);
+
+        window.FindControl<Button>("AccessibleListButton")!
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        var list = window.FindControl<ListBox>("AccessibleNodesList")!;
+        var accessibleListIds = list.ItemsSource!
+            .Cast<object>()
+            .Select(item => (string)item.GetType().GetProperty("NodeId")!.GetValue(item)!)
+            .OrderBy(id => id, StringComparer.Ordinal)
+            .ToArray();
+        Assert.Equal(expectedIds, accessibleListIds);
+    }
+
+    [AvaloniaFact]
     public async Task ReducedMotion_StopsSceneAnimationAndSimplifiesDataRain()
     {
         using var window = CreateWindow(out var session, out _);

@@ -119,10 +119,10 @@ Status language is intentionally conservative: checked items exist in the applic
 
 - [x] Replace the reserved two-row application header and full-width footer with reusable compact floating surfaces over a full-client graph.
 - [x] Add a centered Current Focus chip, segmented mode selector, collapsed/expandable Search, compact navigation/zoom/Voice/status controls, and integrated secondary panels without duplicating session state.
-- [x] Strengthen focus/immediate/secondary/ambient hierarchy from existing bounded layout and interaction data only; preserve node/edge admission and filesystem meaning.
+- [x] Match the retained original concepts with an eight-node crisp Structure focus plane, subdued secondary glyphs, faint ambient siblings, and state-driven promotion; preserve node/edge admission and filesystem meaning.
 - [x] Refine the deep navy/cyan and pale ice-blue themes plus the bounded data-rain identity without adding blur, unbounded resources, or a second animation loop.
 - [x] Extend minimum-window, Search focus/dismissal, text-scale, hierarchy, keyboard, automation, reduced-effects, and renderer-profile validation.
-- [x] Capture and independently review the final installed v1.1.0 screenshot set from one exact candidate using non-private data.
+- [ ] Capture and independently review the final corrected v1.1.0 screenshot set from one exact candidate using non-private data.
 - [ ] Complete exact-artifact and hosted lifecycle qualification for v1.1.0.
 - [ ] Record the v1.1.0 signing decision before publication; the owner’s prior unsigned authorization applies specifically to v1.0.0.
 - [ ] Publish v1.1.0 only after all release gates pass. The existing v1.0.0 tag and artifacts are immutable historical release evidence.
