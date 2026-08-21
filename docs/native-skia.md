@@ -83,7 +83,9 @@ The existing headless renderer-pressure test was run twice on the exact 3.119.4.
 
 All sampled path-independent DNG-free paths remained below the repository's 16.7 ms local engineering target, and no meaningful regression from 3.119.4.2 was observed. These same-host headless samples are proportionate regression evidence, not a guarantee for every GPU, filesystem, or machine.
 
-Hosted run [32428287100](https://github.com/nishdel/OmniBrille/actions/runs/32428287100) then rebuilt the accepted DLL hash, passed the complete release gate, produced an unsigned 1.0.0 candidate, and passed independent artifact integrity plus fresh-runner install, launch, normal close/relaunch, registration, uninstall, and cleanup. A final release commit must repeat the exact-artifact gate; an earlier candidate is never substituted for the published bytes.
+Hosted run [32428287100](https://github.com/nishdel/OmniBrille/actions/runs/32428287100) rebuilt the accepted DLL hash and qualified an earlier unsigned candidate. Final run [32436639695](https://github.com/nishdel/OmniBrille/actions/runs/32436639695) repeated the native proof and complete release gate at release commit `53f787b4489f487fa5dcf86af227510fc4ebc029`. Its fresh runner passed artifact integrity, install, launch, normal close/relaunch, registration, uninstall, and cleanup for the exact published installer, SHA-256 `67443C616B82E066199D39EF7EDBD3DCE68B7E66BAEB26E25872E30BE0F347BF`.
+
+The same published installer was then installed locally on Windows 10 build 19045 at 125% display scaling. It passed Start Menu first run, Dark/Light graph rendering, text/icons/lines, reduced motion/effects, structural Search with result focus, accessible-list drill-down and Back, normal close/relaunch, and uninstall without removing demo content or retained preferences. This is representative visual/interaction evidence, not pixel equivalence, manual screen-reader certification, or a universal GPU-performance guarantee.
 
 ## Upgrade procedure
 

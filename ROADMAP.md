@@ -103,15 +103,15 @@ Status language is intentionally conservative: checked items exist in the applic
 - [x] Preserve Structure/Context/Hybrid budgets, Explorer Protocol v1, handoff security, voice architecture, release automation, and privacy boundaries.
 - [ ] Continue controlled preview feedback where useful; real microphone hardware, broader real Context/Hybrid density, interactive Linux/macOS, and future code signing remain separate follow-up work. MIT licensing and the unsigned v1.0.0 decision are resolved.
 
-## Stage 12 — v1.0.0 first stable public release (release candidate in progress)
+## Stage 12 — v1.0.0 first stable public release (complete)
 
 - [x] Define a Windows x64 Standalone-first public contract without widening renderer, protocol, persistence, or product behavior.
 - [x] Add stable-version packaging support, public release notes, exact-artifact metadata, dependency notices, and stronger installed lifecycle checks.
 - [x] Capture and review real installed DNG-free release-candidate screenshots using non-private demo data; recapture is required only if the final visible binary, native renderer, or demo presentation changes.
 - [x] Record the MIT License in source and release metadata; the exact installed-artifact copy remains part of final qualification.
 - [x] Record explicit owner acceptance of a prominently disclosed unsigned v1.0.0; add Authenticode code signing in a future release.
-- [ ] Validate the exact release-commit artifact through local interaction and the hosted artifact-only workflow.
-- [ ] Complete independent release review, push the release commit/tag, publish the GitHub Release and metadata, and verify the public download.
+- [x] Validate the exact release-commit artifact through local interaction and the hosted artifact-only workflow.
+- [x] Complete independent release review, push the release commit/tag, publish the GitHub Release and metadata, and verify the public download.
 - [x] Replace the DNG-bearing official SkiaSharp Win32 runtime with a pinned, project-built DNG-free native package; preserve build provenance, target-aware notices, and fail-closed upgrade checks.
 - [ ] Treat Connected-mode broad compatibility, real voice hardware, interactive Linux/macOS, and screen-reader certification as follow-up unless separately validated.
 

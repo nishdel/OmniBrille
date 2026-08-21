@@ -15,3 +15,4 @@ Retain a report only for architecture/product boundary changes, serious regressi
 - [`2026-08-20-v1-public-release-preparation.md`](2026-08-20-v1-public-release-preparation.md) — v1.0 stable packaging, public presentation, preflight artifact qualification, and blocked publication boundary.
 - [`2026-08-20-v1-gpl-release-attempt.md`](2026-08-20-v1-gpl-release-attempt.md) — GPL-3.0-only decision, unsigned authorization, dependency-license blocker, and stopped v1.0 publication attempt.
 - [`2026-08-20-v1-mit-release-attempt.md`](2026-08-20-v1-mit-release-attempt.md) — MIT transition, DNG-term reassessment, strengthened notice binding, and stopped publication at the owner-acceptance boundary.
+- [`2026-08-21-v1.0.0-public-release.md`](2026-08-21-v1.0.0-public-release.md) — DNG-free renderer remediation, exact-artifact qualification, and the published first stable release.
