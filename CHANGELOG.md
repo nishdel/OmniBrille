@@ -28,7 +28,7 @@ Visual-convergence release. v1.1.0 preserves the v1.0 Standalone, Connected, pro
 ### Accessibility and performance
 
 - Minimum-window and 100/125/150/200% text-scale tests now cover the floating shell and expandable Search rather than the superseded two-row header.
-- First-run guidance now yields while a secondary panel is open, so it cannot obscure focused controls, and returns when that surface closes.
+- First-run guidance now yields while a secondary panel is open, and the bottom status surface yields when a side panel claims its space, so neither can obscure focused controls at the supported minimum size.
 - Existing keyboard, graph/list automation parity, reduced-motion/effects, density, cache, and renderer-profile suites remain in force.
 - Scene admission, layout coordinates, node/edge counts, filesystem authority, protocol behavior, persistence, and public interfaces are unchanged.
 

@@ -112,14 +112,16 @@ public sealed class MainWindowHeadlessTests
         window.Height = window.MinHeight;
         window.Show();
         var welcomePanel = window.FindControl<Border>("WelcomePanel")!;
+        var statusHud = window.FindControl<Border>("StatusHud")!;
         Assert.True(welcomePanel.IsVisible);
+        Assert.True(statusHud.IsVisible);
 
-        foreach (var (buttonName, panelName) in new[]
+        foreach (var (buttonName, panelName, statusRemainsVisible) in new[]
         {
-            ("ConnectionButton", "ConnectionPanel"),
-            ("SearchToggleButton", "SearchEditor"),
-            ("AccessibleListButton", "AccessibleListPanel"),
-            ("SettingsButton", "SettingsPanel"),
+            ("ConnectionButton", "ConnectionPanel", false),
+            ("SearchToggleButton", "SearchEditor", true),
+            ("AccessibleListButton", "AccessibleListPanel", false),
+            ("SettingsButton", "SettingsPanel", false),
         })
         {
             var button = window.FindControl<Button>(buttonName)!;
@@ -128,10 +130,17 @@ public sealed class MainWindowHeadlessTests
             button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Assert.True(panel.IsVisible);
             Assert.False(welcomePanel.IsVisible);
+            Assert.Equal(statusRemainsVisible, statusHud.IsVisible);
+            if (panelName == "SettingsPanel")
+            {
+                window.UpdateLayout();
+                Assert.True(panel.Bounds.Bottom <= window.ClientSize.Height - 18);
+            }
 
             button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Assert.False(panel.IsVisible);
             Assert.True(welcomePanel.IsVisible);
+            Assert.True(statusHud.IsVisible);
         }
     }
 

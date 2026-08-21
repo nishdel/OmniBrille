@@ -245,7 +245,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         }
 
         UpdateConnectionView();
-        UpdateWelcomePanelVisibility();
+        UpdateWelcomeAndStatusVisibility();
     }
 
     private async void OnChooseFolderClick(object? sender, RoutedEventArgs e)
@@ -298,7 +298,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             GraphScene.Focus();
         }
 
-        UpdateWelcomePanelVisibility();
+        UpdateWelcomeAndStatusVisibility();
     }
 
     private async void OnReconnectClick(object? sender, RoutedEventArgs e)
@@ -321,7 +321,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         ConnectionPanel.IsVisible = false;
         ChooseFolderButton.Focus();
         UpdateConnectionView();
-        UpdateWelcomePanelVisibility();
+        UpdateWelcomeAndStatusVisibility();
     }
 
     private async void OnOpenConnectedRootClick(object? sender, RoutedEventArgs e)
@@ -513,7 +513,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         ContextFilterPanel.IsVisible = false;
         SearchEditor.IsVisible = true;
         AutomationProperties.SetName(SearchToggleButton, "Collapse Search");
-        UpdateWelcomePanelVisibility();
+        UpdateWelcomeAndStatusVisibility();
         SearchBox.Focus();
         SearchBox.SelectAll();
     }
@@ -522,7 +522,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
     {
         SearchEditor.IsVisible = false;
         AutomationProperties.SetName(SearchToggleButton, "Open Search");
-        UpdateWelcomePanelVisibility();
+        UpdateWelcomeAndStatusVisibility();
     }
 
     private void CloseSearchEditor(bool clearSearch)
@@ -889,7 +889,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         SearchResultsPanel.IsVisible = false;
         ContextFilterPanel.IsVisible = false;
         SynchronizeAccessibleList();
-        UpdateWelcomePanelVisibility();
+        UpdateWelcomeAndStatusVisibility();
         AccessibleNodesList.Focus();
     }
 
@@ -1113,7 +1113,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             UpdateView();
         }
 
-        UpdateWelcomePanelVisibility();
+        UpdateWelcomeAndStatusVisibility();
     }
 
     private void OnContextFilterChanged(object? sender, SelectionChangedEventArgs e)
@@ -1167,7 +1167,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         else if (e.Key == Key.Escape)
         {
             AccessibleListPanel.IsVisible = false;
-            UpdateWelcomePanelVisibility();
+            UpdateWelcomeAndStatusVisibility();
             GraphScene.Focus();
             e.Handled = true;
         }
@@ -1493,7 +1493,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         DiagnosticsPanel.IsVisible = _preferences.DiagnosticsVisible;
         UpdateDiagnostics();
         UpdateConnectionView();
-        UpdateWelcomePanelVisibility();
+        UpdateWelcomeAndStatusVisibility();
     }
 
     private void UpdateConnectionView()
@@ -1768,19 +1768,23 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         }
 
         GraphScene.Focus();
-        UpdateWelcomePanelVisibility();
+        UpdateWelcomeAndStatusVisibility();
     }
 
-    private void UpdateWelcomePanelVisibility()
+    private void UpdateWelcomeAndStatusVisibility()
     {
+        var panelOwnsStatusSpace = ConnectionPanel.IsVisible ||
+            SettingsPanel.IsVisible ||
+            AccessibleListPanel.IsVisible ||
+            ContextFilterPanel.IsVisible ||
+            SearchResultsPanel.IsVisible;
+
         WelcomePanel.IsVisible = _session.Neighborhood is null &&
             !_session.IsLoading &&
-            !ConnectionPanel.IsVisible &&
-            !SettingsPanel.IsVisible &&
-            !AccessibleListPanel.IsVisible &&
-            !ContextFilterPanel.IsVisible &&
+            !panelOwnsStatusSpace &&
             !SearchEditor.IsVisible &&
-            !SearchResultsPanel.IsVisible;
+            !DetailsPanel.IsVisible;
+        StatusHud.IsVisible = !panelOwnsStatusSpace;
     }
 
     private void SetTransientStatus(string message) => StatusText.Text = message;

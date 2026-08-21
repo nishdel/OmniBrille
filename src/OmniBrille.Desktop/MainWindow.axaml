@@ -437,7 +437,7 @@
               Classes="panel"
               IsVisible="False"
               Width="370"
-              MaxHeight="450"
+              MaxHeight="430"
               HorizontalAlignment="Left"
               VerticalAlignment="Top"
               Margin="16,72,0,0"
@@ -562,7 +562,7 @@
               Classes="panel"
               IsVisible="False"
               Width="380"
-              MaxHeight="480"
+              MaxHeight="430"
               HorizontalAlignment="Right"
               VerticalAlignment="Top"
               Margin="0,72,16,0"
@@ -746,7 +746,8 @@
         </Grid>
       </Border>
 
-      <Border Classes="floating"
+      <Border x:Name="StatusHud"
+              Classes="floating"
               HorizontalAlignment="Center"
               VerticalAlignment="Bottom"
               Margin="0,0,0,18"
