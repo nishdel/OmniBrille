@@ -81,17 +81,58 @@ public sealed class MainWindowHeadlessTests
         using var window = CreateWindow(out _, out var store);
         window.Show();
         var settingsButton = window.FindControl<Button>("SettingsButton")!;
+        var welcomePanel = window.FindControl<Border>("WelcomePanel")!;
+        Assert.True(welcomePanel.IsVisible);
+
         settingsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         var reducedMotion = window.FindControl<CheckBox>("ReducedMotionToggle")!;
         var reducedEffects = window.FindControl<CheckBox>("ReducedEffectsToggle")!;
+        Assert.False(welcomePanel.IsVisible);
+
         reducedMotion.IsChecked = true;
         reducedEffects.IsChecked = true;
 
         Assert.True(window.FindControl<Border>("SettingsPanel")!.IsVisible);
+        Assert.False(welcomePanel.IsVisible);
         Assert.True(window.Preferences.ReducedMotion);
         Assert.True(window.Preferences.ReducedEffects);
         Assert.True(store.Saved!.ReducedMotion);
         Assert.True(store.Saved.ReducedEffects);
+
+        settingsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.False(window.FindControl<Border>("SettingsPanel")!.IsVisible);
+        Assert.True(welcomePanel.IsVisible);
+    }
+
+    [AvaloniaFact]
+    public void FirstRunWelcome_YieldsToEveryReachableSecondarySurface()
+    {
+        using var window = CreateWindow(out _, out _);
+        window.Width = window.MinWidth;
+        window.Height = window.MinHeight;
+        window.Show();
+        var welcomePanel = window.FindControl<Border>("WelcomePanel")!;
+        Assert.True(welcomePanel.IsVisible);
+
+        foreach (var (buttonName, panelName) in new[]
+        {
+            ("ConnectionButton", "ConnectionPanel"),
+            ("SearchToggleButton", "SearchEditor"),
+            ("AccessibleListButton", "AccessibleListPanel"),
+            ("SettingsButton", "SettingsPanel"),
+        })
+        {
+            var button = window.FindControl<Button>(buttonName)!;
+            var panel = window.FindControl<Control>(panelName)!;
+
+            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.True(panel.IsVisible);
+            Assert.False(welcomePanel.IsVisible);
+
+            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.False(panel.IsVisible);
+            Assert.True(welcomePanel.IsVisible);
+        }
     }
 
     [AvaloniaFact]

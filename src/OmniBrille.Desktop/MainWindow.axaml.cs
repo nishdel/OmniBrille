@@ -245,6 +245,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         }
 
         UpdateConnectionView();
+        UpdateWelcomePanelVisibility();
     }
 
     private async void OnChooseFolderClick(object? sender, RoutedEventArgs e)
@@ -296,6 +297,8 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         {
             GraphScene.Focus();
         }
+
+        UpdateWelcomePanelVisibility();
     }
 
     private async void OnReconnectClick(object? sender, RoutedEventArgs e)
@@ -318,6 +321,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         ConnectionPanel.IsVisible = false;
         ChooseFolderButton.Focus();
         UpdateConnectionView();
+        UpdateWelcomePanelVisibility();
     }
 
     private async void OnOpenConnectedRootClick(object? sender, RoutedEventArgs e)
@@ -509,6 +513,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         ContextFilterPanel.IsVisible = false;
         SearchEditor.IsVisible = true;
         AutomationProperties.SetName(SearchToggleButton, "Collapse Search");
+        UpdateWelcomePanelVisibility();
         SearchBox.Focus();
         SearchBox.SelectAll();
     }
@@ -517,6 +522,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
     {
         SearchEditor.IsVisible = false;
         AutomationProperties.SetName(SearchToggleButton, "Open Search");
+        UpdateWelcomePanelVisibility();
     }
 
     private void CloseSearchEditor(bool clearSearch)
@@ -805,8 +811,9 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
 
     private void OnSettingsClick(object? sender, RoutedEventArgs e)
     {
-        SettingsPanel.IsVisible = !SettingsPanel.IsVisible;
-        if (SettingsPanel.IsVisible)
+        var showSettings = !SettingsPanel.IsVisible;
+        SettingsPanel.IsVisible = showSettings;
+        if (showSettings)
         {
             CollapseSearchEditor();
             ConnectionPanel.IsVisible = false;
@@ -815,12 +822,10 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             SearchResultsPanel.IsVisible = false;
             _detailsDismissed = true;
             DetailsPanel.IsVisible = false;
-            ReducedMotionToggle.Focus();
         }
-        else
-        {
-            SettingsButton.Focus();
-        }
+
+        UpdateView();
+        (showSettings ? ReducedMotionToggle : SettingsButton).Focus();
     }
 
     private async void OnCopyDiagnosticsClick(object? sender, RoutedEventArgs e)
@@ -884,6 +889,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         SearchResultsPanel.IsVisible = false;
         ContextFilterPanel.IsVisible = false;
         SynchronizeAccessibleList();
+        UpdateWelcomePanelVisibility();
         AccessibleNodesList.Focus();
     }
 
@@ -971,6 +977,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         if (!_preferences.VoiceEnabled)
         {
             SettingsPanel.IsVisible = true;
+            UpdateView();
             VoiceEnabledToggle.Focus();
             SetTransientStatus("Enable Voice in Settings and configure a local whisper.cpp runtime and model.");
             return;
@@ -1105,6 +1112,8 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             ContextFilterButton.Focus();
             UpdateView();
         }
+
+        UpdateWelcomePanelVisibility();
     }
 
     private void OnContextFilterChanged(object? sender, SelectionChangedEventArgs e)
@@ -1158,6 +1167,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         else if (e.Key == Key.Escape)
         {
             AccessibleListPanel.IsVisible = false;
+            UpdateWelcomePanelVisibility();
             GraphScene.Focus();
             e.Handled = true;
         }
@@ -1381,7 +1391,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             AccessibleOpenButton,
             IsContextualMode(_session.ViewMode) ? "Focus selected graph node" : "Open selected structural node");
         BackButton.IsEnabled = _session.CanGoBack && !_session.IsLoading;
-        WelcomePanel.IsVisible = neighborhood is null && !_session.IsLoading;
+        UpdateWelcomePanelVisibility();
         ContextFilterButton.IsVisible = IsContextualMode(_session.ViewMode);
         if (!IsContextualMode(_session.ViewMode))
         {
@@ -1758,6 +1768,19 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         }
 
         GraphScene.Focus();
+        UpdateWelcomePanelVisibility();
+    }
+
+    private void UpdateWelcomePanelVisibility()
+    {
+        WelcomePanel.IsVisible = _session.Neighborhood is null &&
+            !_session.IsLoading &&
+            !ConnectionPanel.IsVisible &&
+            !SettingsPanel.IsVisible &&
+            !AccessibleListPanel.IsVisible &&
+            !ContextFilterPanel.IsVisible &&
+            !SearchEditor.IsVisible &&
+            !SearchResultsPanel.IsVisible;
     }
 
     private void SetTransientStatus(string message) => StatusText.Text = message;
