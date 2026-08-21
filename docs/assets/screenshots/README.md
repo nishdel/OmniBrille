@@ -1,4 +1,24 @@
-# v1.0 screenshot provenance
+# Screenshot provenance
+
+## v1.1 visual-convergence candidate
+
+The `v1.1-*.png` files are real captures of an installed Windows x64 `1.1.0` candidate. They are not mockups, concept art, or AI-generated application imagery.
+
+- Capture date: 2026-08-21.
+- Host: Windows 10 build 19045 at 125% display scaling.
+- Visible application commit: `04c6f363f0efd880573e0c1481dbda627cc8e37e`.
+- Installed candidate SHA-256: `E82E431A0A1FCFD96EDE5AECB5DED6393095CDFA572BDC0FEF86D9635C559E96`.
+- DNG-free native renderer SHA-256: `EBE9A21F29D2474129B06FFAB67B3E74474B7F6E0D0442F14B8BAC3CFF870619`.
+- Executable metadata: file version `1.1.0.0`, product version `1.1.0`.
+- Demo roots: `C:\Users\Public\OmniBrille Visual Demo` and its `09 Research` child.
+- Data: purpose-built generic folders; no personal content, user-profile path, diagnostics, OmniSorSe session, or voice data.
+- Views: dense Dark Structure, dense Light Structure, structural Search for `Research`, nested focus/details, and the synchronized accessible list.
+
+The captures use a Per-Monitor-V2-aware process and the physical Win32 window bounds so the complete 125%-DPI window is represented. They were inspected at full size for native window chrome; floating navigation, mode, Search, utility, zoom, status, voice, and details/list surfaces; graph nodes, labels, outlined glyphs, edges, focus reticle, Search emphasis, and theme contrast. The same installed candidate exercised arrow/Enter navigation, Alt+Left Back, `Ctrl+F` Search, `Ctrl+Shift+L` list access, normal close/relaunch, a real progressive 5,000-file load, and the supported 820-by-520 logical minimum window. Automated headless coverage, rather than this capture session, exercised 100/125/150/200% text scaling and reduced-motion/effects behavior. No screen reader was used.
+
+The images were captured before this provenance file and the PNGs themselves were committed. No visible application or native-renderer source is permitted to change after commit without recapturing them. The eventual exact release installer must still be rebuilt from the final documentation/screenshot commit and separately pass installed-artifact and public-release qualification before these images can be described as release screenshots.
+
+## v1.0 release
 
 These PNGs are real captures of the installed Windows x64 `1.0.0` DNG-free release candidate, not mockups or AI-generated application imagery.
 

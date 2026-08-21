@@ -18,15 +18,17 @@ Windows x64 is the only v1.0 download target. Interactive release qualification 
 
 ## See it in action
 
-![Dark Structure view of a demo workspace in OmniBrille](docs/assets/screenshots/v1.0-dark-structure.png)
+![Dense Dark Structure view in OmniBrille's graph-first shell](docs/assets/screenshots/v1.1-dark-structure.png)
 
-| Light theme | Search within the selected root |
+| Pale ice-blue Light theme | Compact Search within the selected root |
 |---|---|
-| ![Light Structure view of the same demo workspace](docs/assets/screenshots/v1.0-light-structure.png) | ![Search results emphasized in the graph](docs/assets/screenshots/v1.0-search.png) |
+| ![Dense Light Structure view of the same demo workspace](docs/assets/screenshots/v1.1-light-structure.png) | ![Search results emphasized while unrelated graph nodes recede](docs/assets/screenshots/v1.1-search.png) |
 
-![Accessible list synchronized with the same bounded graph](docs/assets/screenshots/v1.0-accessible-list.png)
+| Nested focus and integrated details | Accessible list synchronized with the bounded graph |
+|---|---|
+| ![Nested focus with the integrated floating details panel](docs/assets/screenshots/v1.1-nested-details.png) | ![Accessible list over the same graph-first shell](docs/assets/screenshots/v1.1-accessible-list.png) |
 
-All screenshots are from the installed v1.0 release candidate using a purpose-built, non-private demo folder.
+These are real installed-app captures of the v1.1 visual-convergence candidate using purpose-built, non-private demo folders. The latest published download remains v1.0.0 until v1.1 completes its exact-artifact, signing-decision, and publication gates. See the [capture provenance](docs/assets/screenshots/README.md).
 
 ## What it does
 
