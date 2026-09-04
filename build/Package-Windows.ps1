@@ -131,6 +131,12 @@ $voiceBundle = & (Join-Path $PSScriptRoot 'Get-VoiceBundle.ps1') `
 Get-ChildItem -LiteralPath $resolvedPublish -Recurse -File -Filter '*.pdb' |
     Remove-Item -Force
 
+# The self-contained .NET runtime pack may reintroduce the diagnostics-only DAC under a
+# servicing-specific name. v1.1 does not distribute it: omit it from fresh installs while
+# the installer's narrow deletion rule removes the installer-owned v1.0 copy on upgrade.
+Get-ChildItem -LiteralPath $resolvedPublish -File -Filter 'mscordaccore_*.dll' |
+    Remove-Item -Force
+
 $application = Join-Path $resolvedPublish 'OmniBrille.exe'
 if (-not (Test-Path -LiteralPath $application)) {
     throw "Published application was not found at '$application'."

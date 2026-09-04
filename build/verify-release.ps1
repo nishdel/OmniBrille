@@ -160,6 +160,12 @@ function Assert-PackagedContents {
     if ($forbiddenFiles.Count -gt 0) {
         throw "Forbidden files were found in the published runtime: $($forbiddenFiles.Name -join ', ')"
     }
+    $obsoleteRuntimeDiagnostics = @(
+        Get-ChildItem -LiteralPath $publishDirectory -File -Filter 'mscordaccore_*.dll'
+    )
+    if ($obsoleteRuntimeDiagnostics.Count -gt 0) {
+        throw "Obsolete runtime-diagnostics files were found in the v1.1 payload: $($obsoleteRuntimeDiagnostics.Name -join ', ')"
+    }
 
     $voiceRoot = Join-Path $publishDirectory 'Voice'
     $voiceManifestPath = Join-Path $voiceRoot 'voice-bundle-manifest.json'

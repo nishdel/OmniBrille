@@ -31,7 +31,7 @@ Candidate graph-interaction convergence release. v1.1.0 preserves the v1.0 Stand
 - Dark and Light themes now use deeper navy/cyan and pale ice-blue surface hierarchies with reduced hard rectangular chrome.
 - Voice is click-to-toggle: the first action listens and the second stops/transcribes locally. Up/Root/selected-node and Enter/Go-into variants map to the same session actions as pointer/keyboard input.
 - The borderless angular shell retains explicit custom minimize/maximize/close and window drag actions; Details semantics are complete immediately even while the visual terminal text reveals.
-- Forward upgrade from public v1.0.0 removes its now-obsolete installer-owned `mscordaccore_*.dll` runtime-diagnostics file without broadly deleting the application directory.
+- Fresh v1.1 packaging excludes the diagnostics-only `mscordaccore_*.dll` family even when a servicing runtime pack supplies it; forward upgrade from public v1.0.0 narrowly removes its installer-owned copy without broadly deleting the application directory.
 
 ### Fixed
 
