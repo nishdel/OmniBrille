@@ -28,6 +28,42 @@ public sealed class VoiceInteractionCoordinatorTests
     }
 
     [Fact]
+    public async Task CancelDuringCapabilityCheck_NeverStartsMicrophoneAfterCancellation()
+    {
+        using var capture = new FakeCapture();
+        using var speech = new FakeSpeech("ignored") { DelayCapability = true };
+        using var coordinator = new VoiceInteractionCoordinator(capture, speech, new FakeTarget());
+
+        var starting = coordinator.StartAsync(EnabledOptions);
+        await speech.CapabilityStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await coordinator.CancelAsync();
+        speech.ReleaseCapability.TrySetResult();
+        await starting;
+
+        Assert.Equal(VoiceCapabilityState.Cancelled, coordinator.State);
+        Assert.Equal(0, capture.StartCount);
+    }
+
+    [Fact]
+    public async Task ProviderChangeDuringCapabilityCheck_NeverStartsMicrophoneForNewAuthority()
+    {
+        using var capture = new FakeCapture();
+        using var speech = new FakeSpeech("ignored") { DelayCapability = true };
+        var target = new FakeTarget();
+        using var coordinator = new VoiceInteractionCoordinator(capture, speech, target);
+
+        var starting = coordinator.StartAsync(EnabledOptions);
+        await speech.CapabilityStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        target.Generation++;
+        speech.ReleaseCapability.TrySetResult();
+        await starting;
+
+        Assert.Equal(VoiceCapabilityState.Cancelled, coordinator.State);
+        Assert.Contains("provider session changed", coordinator.Status, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, capture.StartCount);
+    }
+
+    [Fact]
     public async Task Stop_RejectsTranscriptWhenProviderGenerationChanged()
     {
         using var capture = new FakeCapture();
@@ -201,15 +237,31 @@ public sealed class VoiceInteractionCoordinatorTests
 
         public bool DelayUntilCancellation { get; init; }
 
+        public bool DelayCapability { get; init; }
+
         public Exception? Failure { get; init; }
+
+        public TaskCompletionSource CapabilityStarted { get; } = new(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource ReleaseCapability { get; } = new(
+            TaskCreationOptions.RunContinuationsAsynchronously);
 
         public TaskCompletionSource TranscriptionStarted { get; } = new(
             TaskCreationOptions.RunContinuationsAsynchronously);
 
-        public Task<VoiceCapability> GetCapabilityAsync(
+        public async Task<VoiceCapability> GetCapabilityAsync(
             VoiceRecognitionOptions options,
-            CancellationToken cancellationToken) => Task.FromResult(
-                new VoiceCapability(CapabilityState, CapabilityState.ToString(), "Fake speech", "Configured"));
+            CancellationToken cancellationToken)
+        {
+            CapabilityStarted.TrySetResult();
+            if (DelayCapability)
+            {
+                await ReleaseCapability.Task.WaitAsync(cancellationToken);
+            }
+
+            return new VoiceCapability(CapabilityState, CapabilityState.ToString(), "Fake speech", "Configured");
+        }
 
         public async Task<SpeechRecognitionResult> TranscribeAsync(
             VoiceAudioClip clip,

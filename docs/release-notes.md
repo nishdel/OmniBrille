@@ -29,6 +29,7 @@ OmniBrille project code is licensed under the **MIT License**. The candidate inc
 - Details has a fast cancel-safe terminal reveal while complete semantic/automation text is available immediately. Short local interaction cues are redundant and governed by a persisted `SOUND OFF` switch.
 - Ordinary Standalone files may open after explicit activation and immediate selected-root/reparse/type checks. Connected display paths are never filesystem authority.
 - Voice is first-click Listen, second-click Stop/Transcribe, with Back/Up/Root/Enter/selected-node variants over the same existing session actions.
+- Cancelling Voice or replacing the active provider during its capability check prevents obsolete work from starting microphone capture.
 - First-run guidance and the bottom status surface yield when a secondary panel claims their space, keeping focused controls unobscured at the supported minimum size.
 - Dark and Light themes use a deeper navy/cyan and pale ice-blue visual system; the bounded loading data rain has a restrained focal aperture.
 - Connected server-authored Context, Explorer Protocol v1, 48-node scene admission, stale-result rejection, and no-destructive-operation policy remain unchanged. Connected opaque target comparison is now correctly ordinal on Windows.
@@ -41,12 +42,14 @@ OmniBrille project code is licensed under the **MIT License**. The candidate inc
 
 ## Current limitations
 
-- Windows x64 is the only download target. Interactive release qualification is recorded against Windows 10 22H2 x64; other Windows client versions are not separately validated.
+- Windows x64 is the only download target. Exact local build/install/upgrade qualification is recorded against Windows 10 22H2 x64; manual visual, physical-hardware, and assistive-technology qualification for this candidate remains pending. Other Windows client versions are not separately validated.
 - Linux has source build/test coverage only; no package or interactive-runtime support is claimed. macOS runtime is unverified.
 - Connected mode depends on a compatible OmniSorSe build and is not the primary v1.1 support contract.
 - Automated keyboard, list, text-scaling, and automation coverage is not screen-reader certification.
 - Real microphone, physical sound output, Narrator/NVDA, custom-chrome DPI/snap, and GPU-backed continuous-motion validation remain outstanding and block their respective v1.1 release claims.
 - Destructive file operations, automatic updating, cloud services, always-listening audio, and telemetry are intentionally absent.
+
+The exact public v1.0.0 installer has been exercised as the predecessor for an in-place upgrade to this locally built candidate: installer-owned files advance to v1.1.0, the obsolete v1.0 runtime-diagnostics file is removed, preferences are preserved, and uninstall still removes only installer-owned state. The hosted release-candidate workflow independently covers a fresh install rather than this upgrade path.
 
 ## Privacy and support
 

@@ -26,7 +26,7 @@ This keeps Standalone useful and private, prevents a connected authorization gap
 
 - Similar Core and wire types must remain explicitly adapted; they are not interchangeable.
 - Connected Search follows the authorized session scope supplied by OmniSorSe, not a client-invented root filter.
-- Opaque IDs are contractually case-sensitive and session-bound; reconnect/new grant invalidates prior state. Most code uses ordinal `ExplorerIdentity`, but Connected `NavigationState` equality currently has a documented Windows case-folding defect and must not be treated as fully enforced.
+- Opaque IDs are contractually case-sensitive and session-bound; reconnect/new grant invalidates prior state. `NavigationState` now selects ordinal `ExplorerIdentity` comparison for Connected targets and native `PathBoundary` comparison only for Standalone paths, with a case-distinct Connected regression covering Windows behavior and Back history.
 - Cross-repository compatibility still requires real-host validation when the external protocol/launcher changes.
 - Optional capabilities must be represented truthfully. Current code has a known follow-up: missing Context/Related capability is detected only when requested rather than disabling the mode in advance.
 

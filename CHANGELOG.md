@@ -33,6 +33,10 @@ Candidate graph-interaction convergence release. v1.1.0 preserves the v1.0 Stand
 - The borderless angular shell retains explicit custom minimize/maximize/close and window drag actions; Details semantics are complete immediately even while the visual terminal text reveals.
 - Forward upgrade from public v1.0.0 removes its now-obsolete installer-owned `mscordaccore_*.dll` runtime-diagnostics file without broadly deleting the application directory.
 
+### Fixed
+
+- Cancelling Voice or replacing the active provider during the bounded capability check now prevents microphone capture from starting after that obsolete work completes.
+
 ### Accessibility and performance
 
 - Minimum-window and 100/125/150/200% text-scale tests now cover the floating shell and expandable Search rather than the superseded two-row header.

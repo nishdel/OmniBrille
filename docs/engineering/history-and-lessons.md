@@ -57,7 +57,7 @@ The recurring sequence was implementation → hardening/tests → documentation/
 
 **Counterfactual.** The new system did not retroactively prevent this case; independent adversarial review of this foundation discovered it. The updated risk route would likely expose it earlier in future Connected/navigation work, but prevention remains incomplete until code and regression coverage are added.
 
-**Remaining gap.** The product correction is deliberately deferred from this infrastructure run and tracked in `ROADMAP.md`. Connected `AccessRoot`/`CurrentPath` naming also needs care when those files are touched.
+**Later resolution.** The original infrastructure run correctly deferred the product change. The v1.1 work later made `NavigationState` provider-aware and added a case-distinct Connected navigation/Back regression, so the comparer gap is closed. Connected `AccessRoot`/`CurrentPath` naming still needs care when those files are touched.
 
 ### 4. Accessibility state was correct while the projection/action was wrong
 
@@ -116,12 +116,13 @@ Not every later commit proves an earlier failure:
 | --- | --- | --- |
 | Late work must not replace newer provider/session state | **Promoted** | Request/provider generations and regression tests |
 | Graph identity comparison and filesystem path comparison are different | **Promoted** | `ExplorerIdentity`, `PathBoundary`, focused tests, glossary, two-OS CI |
-| Provider-specific navigation targets must choose their comparer | **Remain candidate** | Current Connected/Windows defect; requires code correction plus regression before promotion |
+| Provider-specific navigation targets must choose their comparer | **Promoted** | Provider-aware `NavigationState` equality plus a case-distinct Connected navigation/Back regression |
 | Renderer Search/labels require bounded resources and representative pressure review | **Promoted** | Bounded caches, diagnostics, tests, ADR 0002, risk routing |
 | Context density must remain bounded | **Promoted** | `ContextRenderBudgetPolicy`, tests, authoritative contract |
 | Correct framing is insufficient protocol validation | **Promoted** | Strict semantic validation, focused tests, ADR 0001, high-risk routing |
 | Cached connected data needs liveness semantics | **Promoted** | Authenticated probe, regression test, lifecycle documentation |
 | Accessibility checks must exercise projection and action result | **Promoted** | Headless regression tests and UX/Accessibility routing |
+| Contrast checks must consume actual theme resources | **Promoted** | Resource-driven theme/renderer contrast tests with alpha-composited interactive glyph checks |
 | Significant validation claims should remain discoverable | **Promoted** | Selective `docs/runs` retention; reports remain historical |
 | Documentation paths should be mechanically checked | **Promoted** | `build/Test-EngineeringDocs.ps1`; semantic truth remains review-owned |
 | Add a universal hard renderer time threshold | **Rejected** | Font shaping, host load, headless/GPU differences would create noisy false failures |
@@ -131,8 +132,6 @@ Not every later commit proves an earlier failure:
 
 ## Current candidates
 
-- **Connected navigation target comparison.** Evidence: `NavigationState` uses `PathBoundary.Comparer` for Connected opaque targets, with no case-distinct Connected test. Proposed form: provider-aware equality plus a Windows regression; remain candidate until implemented and independently reviewed.
 - **Protocol-info limit completeness.** Evidence: `ValidateProtocolInfo` checks client-consumed limits but leaves several advertised fields unchecked while historical prose claimed comprehensive negotiation. Proposed form: an explicit compatibility decision plus malformed-info regression tests; remain candidate.
 - **Optional Context capability behavior.** Evidence: the audit corrected prior documentation drift, but current mode availability/failure behavior has no capability-negative test. Recurrence matters at compatibility boundaries. Proposed form: product/architecture decision plus regression test; remain candidate until intended UX is confirmed and implemented.
-- **Theme-token contrast coupling.** Evidence: contrast tests use independent literals rather than application resources. Proposed form: resource-driven accessibility test if a reliable low-maintenance seam is designed; remain candidate.
 - **Stable renderer performance guardrail.** Evidence: historical regression but noisy environment. Proposed form: repeatable GPU/runtime benchmark only after sufficient samples; remain candidate.

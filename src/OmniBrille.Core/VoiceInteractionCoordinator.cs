@@ -54,6 +54,7 @@ public sealed class VoiceInteractionCoordinator : IDisposable
         var stopwatch = Stopwatch.StartNew();
         SetState(VoiceCapabilityState.Loading, "Checking local voice setup…");
         var capability = await _speech.GetCapabilityAsync(options, cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
         if (capability.IsReady)
         {
             var captureCapability = _capture.GetCapability();
@@ -88,19 +89,41 @@ public sealed class VoiceInteractionCoordinator : IDisposable
 
             TranscriptPreview = null;
             InputLevel = 0;
-            await RefreshCapabilityAsync(options, cancellationToken).ConfigureAwait(false);
-            if (State != VoiceCapabilityState.Ready)
-            {
-                return;
-            }
-
             _operationCancellation?.Dispose();
             _operationCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var operationCancellation = _operationCancellation;
             _originContext = _target.CaptureVoiceContext();
             try
             {
-                await _capture.StartAsync(options, _operationCancellation.Token).ConfigureAwait(false);
-                if (_operationCancellation.IsCancellationRequested)
+                await RefreshCapabilityAsync(options, operationCancellation.Token).ConfigureAwait(false);
+                operationCancellation.Token.ThrowIfCancellationRequested();
+            }
+            catch (OperationCanceledException) when (operationCancellation.IsCancellationRequested)
+            {
+                await _capture.CancelAsync().ConfigureAwait(false);
+                InputLevel = 0;
+                SetState(VoiceCapabilityState.Cancelled, "Voice cancelled.");
+                ClearOperation();
+                return;
+            }
+
+            if (State != VoiceCapabilityState.Ready)
+            {
+                ClearOperation();
+                return;
+            }
+
+            if (!_target.IsVoiceContextCurrent(_originContext!))
+            {
+                SetState(VoiceCapabilityState.Cancelled, "Voice cancelled because the provider session changed.");
+                ClearOperation();
+                return;
+            }
+
+            try
+            {
+                await _capture.StartAsync(options, operationCancellation.Token).ConfigureAwait(false);
+                if (operationCancellation.IsCancellationRequested)
                 {
                     await _capture.CancelAsync().ConfigureAwait(false);
                     SetState(VoiceCapabilityState.Cancelled, "Voice cancelled.");
