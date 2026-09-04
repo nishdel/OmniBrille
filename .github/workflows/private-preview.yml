@@ -192,7 +192,7 @@ jobs:
           if ($manifest.product -ne 'OmniBrille' -or $manifest.runtimeIdentifier -ne 'win-x64') {
             throw 'Manifest product or runtime does not identify the expected Windows x64 release.'
           }
-          if ($manifest.schemaVersion -ne 4 -or
+          if ($manifest.schemaVersion -ne 5 -or
               $manifest.projectLicenseExpression -ne 'MIT' -or
               $manifest.sourceUrl -ne "https://github.com/nishdel/OmniBrille/tree/${{ github.sha }}") {
             throw 'Manifest schema, project license, or source/provenance URL does not match the release commit.'
@@ -234,7 +234,9 @@ jobs:
             'THIRD-PARTY-LICENSES\SkiaSharp-HarfBuzz-LICENSE.txt',
             'THIRD-PARTY-LICENSES\SkiaSharp-HarfBuzz-THIRD-PARTY-NOTICES.txt',
             'THIRD-PARTY-LICENSES\System.IO.Pipelines-THIRD-PARTY-NOTICES.txt',
-            'THIRD-PARTY-LICENSES\Tmds.DBus-LICENSE.txt'
+            'THIRD-PARTY-LICENSES\Tmds.DBus-LICENSE.txt',
+            'THIRD-PARTY-LICENSES\whisper.cpp-MIT.txt',
+            'THIRD-PARTY-LICENSES\OpenAI-Whisper-MIT.txt'
           )
           foreach ($requiredNotice in $requiredNotices) {
             if (-not (Test-Path -LiteralPath (Join-Path $installDirectory $requiredNotice) -PathType Leaf)) {
@@ -299,6 +301,48 @@ jobs:
                   $installerSignature.Status -ne 'NotSigned' -or
                   $applicationSignature.Status -ne 'NotSigned') {
             throw "Unsigned candidate must report NotSigned for manifest, installer, and installed application: '$($manifest.installer.signatureStatus)' / '$($installerSignature.Status)' / '$($applicationSignature.Status)'."
+          }
+          $installedVoiceManifest = Join-Path $installDirectory 'Voice\voice-bundle-manifest.json'
+          if (-not (Test-Path -LiteralPath $installedVoiceManifest -PathType Leaf)) { throw 'Installed voice manifest was not found.' }
+          if ((Get-FileHash -LiteralPath $installedVoiceManifest -Algorithm SHA256).Hash.ToUpperInvariant() -ne
+              $manifest.voiceBundle.manifestSha256.ToUpperInvariant()) {
+            throw 'Installed voice manifest does not match the release manifest.'
+          }
+          $voiceManifest = Get-Content -Raw -LiteralPath $installedVoiceManifest | ConvertFrom-Json
+          if ($voiceManifest.schemaVersion -ne 1 -or
+              $voiceManifest.runtime.version -ne 'v1.9.2' -or
+              $voiceManifest.runtime.commit -ne '306c88f4d1286aec1bf96e544632897886af5501' -or
+              $voiceManifest.runtime.archiveSha256 -ne '49DCC16DE826F20BD53D44F947A1AE49DFA81F86CAD67A64D80820CB192D674A' -or
+              $voiceManifest.model.commit -ne 'c521a4b02f422512d734391fdf08bb08c0862f68' -or
+              $voiceManifest.model.sha256 -ne '4BAF70DD0D7C4247BA2B81FAFD9C01005AC77C2F9EF064E00DCF195D0E2FDD2F') {
+            throw 'Installed voice manifest does not match the reviewed pins.'
+          }
+          $voiceRoot = Join-Path $installDirectory 'Voice'
+          $allowedVoicePaths = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+          foreach ($voiceFile in $voiceManifest.files) {
+            $relativeVoicePath = ([string] $voiceFile.path).Replace('/', '\')
+            if ([IO.Path]::IsPathRooted($relativeVoicePath) -or
+                ($relativeVoicePath -split '[\\/]').Contains('..') -or
+                -not $allowedVoicePaths.Add($relativeVoicePath)) {
+              throw "Unsafe or duplicate installed voice manifest path '$relativeVoicePath'."
+            }
+            $installedVoiceFile = Join-Path $voiceRoot $relativeVoicePath
+            if (-not (Test-Path -LiteralPath $installedVoiceFile -PathType Leaf) -or
+                (Get-Item -LiteralPath $installedVoiceFile).Length -ne [long] $voiceFile.bytes -or
+                (Get-FileHash -LiteralPath $installedVoiceFile -Algorithm SHA256).Hash.ToUpperInvariant() -ne
+                  ([string] $voiceFile.sha256).ToUpperInvariant()) {
+              throw "Installed voice file '$($voiceFile.path)' does not match the pinned bytes."
+            }
+          }
+          foreach ($voiceControlFile in @('voice-bundle-manifest.json', 'whisper.cpp-MIT.txt', 'OpenAI-Whisper-MIT.txt')) {
+            [void]$allowedVoicePaths.Add($voiceControlFile)
+          }
+          $unexpectedVoiceFiles = @(Get-ChildItem -LiteralPath $voiceRoot -Recurse -File | Where-Object {
+            $relativeVoicePath = $_.FullName.Substring($voiceRoot.Length + 1)
+            -not $allowedVoicePaths.Contains($relativeVoicePath)
+          })
+          if ($unexpectedVoiceFiles.Count -gt 0) {
+            throw "Unexpected files were found in the installed voice bundle: $($unexpectedVoiceFiles.Name -join ', ')"
           }
 
           $smokeRoot = Join-Path $env:RUNNER_TEMP 'OmniBrilleCleanSmoke'

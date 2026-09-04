@@ -2,6 +2,8 @@
 
 ## v1.1 visual-convergence candidate
 
+> Superseded evidence: owner issues #1–#7 and the later Focus Plane + Navigation Trail implementation changed hierarchy, controls, chrome, motion, Details, Sound, and Voice. These files remain honest historical captures of commit `6f9f2ee`, but they are not current screenshots and cannot satisfy the v1.1 release visual gate. A fresh exact installed-candidate set is required.
+
 The `v1.1-*.png` files are real captures of an installed Windows x64 `1.1.0` candidate after the sparse focus-plane correction. They are not mockups, concept art, or AI-generated application imagery.
 
 - Capture date: 2026-08-21.

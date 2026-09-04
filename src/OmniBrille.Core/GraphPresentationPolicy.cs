@@ -8,7 +8,7 @@ public enum GraphLevelOfDetail
     Focused,
 }
 
-public sealed record GraphPresentationContext(
+public readonly record struct GraphPresentationContext(
     double Zoom,
     int SceneNodeCount,
     string FocusNodeId,
@@ -19,7 +19,7 @@ public sealed record GraphPresentationContext(
     bool ReducedEffects,
     double TextScale = 1);
 
-public sealed record GraphNodePresentation(
+public readonly record struct GraphNodePresentation(
     GraphLevelOfDetail LevelOfDetail,
     int LabelPriority,
     bool LabelIsRequired,
@@ -42,7 +42,7 @@ public readonly record struct LabelBox(double X, double Y, double Width, double 
     }
 }
 
-public sealed record LabelCandidate(
+public readonly record struct LabelCandidate(
     string NodeId,
     LabelBox Bounds,
     int Priority,
@@ -56,8 +56,6 @@ public static class GraphPresentationPolicy
         GraphPresentationContext context)
     {
         ArgumentNullException.ThrowIfNull(node);
-        ArgumentNullException.ThrowIfNull(layout);
-        ArgumentNullException.ThrowIfNull(context);
 
         var isFocus = EqualsId(node.Id, context.FocusNodeId);
         var isSelected = EqualsId(node.Id, context.SelectedNodeId);
@@ -68,8 +66,8 @@ public static class GraphPresentationPolicy
             : isHighlighted ? 860
             : isHovered ? 820
             : node.Kind == ExplorerNodeKind.Aggregate ? 680
-            : layout.Depth == 1 && node.Kind == ExplorerNodeKind.Folder ? 560
-            : layout.Depth == 1 ? 500
+            : layout.PresentationBand == 1 && node.Kind == ExplorerNodeKind.Folder ? 560
+            : layout.PresentationBand == 1 ? 500
             : node.Kind == ExplorerNodeKind.Context ? 260
             : 340;
         var required = isFocus || isSelected || isHighlighted || isHovered;
@@ -85,6 +83,11 @@ public static class GraphPresentationPolicy
                     ? GraphLevelOfDetail.Glyph
                     : GraphLevelOfDetail.Point;
 
+        if ((node.Roles & ExplorerNodeRole.Structural) != 0 && level < GraphLevelOfDetail.Glyph)
+        {
+            level = GraphLevelOfDetail.Glyph;
+        }
+
         if (node.Kind == ExplorerNodeKind.Aggregate && level < GraphLevelOfDetail.Labeled)
         {
             level = GraphLevelOfDetail.Labeled;
@@ -94,7 +97,7 @@ public static class GraphPresentationPolicy
         var unrelatedSearchNode = context.SearchActive && !emphasized;
         var hierarchyMultiplier = emphasized
             ? Math.Min(2.5, 1 / Math.Max(0.4, layout.Opacity))
-            : layout.Depth switch
+            : layout.PresentationBand switch
             {
                 <= 1 => 1,
                 2 => 0.82,
@@ -110,10 +113,10 @@ public static class GraphPresentationPolicy
             ? emphasized ? 0.4 : 0.22
             : isFocus ? 1.2
             : required ? 1
-            : layout.Depth <= 1 ? 0.62 : 0.36;
+            : layout.PresentationBand <= 1 ? 0.62 : 0.42;
         var edgeMultiplier = isSelected || isHighlighted || isHovered
             ? 1.3
-            : layout.Depth switch
+            : layout.PresentationBand switch
             {
                 <= 1 => 1,
                 2 => 0.48,

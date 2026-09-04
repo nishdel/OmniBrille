@@ -44,6 +44,23 @@ public sealed class ContextSessionTests
     }
 
     [Fact]
+    public async Task ConnectedUp_UsesTheServerAuthoredOpaqueParentWithoutPathInference()
+    {
+        var provider = ContextProvider.Immediate("opaque-root", "Node-A", "node-a");
+        using var session = new ExplorerSession();
+        await session.OpenRootAsync(provider, provider);
+        Assert.True(await session.SwitchToContextAsync("Node-A"));
+
+        Assert.True(session.CanGoUp);
+        Assert.True(await session.GoUpAsync());
+
+        Assert.Equal("opaque-root", session.Neighborhood!.FocusNodeId);
+        Assert.Equal(ExplorerViewMode.Context, session.ViewMode);
+        Assert.Contains("authorized focus stop", session.NavigationTrailSummary, StringComparison.Ordinal);
+        Assert.DoesNotContain("Node-A", session.NavigationTrailSummary, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ContextRequestGeneration_RejectsLateObsoleteFocus()
     {
         var provider = ContextProvider.Controlled();
@@ -200,8 +217,12 @@ public sealed class ContextSessionTests
 
         private ExplorerContextSnapshot Snapshot(string nodeId)
         {
-            var focus = ExplorerIdentity.Equals(nodeId, _a.Id) ? _a : _b;
-            var related = ExplorerIdentity.Equals(focus.Id, _a.Id) ? _b : _a;
+            var focus = ExplorerIdentity.Equals(nodeId, _root.Id)
+                ? _root
+                : ExplorerIdentity.Equals(nodeId, _a.Id) ? _a : _b;
+            var related = ExplorerIdentity.Equals(focus.Id, _root.Id)
+                ? _a
+                : ExplorerIdentity.Equals(focus.Id, _a.Id) ? _b : _a;
             var relation = new ExplorerRelationship(
                 $"{focus.Id}-{related.Id}",
                 focus.Id,

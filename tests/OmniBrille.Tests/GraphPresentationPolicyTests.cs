@@ -61,27 +61,27 @@ public sealed class GraphPresentationPolicyTests
         var node = Node("node");
         var immediate = GraphPresentationPolicy.Evaluate(
             node,
-            new GraphLayoutNode(node.Id, 0, 0, 0.9, 0.98, 1),
+            new GraphLayoutNode(node.Id, 0, 0, 0.9, 0.98, 1, 1),
             Context());
         var secondary = GraphPresentationPolicy.Evaluate(
             node,
-            new GraphLayoutNode(node.Id, 0, 0, 0.65, 0.68, 2),
+            new GraphLayoutNode(node.Id, 0, 0, 0.65, 0.68, 1, 2),
             Context());
         var ambient = GraphPresentationPolicy.Evaluate(
             node,
-            new GraphLayoutNode(node.Id, 0, 0, 0.45, 0.4, 3),
+            new GraphLayoutNode(node.Id, 0, 0, 0.45, 0.4, 1, 3),
             Context());
         var selectedAmbient = GraphPresentationPolicy.Evaluate(
             node,
-            new GraphLayoutNode(node.Id, 0, 0, 0.45, 0.4, 3),
+            new GraphLayoutNode(node.Id, 0, 0, 0.45, 0.4, 1, 3),
             Context(selected: node.Id));
         var hoveredAmbient = GraphPresentationPolicy.Evaluate(
             node,
-            new GraphLayoutNode(node.Id, 0, 0, 0.45, 0.4, 3),
+            new GraphLayoutNode(node.Id, 0, 0, 0.45, 0.4, 1, 3),
             Context(hovered: node.Id));
         var highlightedAmbient = GraphPresentationPolicy.Evaluate(
             node,
-            new GraphLayoutNode(node.Id, 0, 0, 0.32, 0.26, 3),
+            new GraphLayoutNode(node.Id, 0, 0, 0.32, 0.26, 1, 3),
             Context(highlights: new HashSet<string> { node.Id }, searchActive: true));
 
         Assert.True(immediate.OpacityMultiplier > secondary.OpacityMultiplier);

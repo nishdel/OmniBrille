@@ -6,7 +6,7 @@ using OmniBrille.Core;
 
 namespace OmniBrille.Desktop.Rendering;
 
-internal sealed class GraphSceneAutomationPeer : ControlAutomationPeer
+internal sealed class GraphSceneAutomationPeer : ControlAutomationPeer, ISelectionProvider
 {
     private readonly GraphSceneControl _owner;
     private readonly Dictionary<string, GraphNodeAutomationPeer> _nodePeers = new(ExplorerIdentity.Comparer);
@@ -28,13 +28,22 @@ internal sealed class GraphSceneAutomationPeer : ControlAutomationPeer
         InvalidateChildren();
     }
 
-    public void NotifySelectionChanged()
+    public void NotifyInteractionChanged()
     {
         foreach (var peer in _nodePeers.Values)
         {
-            peer.NotifySelectionChanged();
+            peer.NotifyInteractionChanged();
         }
     }
+
+    public bool CanSelectMultiple => false;
+
+    public bool IsSelectionRequired => false;
+
+    public IReadOnlyList<AutomationPeer> GetSelection() => _owner.GetAutomationNodes()
+        .Where(node => _owner.IsAutomationNodeSelected(node.Id))
+        .Select(node => (AutomationPeer)GetOrCreateNodePeer(node.Id))
+        .ToArray();
 
     protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.Tree;
 
@@ -50,42 +59,68 @@ internal sealed class GraphSceneAutomationPeer : ControlAutomationPeer
             return peer;
         }
 
-        peer = new GraphNodeAutomationPeer(_owner, nodeId);
+        peer = new GraphNodeAutomationPeer(_owner, this, nodeId);
         _nodePeers.Add(nodeId, peer);
         return peer;
     }
 }
 
-internal sealed class GraphNodeAutomationPeer : ControlAutomationPeer, IInvokeProvider
+internal sealed class GraphNodeAutomationPeer : ControlAutomationPeer, IInvokeProvider, ISelectionItemProvider
 {
     private readonly GraphSceneControl _owner;
+    private readonly GraphSceneAutomationPeer _container;
     private readonly string _nodeId;
     private bool _lastSelected;
+    private string? _lastItemStatus;
 
-    public GraphNodeAutomationPeer(GraphSceneControl owner, string nodeId)
+    public GraphNodeAutomationPeer(GraphSceneControl owner, GraphSceneAutomationPeer container, string nodeId)
         : base(owner)
     {
         _owner = owner;
+        _container = container;
         _nodeId = nodeId;
         _lastSelected = owner.IsAutomationNodeSelected(nodeId);
+        _lastItemStatus = GetItemStatusCore();
     }
 
     public void Invoke() => _owner.ActivateAutomationNode(_nodeId);
 
-    public void NotifySelectionChanged()
+    public bool IsSelected => _owner.IsAutomationNodeSelected(_nodeId);
+
+    public ISelectionProvider SelectionContainer => _container;
+
+    public void AddToSelection() => Select();
+
+    public void RemoveFromSelection()
+    {
+        // The graph always retains one selected item.
+    }
+
+    public void Select() => _owner.SelectAutomationNode(_nodeId);
+
+    public void NotifyInteractionChanged()
     {
         var selected = _owner.IsAutomationNodeSelected(_nodeId);
-        if (selected == _lastSelected)
+        if (selected != _lastSelected)
         {
-            return;
+            var previous = _lastSelected;
+            _lastSelected = selected;
+            RaisePropertyChangedEvent(
+                SelectionItemPatternIdentifiers.IsSelectedProperty,
+                previous,
+                selected);
         }
 
-        var previous = _lastSelected;
-        _lastSelected = selected;
-        RaisePropertyChangedEvent(
-            AutomationElementIdentifiers.ItemStatusProperty,
-            previous ? "Selected" : "Not selected",
-            selected ? "Selected" : "Not selected");
+        var itemStatus = GetItemStatusCore();
+        if (!string.Equals(itemStatus, _lastItemStatus, StringComparison.Ordinal))
+        {
+            var previousStatus = _lastItemStatus;
+            _lastItemStatus = itemStatus;
+            RaisePropertyChangedEvent(
+                AutomationElementIdentifiers.ItemStatusProperty,
+                previousStatus,
+                itemStatus);
+        }
     }
 
     protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.TreeItem;
@@ -104,7 +139,7 @@ internal sealed class GraphNodeAutomationPeer : ControlAutomationPeer, IInvokePr
             return "Unavailable graph node";
         }
 
-        return $"{node.Name}, {DescribeKind(node.Kind)}, {DescribeRole(node)}";
+        return $"{node.Name}, {DescribeKind(node.Kind)}, {_owner.GetAutomationNodeRelation(_nodeId)}";
     }
 
     protected override string? GetHelpTextCore()
@@ -146,9 +181,14 @@ internal sealed class GraphNodeAutomationPeer : ControlAutomationPeer, IInvokePr
             states.Add("Contextually related");
         }
 
-        if ((Node?.Roles & ExplorerNodeRole.Structural) != 0)
+        if (_owner.IsAutomationNodeHighlighted(_nodeId))
         {
-            states.Add("Structural");
+            states.Add("Search match");
+        }
+
+        if (Node is not null)
+        {
+            states.Add(_owner.GetAutomationNodeRelation(_nodeId));
         }
 
         return states.Count == 0 ? "Visible" : string.Join(", ", states);
@@ -187,16 +227,4 @@ internal sealed class GraphNodeAutomationPeer : ControlAutomationPeer, IInvokePr
         _ => "node",
     };
 
-    private static string DescribeRole(ExplorerNode node)
-    {
-        var structural = (node.Roles & ExplorerNodeRole.Structural) != 0;
-        var contextual = (node.Roles & ExplorerNodeRole.Contextual) != 0;
-        return (structural, contextual) switch
-        {
-            (true, true) => "structural and contextually related",
-            (true, false) => "structural",
-            (false, true) => "contextually related",
-            _ => "visible graph item",
-        };
-    }
 }

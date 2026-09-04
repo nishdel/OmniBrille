@@ -137,6 +137,8 @@ function Assert-PackagedContents {
         'THIRD-PARTY-LICENSES\SkiaSharp-HarfBuzz-THIRD-PARTY-NOTICES.txt',
         'THIRD-PARTY-LICENSES\DotNet-Runtime-THIRD-PARTY-NOTICES.txt',
         'THIRD-PARTY-LICENSES\System.IO.Pipelines-THIRD-PARTY-NOTICES.txt'
+        'THIRD-PARTY-LICENSES\whisper.cpp-MIT.txt'
+        'THIRD-PARTY-LICENSES\OpenAI-Whisper-MIT.txt'
     )) {
         $sourcePath = Join-Path $repositoryRoot $requiredPath
         $packagedPath = Join-Path $publishDirectory $requiredPath
@@ -152,11 +154,51 @@ function Assert-PackagedContents {
         Get-ChildItem -LiteralPath $publishDirectory -Recurse -File | Where-Object {
             $_.Extension -in '.pdb','.cs','.csproj','.sln','.user','.log','.db','.sqlite','.pfx','.snk','.key' -or
             $_.Extension -in '.wav','.mp3','.flac','.m4a','.ogg','.wma' -or
-            $_.Name -match '(?i)(testhost|OmniBrille\.(Tests|HeadlessTests)|fixture|screenshot|whisper-cli|ggml-.*\.bin)'
+            $_.Name -match '(?i)(testhost|OmniBrille\.(Tests|HeadlessTests)|fixture|screenshot)'
         }
     )
     if ($forbiddenFiles.Count -gt 0) {
         throw "Forbidden files were found in the published runtime: $($forbiddenFiles.Name -join ', ')"
+    }
+
+    $voiceRoot = Join-Path $publishDirectory 'Voice'
+    $voiceManifestPath = Join-Path $voiceRoot 'voice-bundle-manifest.json'
+    if (-not (Test-Path -LiteralPath $voiceManifestPath -PathType Leaf)) {
+        throw 'The installed voice bundle manifest is missing.'
+    }
+    $voiceManifest = Get-Content -Raw -LiteralPath $voiceManifestPath | ConvertFrom-Json
+    if ($voiceManifest.schemaVersion -ne 1 -or
+        $voiceManifest.runtime.version -ne 'v1.9.2' -or
+        $voiceManifest.runtime.commit -ne '306c88f4d1286aec1bf96e544632897886af5501' -or
+        $voiceManifest.runtime.archiveSha256 -ne '49DCC16DE826F20BD53D44F947A1AE49DFA81F86CAD67A64D80820CB192D674A' -or
+        $voiceManifest.model.commit -ne 'c521a4b02f422512d734391fdf08bb08c0862f68' -or
+        $voiceManifest.model.sha256 -ne '4BAF70DD0D7C4247BA2B81FAFD9C01005AC77C2F9EF064E00DCF195D0E2FDD2F') {
+        throw 'The installed voice bundle manifest does not match the reviewed pins.'
+    }
+    $allowedVoicePaths = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($entry in $voiceManifest.files) {
+        $relative = ([string] $entry.path).Replace('/', '\')
+        if ([System.IO.Path]::IsPathRooted($relative) -or
+            ($relative -split '[\\/]').Contains('..') -or
+            -not $allowedVoicePaths.Add($relative)) {
+            throw "Unsafe or duplicate voice manifest path '$relative'."
+        }
+        $installed = Join-Path $voiceRoot $relative
+        if (-not (Test-Path -LiteralPath $installed -PathType Leaf) -or
+            (Get-Item -LiteralPath $installed).Length -ne [long] $entry.bytes -or
+            (Get-FileHash -LiteralPath $installed -Algorithm SHA256).Hash -ne [string] $entry.sha256) {
+            throw "Installed voice asset '$relative' does not match its reviewed manifest entry."
+        }
+    }
+    foreach ($voiceControlFile in @('voice-bundle-manifest.json', 'whisper.cpp-MIT.txt', 'OpenAI-Whisper-MIT.txt')) {
+        [void]$allowedVoicePaths.Add($voiceControlFile)
+    }
+    $unexpectedVoiceFiles = @(Get-ChildItem -LiteralPath $voiceRoot -Recurse -File | Where-Object {
+        $relative = $_.FullName.Substring($voiceRoot.Length + 1)
+        -not $allowedVoicePaths.Contains($relative)
+    })
+    if ($unexpectedVoiceFiles.Count -gt 0) {
+        throw "Unexpected files were found in the voice bundle: $($unexpectedVoiceFiles.Name -join ', ')"
     }
 
     $unexpectedCompanionBinaries = @(
@@ -200,10 +242,15 @@ function Assert-PackagedContents {
     if ($manifest.product -ne 'OmniBrille' -or $manifest.version -ne $Version) {
         throw 'Release manifest identity/version is inconsistent.'
     }
-    if ($manifest.schemaVersion -ne 4 -or
+    if ($manifest.schemaVersion -ne 5 -or
         $manifest.projectLicenseExpression -ne 'MIT' -or
         $manifest.sourceUrl -ne "https://github.com/nishdel/OmniBrille/tree/$($manifest.commitSha)") {
         throw 'Release manifest schema, MIT project license, or source metadata is invalid.'
+    }
+    if ($manifest.voiceBundle.manifestSha256 -ne (Get-FileHash -LiteralPath $voiceManifestPath -Algorithm SHA256).Hash -or
+        $manifest.voiceBundle.installedAppDownloadsAssets -or
+        $manifest.voiceBundle.model.sha256 -ne $voiceManifest.model.sha256) {
+        throw 'Release manifest does not bind the reviewed local voice bundle.'
     }
     $expectedSkiaNoticePath = 'THIRD-PARTY-LICENSES/SkiaSharp-HarfBuzz-THIRD-PARTY-NOTICES.txt'
     $expectedSkiaNoticeHash = (Get-FileHash -LiteralPath (Join-Path $repositoryRoot ($expectedSkiaNoticePath.Replace('/', '\'))) -Algorithm SHA256).Hash

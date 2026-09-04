@@ -10,6 +10,7 @@ public sealed class FileSystemExplorerProvider :
 {
     public const int DefaultEnumerationLimit = 5_000;
     public const int DefaultBatchSize = 32;
+    public const int MaximumSearchEntries = 50_000;
 
     private readonly int _enumerationLimit;
 
@@ -183,6 +184,13 @@ public sealed class FileSystemExplorerProvider :
             }
 
             state.ItemsObserved++;
+            if (state.ItemsObserved >= _enumerationLimit * 2)
+            {
+                state.WasTruncated = true;
+                state.IsComplete = true;
+                break;
+            }
+
             if (state.ValidItemCount >= _enumerationLimit)
             {
                 state.WasTruncated = true;
@@ -223,7 +231,8 @@ public sealed class FileSystemExplorerProvider :
 
         if (state.WasTruncated)
         {
-            warningParts.Add($"Enumeration stopped after {_enumerationLimit:N0} items to protect responsiveness");
+            warningParts.Add(
+                $"Enumeration inspected {state.ItemsObserved:N0} entries and admitted at most {_enumerationLimit:N0} items to protect responsiveness");
         }
 
         if (state.SkippedEntries > 0)
@@ -252,6 +261,9 @@ public sealed class FileSystemExplorerProvider :
         pending.Enqueue(request.RootPath);
         var directoriesVisited = 0;
         var inaccessibleDirectories = 0;
+        var entriesInspected = 0;
+        var maximumPending = Math.Max(64, request.MaxDirectories * 4);
+        var maximumEntries = Math.Min(MaximumSearchEntries, Math.Max(1_000, request.MaxDirectories * 200));
         var truncated = false;
 
         while (pending.Count > 0 && directoriesVisited < request.MaxDirectories)
@@ -265,6 +277,12 @@ public sealed class FileSystemExplorerProvider :
                 foreach (var path in Directory.EnumerateFileSystemEntries(directory))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+                    entriesInspected++;
+                    if (entriesInspected > maximumEntries)
+                    {
+                        truncated = true;
+                        return CompleteSearch(hits, truncated, directoriesVisited, inaccessibleDirectories);
+                    }
 
                     ExplorerEntry entry;
                     try
@@ -289,7 +307,14 @@ public sealed class FileSystemExplorerProvider :
 
                     if (entry.Kind == ExplorerNodeKind.Folder && entry.IsNavigable)
                     {
-                        pending.Enqueue(entry.Path);
+                        if (pending.Count < maximumPending)
+                        {
+                            pending.Enqueue(entry.Path);
+                        }
+                        else
+                        {
+                            truncated = true;
+                        }
                     }
                 }
             }
@@ -327,7 +352,7 @@ public sealed class FileSystemExplorerProvider :
         return new ExplorerSearchResult(hits, truncated, directoriesVisited, warning);
     }
 
-    private static ExplorerEntry CreateFocus(string path)
+    private ExplorerEntry CreateFocus(string path)
     {
         var name = Path.GetFileName(path);
         if (string.IsNullOrWhiteSpace(name))
@@ -344,7 +369,22 @@ public sealed class FileSystemExplorerProvider :
         {
         }
 
-        return new ExplorerEntry(path, name, path, ExplorerNodeKind.Folder, null, modified);
+        var parent = PathBoundary.Comparer.Equals(path, AccessRoot)
+            ? null
+            : Path.GetDirectoryName(path);
+        if (parent is not null && !PathBoundary.IsWithin(AccessRoot, parent))
+        {
+            parent = null;
+        }
+
+        return new ExplorerEntry(
+            path,
+            name,
+            path,
+            ExplorerNodeKind.Folder,
+            null,
+            modified,
+            ParentNavigationTarget: parent);
     }
 
     private static ExplorerEntry CreateEntry(string path)

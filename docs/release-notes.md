@@ -1,12 +1,14 @@
+> **Candidate template:** v1.1.0 is the current source/release candidate, not a published release. The current public release remains v1.0.0. These instructions become download instructions only after the exact candidate passes the remaining release gates and is published.
+
 ## Install on Windows
 
-OmniBrille 1.1.0 provides a self-contained Windows x64 installer. It installs for the current user at `%LOCALAPPDATA%\Programs\OmniBrille`, creates a Start Menu shortcut and uninstall entry, and requires no separately installed .NET runtime or administrator access.
+The OmniBrille 1.1.0 candidate produces a self-contained Windows x64 installer. It installs for the current user at `%LOCALAPPDATA%\Programs\OmniBrille`, creates a Start Menu shortcut and uninstall entry, and requires no separately installed .NET runtime or administrator access.
 
-OmniBrille installs no service, startup task, file association, telemetry component, updater, OmniSorSe binary, speech recognizer, or speech model.
+OmniBrille installs no service, startup task, file association, telemetry component, updater, or OmniSorSe binary. It includes an installer-owned, hash-bound local whisper.cpp runtime and English model; the installed app never downloads or updates those assets.
 
 ## Verify the installer
 
-Download the installer, `.sha256` sidecar, manifest, and these notes from the same GitHub Release. Calculate the hash independently:
+After publication, download the installer, `.sha256` sidecar, manifest, and these notes from the same GitHub Release. Calculate the hash independently:
 
 ```powershell
 Get-FileHash .\OmniBrille-1.1.0-win-x64-setup.exe -Algorithm SHA256
@@ -16,23 +18,26 @@ The generated artifact-specific notes place the expected SHA-256 above this temp
 
 ## License and source
 
-OmniBrille project code is licensed under the **MIT License**. The release includes the full `LICENSE`, and source is available from the matching `v1.1.0` tag and source archives on the official GitHub Release. Bundled third-party components retain their own installed licenses and notices. The Windows renderer uses a project-built SkiaSharp 3.119.4 native asset with the unused Adobe DNG/RAW codec excluded; its exact upstream pins, build configuration, hash, and notice derivation are recorded in the release manifest and repository provenance guide.
+OmniBrille project code is licensed under the **MIT License**. The candidate includes the full `LICENSE`. If v1.1.0 is published, its source will be available from the matching `v1.1.0` tag and source archives on the official GitHub Release. Bundled third-party components retain their own installed licenses and notices. The Windows renderer uses a project-built SkiaSharp 3.119.4 native asset with the unused Adobe DNG/RAW codec excluded; its exact upstream pins, build configuration, hash, and notice derivation are recorded in the release manifest and repository provenance guide.
 
 ## What changed in v1.1
 
-- The graph now fills the application client area, with compact floating navigation, mode, Search, utility, zoom, details, voice, and status surfaces.
-- Current Focus is smaller and clearer; selected/immediate/secondary/ambient graph states have stronger visual hierarchy without adding nodes or relationships.
-- Dense folders present at most eight crisp labeled children by default; remaining bounded siblings recede into subdued glyph and point context. Selection, hover, or Search restores their emphasis, while zoom can progressively disclose glyph and label detail.
-- Search is collapsed until requested by click or `Ctrl+F`, and the disabled Voice surface collapses to one quiet action.
+- The graph fills a borderless application client area with angular Back/Up/Root/Trail, mode, Search, utility, Sound, zoom, Details, Voice, status, and custom window-control surfaces.
+- Current Focus, direct children, previous focus, and Context are explicit semantic roles. Every admitted direct child remains on one truthful plane as a recognizable outlined glyph; separate density bands no longer imply deeper folders.
+- Geometric arrow selection, 44-DIP targets, a distinct graph keyboard-focus cue, and graph `SelectionItem` semantics keep keyboard/list/automation behavior aligned.
+- Bounded analytic float and hover lens preserve immutable topology; Reduced motion removes float, lens, transition, and Details typing movement.
+- Details has a fast cancel-safe terminal reveal while complete semantic/automation text is available immediately. Short local interaction cues are redundant and governed by a persisted `SOUND OFF` switch.
+- Ordinary Standalone files may open after explicit activation and immediate selected-root/reparse/type checks. Connected display paths are never filesystem authority.
+- Voice is first-click Listen, second-click Stop/Transcribe, with Back/Up/Root/Enter/selected-node variants over the same existing session actions.
 - First-run guidance and the bottom status surface yield when a secondary panel claims their space, keeping focused controls unobscured at the supported minimum size.
 - Dark and Light themes use a deeper navy/cyan and pale ice-blue visual system; the bounded loading data rain has a restrained focal aperture.
-- Filesystem behavior, Connected-mode contracts, Explorer Protocol v1, scene budgets, privacy, persistence, and destructive-operation policy are unchanged.
+- Connected server-authored Context, Explorer Protocol v1, 48-node scene admission, stale-result rejection, and no-destructive-operation policy remain unchanged. Connected opaque target comparison is now correctly ordinal on Windows.
 
 ## Supported v1.1 experience
 
 - Standalone selected-folder Structure navigation, bounded aggregation, Search, details, Dark/Light themes, reduced motion/effects, and the synchronized keyboard-friendly list.
 - Optional compatibility-dependent OmniSorSe Connected mode for authorized indexed Structure, Search, details, and server-authored Context/Hybrid data. See `COMPATIBILITY.md`; current-host validation is not implied by the installer alone.
-- Optional local push-to-talk remains disabled by default and requires separately supplied whisper.cpp runtime/model components.
+- Optional local Voice uses the exact pinned runtime/model in the Windows package; missing microphone or integrity failure leaves typed/pointer operation available.
 
 ## Current limitations
 
@@ -40,7 +45,7 @@ OmniBrille project code is licensed under the **MIT License**. The release inclu
 - Linux has source build/test coverage only; no package or interactive-runtime support is claimed. macOS runtime is unverified.
 - Connected mode depends on a compatible OmniSorSe build and is not the primary v1.1 support contract.
 - Automated keyboard, list, text-scaling, and automation coverage is not screen-reader certification.
-- Real microphone hardware validation remains outstanding; voice is outside the validated v1.1 contract.
+- Real microphone, physical sound output, Narrator/NVDA, custom-chrome DPI/snap, and GPU-backed continuous-motion validation remain outstanding and block their respective v1.1 release claims.
 - Destructive file operations, automatic updating, cloud services, always-listening audio, and telemetry are intentionally absent.
 
 ## Privacy and support

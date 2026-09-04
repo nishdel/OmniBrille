@@ -40,7 +40,10 @@ public sealed class NavigationState
             throw new InvalidOperationException("Navigation cannot leave the explicitly selected access root.");
         }
 
-        if (PathBoundary.Comparer.Equals(CurrentPath, normalized))
+        var comparer = Mode == ExplorerProviderMode.Connected
+            ? ExplorerIdentity.Comparer
+            : PathBoundary.Comparer;
+        if (comparer.Equals(CurrentPath, normalized))
         {
             return;
         }

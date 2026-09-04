@@ -36,6 +36,7 @@ public sealed class HybridGraphLayoutTests
 
         Assert.True(layout["parent"].Y < 0);
         Assert.Equal(2, layout["parent"].Depth);
+        Assert.Equal(2, layout["parent"].PresentationBand);
     }
 
     private static ExplorerNeighborhood Scene()

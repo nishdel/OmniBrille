@@ -33,7 +33,7 @@ public sealed class MainWindowHeadlessTests
         window.Show();
 
         Assert.Equal("OmniBrille — Structure", window.Title);
-        Assert.Equal("Choose an access folder", AutomationProperties.GetName(window.FindControl<Button>("ChooseFolderButton")!));
+        Assert.Equal("Navigate to the active root", AutomationProperties.GetName(window.FindControl<Button>("ChooseFolderButton")!));
         Assert.Equal("Structural search", AutomationProperties.GetName(window.FindControl<TextBox>("SearchBox")!));
         Assert.Equal("Run Standalone Search", AutomationProperties.GetName(window.FindControl<Button>("SearchButton")!));
         Assert.Equal("Standalone Search results", AutomationProperties.GetName(window.FindControl<ListBox>("SearchResultsList")!));
@@ -49,6 +49,12 @@ public sealed class MainWindowHeadlessTests
         var graph = window.FindControl<Control>("GraphScene")!;
         Assert.Equal("Spatial Structure graph", AutomationProperties.GetName(graph));
         Assert.Equal("Spatial Structure graph", ControlAutomationPeer.CreatePeerForElement(graph).GetName());
+        Assert.Equal(
+            AutomationLiveSetting.Polite,
+            AutomationProperties.GetLiveSetting(window.FindControl<TextBlock>("StatusAnnouncer")!));
+        Assert.Equal(
+            "Choose a folder to begin. Only that location will be accessible.",
+            AutomationProperties.GetName(window.FindControl<TextBlock>("StatusAnnouncer")!));
     }
 
     [AvaloniaFact]
@@ -64,15 +70,35 @@ public sealed class MainWindowHeadlessTests
         Assert.Equal(window.ClientSize, shell.Bounds.Size);
         Assert.InRange(graph.Bounds.Width, 700, window.ClientSize.Width);
         Assert.InRange(graph.Bounds.Height, 420, window.ClientSize.Height);
-        foreach (var name in new[] { "ChooseFolderButton", "SearchToggleButton", "AccessibleListButton", "SettingsButton" })
+        foreach (var name in new[]
+        {
+            "ChooseFolderButton", "BackButton", "UpButton", "HistoryButton", "SearchToggleButton",
+            "AccessibleListButton", "SettingsButton", "SoundButton", "VoiceButton", "MinimizeWindowButton",
+            "MaximizeWindowButton", "CloseWindowButton",
+        })
         {
             var control = window.FindControl<Button>(name)!;
             Assert.True(control.IsEffectivelyVisible);
-            Assert.True(control.Bounds.Width > 0);
-            Assert.True(control.Bounds.Height > 0);
+            Assert.True(control.Bounds.Width >= 44, $"{name} width was {control.Bounds.Width:0.##} DIP.");
+            Assert.True(control.Bounds.Height >= 44, $"{name} height was {control.Bounds.Height:0.##} DIP.");
         }
 
         Assert.False(window.FindControl<Border>("SearchEditor")!.IsVisible);
+    }
+
+    [AvaloniaFact]
+    public void CustomChrome_MaximizeRestoreUsesRealWindowStateAndAccessibleControls()
+    {
+        using var window = CreateWindow(out _, out _);
+        window.Show();
+        var maximize = window.FindControl<Button>("MaximizeWindowButton")!;
+
+        maximize.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.Equal(WindowState.Maximized, window.WindowState);
+        maximize.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.Equal(WindowState.Normal, window.WindowState);
+        Assert.Equal("Minimize window", AutomationProperties.GetName(window.FindControl<Button>("MinimizeWindowButton")!));
+        Assert.Equal("Close window", AutomationProperties.GetName(window.FindControl<Button>("CloseWindowButton")!));
     }
 
     [AvaloniaFact]
@@ -218,9 +244,79 @@ public sealed class MainWindowHeadlessTests
 
         Assert.False(window.FindControl<Border>("InitialLoadingOverlay")!.IsVisible);
         Assert.False(window.FindControl<Border>("WelcomePanel")!.IsVisible);
+        Assert.False(window.FindControl<Border>("DetailsPanel")!.IsVisible);
+        session.SelectNode(session.Neighborhood!.FocusNodeId);
         Assert.True(window.FindControl<Border>("DetailsPanel")!.IsVisible);
         Assert.Equal(Path.GetFileName(root), window.FindControl<TextBlock>("CurrentPathText")!.Text);
         Assert.Equal(root, ToolTip.GetTip(window.FindControl<TextBlock>("CurrentPathText")!));
+    }
+
+    [AvaloniaFact]
+    public async Task MinimumWindow_DetailsOwnsOneCompactPlaneWithoutCoveringFocusableShellControls()
+    {
+        using var window = CreateWindow(out var session, out _);
+        window.Width = window.MinWidth;
+        window.Height = window.MinHeight;
+        window.Show();
+        var root = Path.Combine(Path.GetTempPath(), "OmniBrilleCompactDetails");
+        var provider = new ImmediateProvider(root, Entry(Path.Combine(root, "report.txt"), ExplorerNodeKind.File));
+        await session.OpenRootAsync(provider, provider);
+        session.SelectNode(session.Neighborhood!.Nodes.Single(node => node.Kind == ExplorerNodeKind.File).Id);
+        using (window.CaptureRenderedFrame())
+        {
+        }
+
+        Assert.True(window.FindControl<Border>("DetailsPanel")!.IsVisible);
+        Assert.True(window.FindControl<Border>("NavigationHud")!.IsVisible);
+        Assert.False(window.FindControl<Border>("FocusHud")!.IsVisible);
+        Assert.False(window.FindControl<Border>("ModeHud")!.IsVisible);
+        Assert.False(window.FindControl<Border>("UtilityHud")!.IsVisible);
+        var details = window.FindControl<Border>("DetailsPanel")!;
+        var closeDetails = window.FindControl<Button>("CloseDetailsButton")!;
+        Assert.True(closeDetails.Bounds.Width >= 44);
+        Assert.True(closeDetails.Bounds.Height >= 44);
+        var closeEdge = closeDetails.TranslatePoint(new Point(closeDetails.Bounds.Width, closeDetails.Bounds.Height), details);
+        Assert.NotNull(closeEdge);
+        Assert.True(closeEdge.Value.X <= details.Bounds.Width - 18);
+        var detailsOrigin = details.TranslatePoint(new Point(0, 0), window);
+        var voiceHud = window.FindControl<Border>("VoiceHud")!;
+        var voiceOrigin = voiceHud.TranslatePoint(new Point(0, 0), window);
+        Assert.NotNull(detailsOrigin);
+        Assert.NotNull(voiceOrigin);
+        Assert.True(detailsOrigin.Value.Y + details.Bounds.Height <= voiceOrigin.Value.Y);
+
+        window.FindControl<Button>("CloseDetailsButton")!
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+        Assert.False(window.FindControl<Border>("DetailsPanel")!.IsVisible);
+        Assert.True(window.FindControl<Border>("FocusHud")!.IsVisible);
+        Assert.True(window.FindControl<Border>("ModeHud")!.IsVisible);
+        Assert.True(window.FindControl<Border>("UtilityHud")!.IsVisible);
+    }
+
+    [AvaloniaFact]
+    public async Task DetailsTyping_KeepsFullAutomationTextAtomicAndIsImmediateWithReducedMotion()
+    {
+        using var window = CreateWindow(out var session, out _);
+        window.Show();
+        var root = Path.Combine(Path.GetTempPath(), "OmniBrilleTypedDetails");
+        var file = Entry(Path.Combine(root, "report.txt"), ExplorerNodeKind.File);
+        var provider = new ImmediateProvider(root, file);
+        await session.OpenRootAsync(provider, provider);
+        session.SelectNode(session.Neighborhood!.FocusNodeId);
+        var terminal = window.FindControl<TextBlock>("DetailsTerminalText")!;
+
+        Assert.Contains(Path.GetFileName(root), AutomationProperties.GetName(terminal), StringComparison.Ordinal);
+        Assert.Equal(root, window.FindControl<TextBlock>("DetailsPathText")!.Text);
+
+        window.FindControl<Button>("SettingsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        window.FindControl<CheckBox>("ReducedMotionToggle")!.IsChecked = true;
+        session.SelectNode(file.Id);
+
+        Assert.Contains("STATUS  READY", terminal.Text, StringComparison.Ordinal);
+        Assert.Contains(file.Name, terminal.Text, StringComparison.Ordinal);
+        Assert.Contains(file.Name, AutomationProperties.GetName(terminal), StringComparison.Ordinal);
+        Assert.Equal(file.Path, window.FindControl<TextBlock>("DetailsPathText")!.Text);
     }
 
     [AvaloniaFact]
@@ -232,6 +328,7 @@ public sealed class MainWindowHeadlessTests
         var match = Entry(Path.Combine(root, "match.txt"), ExplorerNodeKind.File);
         var provider = new ImmediateProvider(root, match);
         await session.OpenRootAsync(provider, provider);
+        session.SelectNode(match.Id);
 
         await session.SearchAsync("match");
         Assert.True(window.FindControl<Border>("SearchResultsPanel")!.IsVisible);
@@ -243,6 +340,135 @@ public sealed class MainWindowHeadlessTests
         session.ClearSearch();
         Assert.False(window.FindControl<Border>("SearchResultsPanel")!.IsVisible);
         Assert.True(window.FindControl<Border>("DetailsPanel")!.IsVisible);
+    }
+
+    [AvaloniaFact]
+    public async Task RootButton_ReturnsToActiveRootWithoutReplacingProviderAuthority()
+    {
+        using var window = CreateWindow(out var session, out _);
+        window.Show();
+        var root = Path.Combine(Path.GetTempPath(), "OmniBrillePointerRoot");
+        var child = Entry(Path.Combine(root, "child"), ExplorerNodeKind.Folder);
+        var provider = new ImmediateProvider(root, child);
+        await session.OpenRootAsync(provider, provider);
+        await session.NavigateAsync(child.Path);
+        var rootButton = window.FindControl<Button>("ChooseFolderButton")!;
+
+        Assert.True(rootButton.IsEnabled);
+        rootButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await WaitUntilAsync(() => session.CurrentPath == root);
+
+        Assert.Equal(ExplorerProviderMode.Standalone, session.ProviderMode);
+        Assert.False(rootButton.IsEnabled);
+    }
+
+    [AvaloniaFact]
+    public async Task TrailButton_TogglesTheSharedHistoryPanelClosedAgain()
+    {
+        using var window = CreateWindow(out var session, out _);
+        window.Show();
+        var root = Path.Combine(Path.GetTempPath(), "OmniBrilleTrailToggle");
+        var child = Entry(Path.Combine(root, "child"), ExplorerNodeKind.Folder);
+        var provider = new ImmediateProvider(root, child);
+        await session.OpenRootAsync(provider, provider);
+        await session.NavigateAsync(child.Path);
+        var historyButton = window.FindControl<Button>("HistoryButton")!;
+        var historyPanel = window.FindControl<Border>("HistoryPanel")!;
+
+        historyButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.True(historyPanel.IsVisible);
+
+        historyButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.False(historyPanel.IsVisible);
+    }
+
+    [AvaloniaFact]
+    public async Task VoiceOpenSelectedFolder_UsesCapturedSelectionAcrossNavigation()
+    {
+        using var window = CreateWindow(out var session, out _);
+        window.Show();
+        var root = Path.Combine(Path.GetTempPath(), "OmniBrilleVoiceSelected");
+        var child = Entry(Path.Combine(root, "child"), ExplorerNodeKind.Folder);
+        var provider = new ImmediateProvider(root, child);
+        await session.OpenRootAsync(provider, provider);
+        session.SelectNode(child.Id);
+
+        var result = await window.ExecuteVoiceIntentAsync(
+            new VoiceIntent(VoiceIntentKind.ActivateSelectedNode),
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("Opened child.", result.Message);
+        Assert.Equal(child.Path, session.CurrentPath);
+    }
+
+    [AvaloniaFact]
+    public async Task NavigatedStatusCountsDirectChildrenWithoutPreviousFocusOrPortals()
+    {
+        using var window = CreateWindow(out var session, out _);
+        window.Show();
+        var root = Path.Combine(Path.GetTempPath(), "OmniBrilleTruthfulChildCount");
+        var child = Entry(Path.Combine(root, "child"), ExplorerNodeKind.Folder);
+        var leaf = Entry(Path.Combine(child.Path, "leaf.txt"), ExplorerNodeKind.File);
+        var provider = new ImmediateProvider(root, child, leaf);
+        await session.OpenRootAsync(provider, provider);
+        await session.NavigateAsync(child.Path);
+
+        Assert.Equal("1 items · 1 children visible", session.Status);
+        Assert.Contains(
+            session.Neighborhood!.Nodes,
+            node => ExplorerSceneSemantics.RelationOf(session.Neighborhood, node) == ExplorerSceneRelation.PreviousFocus);
+    }
+
+    [AvaloniaFact]
+    public async Task OpeningSearchDismissesDetailsFromTheSharedRightPlane()
+    {
+        using var window = CreateWindow(out var session, out _);
+        window.Show();
+        var root = Path.Combine(Path.GetTempPath(), "OmniBrilleSearchDetailsPlane");
+        var file = Entry(Path.Combine(root, "report.txt"), ExplorerNodeKind.File);
+        var provider = new ImmediateProvider(root, file);
+        await session.OpenRootAsync(provider, provider);
+        session.SelectNode(file.Id);
+        Assert.True(window.FindControl<Border>("DetailsPanel")!.IsVisible);
+
+        window.FindControl<Button>("SearchToggleButton")!
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+        Assert.True(window.FindControl<Border>("SearchEditor")!.IsVisible);
+        Assert.False(window.FindControl<Border>("DetailsPanel")!.IsVisible);
+    }
+
+    [AvaloniaFact]
+    public async Task OpeningConnectionDismissesDetailsAndHistoryFromTheSharedRightPlane()
+    {
+        using var window = CreateWindow(out var session, out _);
+        window.Show();
+        var root = Path.Combine(Path.GetTempPath(), "OmniBrilleConnectionDetailsPlane");
+        var folder = Entry(Path.Combine(root, "child"), ExplorerNodeKind.Folder);
+        var provider = new ImmediateProvider(root, folder);
+        await session.OpenRootAsync(provider, provider);
+        await session.NavigateAsync(folder.Path);
+        session.SelectNode(session.Neighborhood!.FocusNodeId);
+        Assert.True(window.FindControl<Border>("DetailsPanel")!.IsVisible);
+
+        window.FindControl<Button>("ConnectionButton")!
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.True(window.FindControl<Border>("ConnectionPanel")!.IsVisible);
+        Assert.False(window.FindControl<Border>("DetailsPanel")!.IsVisible);
+
+        window.FindControl<Button>("ConnectionButton")!
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        window.FindControl<Button>("HistoryButton")!
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.True(window.FindControl<Border>("HistoryPanel")!.IsVisible);
+
+        window.FindControl<Button>("ConnectionButton")!
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+        Assert.True(window.FindControl<Border>("ConnectionPanel")!.IsVisible);
+        Assert.False(window.FindControl<Border>("DetailsPanel")!.IsVisible);
+        Assert.False(window.FindControl<Border>("HistoryPanel")!.IsVisible);
     }
 
     [AvaloniaFact]
@@ -334,12 +560,72 @@ public sealed class MainWindowHeadlessTests
         var focusPeer = Assert.Single(nodePeers, nodePeer => nodePeer.GetItemStatus()!.Contains("Current focus"));
         Assert.Contains(Path.GetFileName(root), focusPeer.GetName());
         var childPeer = Assert.Single(nodePeers, nodePeer => nodePeer.GetName().Contains("child"));
+        var changedProperties = new List<AutomationProperty>();
+        childPeer.PropertyChanged += (_, args) => changedProperties.Add(args.Property);
         childPeer.SetFocus();
         Assert.Equal(child.Id, session.SelectedNode!.Id);
+        Assert.Contains(SelectionItemPatternIdentifiers.IsSelectedProperty, changedProperties);
+        Assert.Contains(AutomationElementIdentifiers.ItemStatusProperty, changedProperties);
+
+        var selection = Assert.IsAssignableFrom<ISelectionProvider>(peer.GetProvider<ISelectionProvider>());
+        var selectionItem = Assert.IsAssignableFrom<ISelectionItemProvider>(childPeer.GetProvider<ISelectionItemProvider>());
+        Assert.True(selectionItem.IsSelected);
+        Assert.Same(selection, selectionItem.SelectionContainer);
+        Assert.Single(selection.GetSelection());
+
+        changedProperties.Clear();
+        await session.SearchAsync("child");
+        Assert.Contains(AutomationElementIdentifiers.ItemStatusProperty, changedProperties);
+        Assert.Contains("Search match", childPeer.GetItemStatus(), StringComparison.Ordinal);
 
         var invoke = Assert.IsAssignableFrom<IInvokeProvider>(childPeer.GetProvider<IInvokeProvider>());
         invoke.Invoke();
         Assert.Equal(child.Path, session.CurrentPath);
+    }
+
+    [AvaloniaFact]
+    public async Task StandaloneFileActivation_UsesTheGrantedRootAndSelectedProviderPath()
+    {
+        var session = new ExplorerSession();
+        var store = new MemoryPreferencesStore();
+        var activation = new RecordingFileActivationService();
+        using var sound = new RecordingSoundService();
+        using var window = new MainWindow(session, store, fileActivation: activation, interactionSound: sound);
+        window.Show();
+        var root = Path.Combine(Path.GetTempPath(), "OmniBrilleFileOpenRoot");
+        var file = Entry(Path.Combine(root, "report.txt"), ExplorerNodeKind.File);
+        var provider = new ImmediateProvider(root, file);
+        await session.OpenRootAsync(provider, provider);
+
+        window.FindControl<Button>("AccessibleListButton")!
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        window.FindControl<ListBox>("AccessibleNodesList")!.SelectedIndex = 1;
+        window.FindControl<Button>("AccessibleOpenButton")!
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await WaitUntilAsync(() => activation.OpenCount == 1);
+
+        Assert.Equal(root, activation.AccessRoot);
+        Assert.Equal(file.Path, activation.Path);
+        Assert.Contains(InteractionSoundCue.FileOpen, sound.Cues);
+    }
+
+    [AvaloniaFact]
+    public void SoundMute_IsObviousPersistedAndStopsCueWork()
+    {
+        var session = new ExplorerSession();
+        var store = new MemoryPreferencesStore();
+        using var sound = new RecordingSoundService();
+        using var window = new MainWindow(session, store, interactionSound: sound);
+        window.Show();
+        var button = window.FindControl<Button>("SoundButton")!;
+
+        button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+        Assert.False(window.Preferences.SoundEnabled);
+        Assert.False(store.Saved!.SoundEnabled);
+        Assert.False(sound.Enabled);
+        Assert.Equal("SOUND OFF", button.Content);
+        Assert.Empty(sound.Cues);
     }
 
     [AvaloniaFact]
@@ -362,8 +648,8 @@ public sealed class MainWindowHeadlessTests
         Assert.True(panel.IsVisible);
         Assert.Equal(2, list.ItemCount);
         var accessibleNames = list.ItemsSource!.Cast<object>().Select(item => item.ToString()).ToArray();
-        Assert.Contains($"{Path.GetFileName(root)}, Folder, focus, selected", accessibleNames);
-        Assert.Contains("match-child, Folder", accessibleNames);
+        Assert.Contains($"{Path.GetFileName(root)}, Folder, current focus, focus", accessibleNames);
+        Assert.Contains(accessibleNames, name => name!.StartsWith("match-child, Folder, direct child of ", StringComparison.Ordinal));
 
         list.SelectedIndex = 1;
         Assert.Equal(child.Id, session.SelectedNode!.Id);
@@ -595,7 +881,7 @@ public sealed class MainWindowHeadlessTests
         var list = window.FindControl<ListBox>("AccessibleNodesList")!;
         var relatedItem = Assert.Single(list.ItemsSource!.Cast<object>(), item =>
             item.ToString()!.Contains("related.txt", StringComparison.Ordinal));
-        Assert.Contains("Context", relatedItem.ToString(), StringComparison.Ordinal);
+        Assert.Contains("contextually related", relatedItem.ToString(), StringComparison.OrdinalIgnoreCase);
         list.SelectedItem = relatedItem;
         await WaitUntilAsync(() => session.SelectedNode?.Id == "opaque-related");
         Assert.True(window.FindControl<StackPanel>("RelationshipDetailsSection")!.IsVisible);
@@ -700,9 +986,11 @@ public sealed class MainWindowHeadlessTests
     }
 
     [AvaloniaFact]
-    public async Task DenseStructure_UsesSparseFocusPlaneWithoutDroppingAccessibleNodes()
+    public async Task DenseStructure_KeepsTruthfulGlyphPlaneAndMoreThanEightUsefulLabelsAtReferenceSize()
     {
         using var window = CreateWindow(out var session, out _);
+        window.Width = 1938;
+        window.Height = 1098;
         window.Show();
         var root = Path.Combine(Path.GetTempPath(), "OmniBrilleSparseFocusPlane");
         var provider = new DenseProvider(root, 47);
@@ -716,7 +1004,7 @@ public sealed class MainWindowHeadlessTests
 
         Assert.Equal(48, graph.Diagnostics.Nodes);
         Assert.Equal(47, graph.Diagnostics.Edges);
-        Assert.Equal(9, graph.Diagnostics.Labels);
+        Assert.True(graph.Diagnostics.Labels > 8, $"Expected more than eight useful labels; rendered {graph.Diagnostics.Labels}.");
         var expectedIds = session.Neighborhood.Nodes
             .Select(node => node.Id)
             .OrderBy(id => id, StringComparer.Ordinal)
@@ -733,6 +1021,12 @@ public sealed class MainWindowHeadlessTests
             .OrderBy(id => id, StringComparer.Ordinal)
             .ToArray();
         Assert.Equal(expectedIds, graphPeerIds);
+        Assert.All(graphPeers, graphPeer =>
+        {
+            var target = graphPeer.GetBoundingRectangle();
+            Assert.True(target.Width >= 44, $"{graphPeer.GetName()} width was {target.Width:0.##} DIP.");
+            Assert.True(target.Height >= 44, $"{graphPeer.GetName()} height was {target.Height:0.##} DIP.");
+        });
 
         window.FindControl<Button>("AccessibleListButton")!
             .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -770,6 +1064,111 @@ public sealed class MainWindowHeadlessTests
         provider.Complete(new ExplorerDirectorySnapshot(Entry(root, ExplorerNodeKind.Folder), []));
         await opening;
         Assert.False(rain.Diagnostics.IsActive);
+    }
+
+    [AvaloniaFact]
+    public async Task EnablingReducedMotionStopsActiveGraphAndLoadingTimersImmediately()
+    {
+        using var window = CreateWindow(out var session, out _);
+        window.Show();
+        var root = Path.Combine(Path.GetTempPath(), "OmniBrilleReducedMotionRuntime");
+        var provider = new DeferredProvider(root);
+        var opening = session.OpenRootAsync(provider, provider);
+        var rain = window.FindControl<DataRainControl>("DataRain")!;
+        rain.SetMotionActivity(true);
+        Assert.True(rain.Diagnostics.TimerActive);
+
+        var graph = window.FindControl<GraphSceneControl>("GraphScene")!;
+        graph.SetMotionActivity(true);
+        var neighborhood = new GraphNeighborhoodBuilder().Build(
+            new ExplorerDirectorySnapshot(
+                Entry(root, ExplorerNodeKind.Folder),
+                [Entry(Path.Combine(root, "child"), ExplorerNodeKind.Folder)]));
+        graph.SetScene(neighborhood, null, null, animate: true);
+        Assert.True(graph.Diagnostics.AnimationActive);
+
+        rain.ReducedMotion = true;
+        graph.ReducedMotion = true;
+
+        Assert.False(rain.Diagnostics.TimerActive);
+        Assert.False(graph.Diagnostics.AnimationActive);
+        provider.Complete(new ExplorerDirectorySnapshot(Entry(root, ExplorerNodeKind.Folder), []));
+        await opening;
+    }
+
+    [AvaloniaFact]
+    public async Task MinimizingWindowStopsActiveTransitionAndLoadingTimerUntilRestore()
+    {
+        using var window = CreateWindow(out var session, out _);
+        window.Show();
+        window.Activate();
+        var root = Path.Combine(Path.GetTempPath(), "OmniBrilleMinimizedMotion");
+        var provider = new DeferredProvider(root);
+        var opening = session.OpenRootAsync(provider, provider);
+        var rain = window.FindControl<DataRainControl>("DataRain")!;
+        var graph = window.FindControl<GraphSceneControl>("GraphScene")!;
+        rain.SetMotionActivity(true);
+        graph.SetMotionActivity(true);
+        var neighborhood = new GraphNeighborhoodBuilder().Build(
+            new ExplorerDirectorySnapshot(
+                Entry(root, ExplorerNodeKind.Folder),
+                [Entry(Path.Combine(root, "child"), ExplorerNodeKind.Folder)]));
+        graph.SetScene(neighborhood, null, null, animate: true);
+        Assert.True(graph.Diagnostics.AnimationActive);
+        Assert.True(rain.Diagnostics.TimerActive);
+
+        window.WindowState = WindowState.Minimized;
+
+        Assert.False(graph.Diagnostics.AnimationActive);
+        Assert.False(graph.Diagnostics.MotionActive);
+        Assert.False(rain.Diagnostics.TimerActive);
+
+        window.WindowState = WindowState.Normal;
+        rain.SetMotionActivity(true);
+        graph.SetMotionActivity(true);
+        Assert.True(rain.Diagnostics.TimerActive);
+        Assert.True(graph.Diagnostics.MotionActive);
+
+        provider.Complete(new ExplorerDirectorySnapshot(Entry(root, ExplorerNodeKind.Folder), []));
+        await opening;
+        Assert.False(rain.Diagnostics.TimerActive);
+    }
+
+    [AvaloniaFact]
+    public async Task ContinuousMotion_IsForegroundBoundedAndStopsWithoutChangingTheScene()
+    {
+        using var window = CreateWindow(out var session, out _);
+        window.Show();
+        var root = Path.Combine(Path.GetTempPath(), "OmniBrilleMotionLifecycle");
+        var provider = new DenseProvider(root, 47);
+        await session.OpenRootAsync(provider, provider);
+        var graph = window.FindControl<GraphSceneControl>("GraphScene")!;
+        graph.ReducedMotion = false;
+        graph.SetMotionActivity(true);
+        graph.SetScene(session.Neighborhood, session.SelectedNode?.Id, session.HighlightedNodeIds, animate: false);
+        for (var index = 0; index < 5; index++)
+        {
+            graph.InvalidateVisual();
+            using (window.CaptureRenderedFrame())
+            {
+            }
+        }
+
+        var active = graph.Diagnostics;
+        graph.SetMotionActivity(true);
+        active = graph.Diagnostics;
+        Assert.True(active.MotionActive);
+        Assert.Equal(48, active.Nodes);
+        Assert.Equal(47, active.Edges);
+        Assert.InRange(active.RenderAllocatedBytes, 0, 262_144);
+
+        graph.SetMotionActivity(false);
+
+        Assert.False(graph.Diagnostics.MotionActive);
+        Assert.Equal(48, graph.Diagnostics.Nodes);
+        _output.WriteLine(
+            $"continuous-motion: render={active.LastRenderDuration.TotalMilliseconds:0.000} ms, " +
+            $"alloc={active.RenderAllocatedBytes:N0} B, labels={active.Labels}");
     }
 
     [AvaloniaFact]
@@ -1065,8 +1464,8 @@ public sealed class MainWindowHeadlessTests
         window.Show();
 
         var voiceButton = window.FindControl<Button>("VoiceButton")!;
-        Assert.Contains("Push to talk", AutomationProperties.GetName(voiceButton), StringComparison.Ordinal);
-        Assert.Equal("Enable local push-to-talk voice", AutomationProperties.GetName(
+        Assert.Contains("Toggle local listening", AutomationProperties.GetName(voiceButton), StringComparison.Ordinal);
+        Assert.Equal("Enable local toggle voice", AutomationProperties.GetName(
             window.FindControl<CheckBox>("VoiceEnabledToggle")!));
 
         window.KeyPress(
@@ -1229,11 +1628,13 @@ public sealed class MainWindowHeadlessTests
     private sealed class ImmediateProvider : IExplorerProvider, IExplorerSearchProvider
     {
         private readonly ExplorerEntry _match;
+        private readonly ExplorerEntry? _nestedMatch;
 
-        public ImmediateProvider(string root, ExplorerEntry match)
+        public ImmediateProvider(string root, ExplorerEntry match, ExplorerEntry? nestedMatch = null)
         {
             AccessRoot = root;
             _match = match;
+            _nestedMatch = nestedMatch;
         }
 
         public string AccessRoot { get; }
@@ -1241,7 +1642,9 @@ public sealed class MainWindowHeadlessTests
         public Task<ExplorerDirectorySnapshot> GetDirectoryAsync(string path, CancellationToken cancellationToken) =>
             Task.FromResult(new ExplorerDirectorySnapshot(
                 Entry(path, ExplorerNodeKind.Folder),
-                StringComparer.OrdinalIgnoreCase.Equals(path, _match.Path) ? [] : [_match]));
+                StringComparer.OrdinalIgnoreCase.Equals(path, _match.Path)
+                    ? _nestedMatch is null ? [] : [_nestedMatch]
+                    : [_match]));
 
         public Task<ExplorerSearchResult> SearchAsync(SearchRequest request, CancellationToken cancellationToken) =>
             Task.FromResult(new ExplorerSearchResult(
@@ -1298,6 +1701,45 @@ public sealed class MainWindowHeadlessTests
             new VoiceAudioClip(new byte[32_000], 16_000, TimeSpan.FromSeconds(1)));
 
         public Task CancelAsync() => Task.CompletedTask;
+
+        public void Dispose()
+        {
+        }
+    }
+
+    private sealed class RecordingFileActivationService : IFileActivationService
+    {
+        public int OpenCount { get; private set; }
+
+        public string? AccessRoot { get; private set; }
+
+        public string? Path { get; private set; }
+
+        public Task<FileActivationResult> OpenAsync(
+            string accessRoot,
+            string path,
+            CancellationToken cancellationToken = default)
+        {
+            OpenCount++;
+            AccessRoot = accessRoot;
+            Path = path;
+            return Task.FromResult(FileActivationResult.Opened);
+        }
+    }
+
+    private sealed class RecordingSoundService : IInteractionSoundService
+    {
+        public bool Enabled { get; set; } = true;
+
+        public List<InteractionSoundCue> Cues { get; } = [];
+
+        public void Play(InteractionSoundCue cue)
+        {
+            if (Enabled)
+            {
+                Cues.Add(cue);
+            }
+        }
 
         public void Dispose()
         {

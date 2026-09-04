@@ -5,23 +5,24 @@ Checkboxes are maintainer gates. Automation does not mark manual checks complete
 ## Release authority
 
 - [x] Use a new `v1.1.0` release; do not move `v1.0.0` or replace its checksum-bound assets.
-- [x] Limit this release to visual shell/presentation changes. Provider, filesystem, Search, protocol, persistence, privacy, and scene-admission contracts remain unchanged.
+- [x] Keep Explorer Protocol v1, server-authored Context, provider replacement, stale-result, and 48-node scene-admission contracts unchanged; explicitly review the new navigation, file-activation, sound, and installer-owned Voice boundaries.
 - [ ] The release commit is identified, independently reviewed, clean, and equals GitHub `main`.
 - [x] Source/package version authorities, executable, installer, changelog, compatibility, release notes, screenshot provenance, and candidate artifact names say `1.1.0`; README keeps the published `1.0.0` download explicit until v1.1 publication.
 - [x] MIT project licensing and the separate installed third-party terms remain unchanged.
 - [x] The pinned DNG-free native renderer package/provenance gate remains unchanged and fail-closed.
 - [ ] The owner has explicitly selected signed or unsigned publication for v1.1.0. If unsigned, the exact installer/application report `NotSigned` and public notes retain the SmartScreen/Unknown Publisher disclosure.
 
-## Visual-convergence gate
+## Focus Plane + Navigation Trail gate
 
 - [x] The graph owns the full client area; no reserved application toolbar/footer remains.
-- [x] Floating Root/Back, Current Focus, modes, Search, provider/theme/list/settings, zoom, Voice, status, and secondary panels use one reusable visual system.
+- [x] Floating Root/Back/Up/Trail, Current Focus, modes, Search, provider/theme/list/settings/Sound, zoom, Voice, status, custom chrome, and secondary panels use one reusable visual system.
 - [x] Search is collapsed initially, expands/focuses on click or `Ctrl+F`, and dismisses without duplicating session query/result state.
-- [x] Focus, selected/immediate, secondary, and ambient hierarchy matches the retained original concepts while using only admitted nodes/edges and deterministic presentation bands.
-- [x] Dark, Light, dense, nested/details, Search-expanded, loading, and minimum-size source-candidate states were inspected on the interactive Windows host.
-- [x] Final corrected screenshots bind one exact installed candidate and non-private data and are independently reviewed at full size.
-- [x] Actual Windows UIA exposure, keyboard traversal, visible focus, reduced motion/effects, and 125% display scaling are recorded separately from automated 100/125/150/200% text-scale coverage; no screen-reader use is claimed.
-- [x] Same-host representative renderer timings, allocations, accepted-label changes, and bounded cache capacities were compared with the pre-change baseline; no material unexplained regression remains.
+- [x] Semantic current-focus/direct-child/previous-focus/Context/aggregate relation is independent from presentation band in source, list, graph automation, and tests.
+- [x] Back, provider-authored Up, Root, Trail, geometric arrows, 44-DIP targets, Details semantics, Reduced motion, and master mute have automated contracts.
+- [ ] Dark, Light, dense, nested/details, Search-expanded, list, listening, loading, custom-chrome, and minimum-size exact source-candidate states are inspected on the interactive Windows host.
+- [ ] Fresh screenshots bind one exact installed candidate and non-private data and are independently reviewed at full size; the earlier v1.1 set is superseded.
+- [ ] Actual Windows UIA event exposure, Tab/Shift+Tab, visible graph keyboard focus, Narrator/NVDA, high contrast, and 100/125/150/200% OS text/display scaling are recorded.
+- [ ] Same-host foreground/minimized motion CPU/GPU, managed allocations, accepted-label changes, timer suspension, and bounded cache capacities show no material unexplained regression.
 
 ## Automated release gate
 
@@ -42,18 +43,20 @@ Checkboxes are maintainer gates. Automation does not mark manual checks complete
 - [ ] Close/relaunch work and uninstall removes installer-owned files, shortcuts, and registration without deleting demo/user data.
 - [ ] Exact installer/application signature status matches the recorded owner decision.
 
-## Optional capabilities (do not block the Standalone contract)
+## Capability and hardware gates
 
 - [ ] Connected mode is revalidated against the exact claimed OmniSorSe host before any claim beyond compatibility-dependent status.
-- [ ] Real microphone hardware plus user-provided runtime/model is exercised before any validated-Voice claim.
+- [ ] The pinned installed whisper runtime/model pass exact-hash, known-WAV, uninstall-ownership, and no-runtime-download checks; real microphone hardware completes listen/stop/transcribe/command/Search before any validated-Voice claim.
+- [ ] Physical audio output verifies cues/mute/debounce/disposal and disabled-device failure parity.
+- [ ] Borderless chrome passes drag, double-click maximize/restore, Minimize/Maximize/Close, snap, DPI, keyboard, and UIA checks.
 - [ ] Real screen-reader evidence exists before any accessibility certification claim.
 - [ ] Linux/macOS package and interactive evidence exists before any runtime-support claim.
 
 ## Privacy and public truthfulness
 
-- [ ] Installed files contain project/dependency licenses but no PDB/source/test/database/key/audio/model material, private content, or developer paths.
+- [ ] Installed files contain project/dependency/voice licenses and only the exact allowlisted voice runtime/model; they contain no PDB/source/test/database/key/raw-or-test-audio material, private content, or developer paths.
 - [ ] README, screenshots, generated notes, release body, platform/Connected/voice/accessibility/signing status, and downloadable files describe the same artifact.
-- [ ] No telemetry, cloud upload, recorder/indexer service, auto-start, file mutation, or updater was introduced.
+- [ ] No telemetry, cloud upload, background recorder/indexer service, auto-start, file mutation, installed-app asset download, or updater was introduced.
 - [ ] Independent adversarial review finds no blocker and distinguishes verified, inferred, and unverified claims.
 
 ## Publication

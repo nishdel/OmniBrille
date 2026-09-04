@@ -60,6 +60,8 @@ public sealed class WhisperCliSpeechRecognitionProviderTests : IDisposable
         Assert.Contains(model, transcriptionCall.Arguments);
         Assert.Contains("-oj", transcriptionCall.Arguments);
         Assert.Contains("en", transcriptionCall.Arguments);
+        var threadIndex = transcriptionCall.Arguments.IndexOf("-t");
+        Assert.InRange(int.Parse(transcriptionCall.Arguments[threadIndex + 1], System.Globalization.CultureInfo.InvariantCulture), 1, 4);
         Assert.True(transcriptionCall.InputWaveWasValid);
         Assert.True(!Directory.Exists(temporaryRoot) || !Directory.EnumerateFileSystemEntries(temporaryRoot).Any());
     }
@@ -88,6 +90,112 @@ public sealed class WhisperCliSpeechRecognitionProviderTests : IDisposable
         Assert.True(!Directory.Exists(temporaryRoot) || !Directory.EnumerateFileSystemEntries(temporaryRoot).Any());
     }
 
+    [Fact]
+    public async Task Construction_RemovesBoundedStaleWorkspaceWithoutStartingRecording()
+    {
+        Directory.CreateDirectory(_root);
+        var temporaryRoot = Path.Combine(_root, "voice-temp");
+        var stale = Path.Combine(temporaryRoot, $"utterance-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(stale);
+        await File.WriteAllBytesAsync(Path.Combine(stale, "capture.wav"), new byte[64]);
+        Directory.SetLastWriteTimeUtc(stale, DateTime.UtcNow - TimeSpan.FromHours(2));
+        var runner = new RecordingRunner();
+        using var provider = new WhisperCliSpeechRecognitionProvider(runner, temporaryRoot, Path.Combine(_root, "none"));
+
+        var capability = await provider.GetCapabilityAsync(new VoiceRecognitionOptions(true), default);
+
+        Assert.Equal(VoiceCapabilityState.RuntimeMissing, capability.State);
+        Assert.False(Directory.Exists(stale));
+        Assert.Empty(Directory.EnumerateFileSystemEntries(temporaryRoot));
+        Assert.Empty(runner.Calls);
+    }
+
+    [Fact]
+    public async Task Capability_RejectsOversizedStaleAudioWithoutStartingProcess()
+    {
+        var temporaryRoot = Path.Combine(_root, "voice-temp");
+        var stale = Path.Combine(temporaryRoot, $"utterance-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(stale);
+        var capture = Path.Combine(stale, "capture.wav");
+        await using (var stream = File.Create(capture))
+        {
+            stream.SetLength(2_000_000);
+        }
+        Directory.SetLastWriteTimeUtc(stale, DateTime.UtcNow - TimeSpan.FromHours(2));
+        var runner = new RecordingRunner();
+        using var provider = new WhisperCliSpeechRecognitionProvider(runner, temporaryRoot, Path.Combine(_root, "none"));
+
+        var capability = await provider.GetCapabilityAsync(new VoiceRecognitionOptions(true), default);
+
+        Assert.Equal(VoiceCapabilityState.Error, capability.State);
+        Assert.Contains("could not be cleaned safely", capability.Message, StringComparison.Ordinal);
+        Assert.Equal(2_000_000, new FileInfo(capture).Length);
+        Assert.Empty(runner.Calls);
+    }
+
+    [Fact]
+    public async Task WindowsCapability_ReportsLockedStaleWorkspaceCleanupFailure()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        var temporaryRoot = Path.Combine(_root, "voice-temp");
+        var stale = Path.Combine(temporaryRoot, $"utterance-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(stale);
+        var capture = Path.Combine(stale, "capture.wav");
+        await File.WriteAllBytesAsync(capture, new byte[64]);
+        Directory.SetLastWriteTimeUtc(stale, DateTime.UtcNow - TimeSpan.FromHours(2));
+        await using var heldCapture = new FileStream(capture, FileMode.Open, FileAccess.Read, FileShare.None);
+        using var provider = new WhisperCliSpeechRecognitionProvider(
+            new RecordingRunner(),
+            temporaryRoot,
+            Path.Combine(_root, "none"));
+
+        var capability = await provider.GetCapabilityAsync(new VoiceRecognitionOptions(true), default);
+
+        Assert.Equal(VoiceCapabilityState.Error, capability.State);
+        Assert.Contains("could not be cleaned safely", capability.Message, StringComparison.Ordinal);
+        Assert.True(Directory.Exists(stale));
+    }
+
+    [Fact]
+    public async Task WindowsTranscribe_ReportsCleanupFailureInsteadOfClaimingAudioWasDeleted()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        Directory.CreateDirectory(_root);
+        var runtime = Path.Combine(_root, "whisper-cli.exe");
+        var model = Path.Combine(_root, "model.bin");
+        await File.WriteAllTextAsync(runtime, "runtime");
+        await using (var stream = File.Create(model))
+        {
+            stream.SetLength(1_048_576);
+        }
+
+        var runner = new RecordingRunner { CreateTranscript = true, HoldInputOpen = true };
+        using var provider = new WhisperCliSpeechRecognitionProvider(
+            runner,
+            Path.Combine(_root, "voice-temp"),
+            Path.Combine(_root, "none"));
+
+        try
+        {
+            await Assert.ThrowsAsync<IOException>(() => provider.TranscribeAsync(
+                new VoiceAudioClip(new byte[32_000], 16_000, TimeSpan.FromSeconds(1)),
+                new VoiceRecognitionOptions(true, runtime, model),
+                default));
+        }
+        finally
+        {
+            runner.DisposeHeldInput();
+        }
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_root))
@@ -96,11 +204,15 @@ public sealed class WhisperCliSpeechRecognitionProviderTests : IDisposable
         }
     }
 
-    private sealed class RecordingRunner : IVoiceProcessRunner
+    private sealed class RecordingRunner : IVoiceProcessRunner, IDisposable
     {
         public bool CreateTranscript { get; init; }
 
         public bool MalformedTranscript { get; init; }
+
+        public bool HoldInputOpen { get; init; }
+
+        private FileStream? _heldInput;
 
         public List<ProcessCall> Calls { get; } = [];
 
@@ -118,6 +230,10 @@ public sealed class WhisperCliSpeechRecognitionProviderTests : IDisposable
                 File.Exists(inputPath) && (await File.ReadAllBytesAsync(inputPath, cancellationToken))[..4]
                     .SequenceEqual("RIFF"u8.ToArray());
             Calls.Add(new ProcessCall(executablePath, arguments.ToArray(), inputWaveWasValid));
+            if (HoldInputOpen && inputPath is not null)
+            {
+                _heldInput = new FileStream(inputPath, FileMode.Open, FileAccess.Read, FileShare.None);
+            }
             if (CreateTranscript && arguments.Contains("-of"))
             {
                 var outputIndex = arguments.IndexOf("-of");
@@ -137,6 +253,14 @@ public sealed class WhisperCliSpeechRecognitionProviderTests : IDisposable
 
             return new VoiceProcessResult(0, string.Empty, string.Empty, false);
         }
+
+        public void DisposeHeldInput()
+        {
+            _heldInput?.Dispose();
+            _heldInput = null;
+        }
+
+        public void Dispose() => DisposeHeldInput();
     }
 
     private sealed record ProcessCall(

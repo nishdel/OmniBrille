@@ -74,7 +74,7 @@ public sealed class HybridGraphLayout : IGraphLayoutEngine
         for (var index = 0; index < parents.Length; index++)
         {
             var offset = index - ((parents.Length - 1) / 2d);
-            result[parents[index].Id] = new(parents[index].Id, offset * 0.12, -0.3, 0.74, 0.8, 2);
+            result[parents[index].Id] = new(parents[index].Id, offset * 0.12, -0.3, 0.74, 0.8, 2, 2);
         }
     }
 
@@ -98,13 +98,15 @@ public sealed class HybridGraphLayout : IGraphLayoutEngine
             var x = side == 0
                 ? Math.Cos(angle) * (radiusX + (ring * 0.15)) * 0.58
                 : side * (0.08 + (Math.Cos(angle) + 1) * (radiusX + (ring * 0.15)) * 0.5);
+            var depth = Math.Min(3, baseDepth + ring);
             var target = new GraphLayoutNode(
                 nodes[index].Id,
                 x,
                 Math.Sin(angle) * (radiusY + (ring * 0.12)),
                 scale - (ring * 0.14),
                 opacity - (ring * 0.22),
-                Math.Min(3, baseDepth + ring));
+                depth,
+                depth);
             result[nodes[index].Id] = PreserveSide(target, previousLayout);
         }
     }
@@ -123,13 +125,15 @@ public sealed class HybridGraphLayout : IGraphLayoutEngine
             var angle = (-Math.PI / 2) + (Math.PI * (slot + 1) / (count + 1));
             var strength = Math.Clamp(strengths.GetValueOrDefault(nodes[index].Id), 0, 100);
             var weakness = (100 - strength) / 100d;
+            var depth = Math.Min(3, 1 + ring);
             var target = new GraphLayoutNode(
                 nodes[index].Id,
                 0.08 + ((Math.Cos(angle) + 1) * (0.39 + (ring * 0.15)) * 0.5),
                 Math.Sin(angle) * (0.42 + (ring * 0.12)),
                 (0.86 - (ring * 0.14)) * (1 - (weakness * 0.08)),
                 (0.94 - (ring * 0.22)) * (1 - (weakness * 0.14)),
-                Math.Min(3, 1 + ring));
+                depth,
+                depth);
             result[nodes[index].Id] = PreserveSide(target, previousLayout);
         }
     }

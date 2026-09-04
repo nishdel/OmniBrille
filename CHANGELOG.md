@@ -6,9 +6,9 @@ All notable OmniBrille changes are recorded here. The project uses SemVer-compat
 
 - No changes yet.
 
-## [1.1.0] - 2026-08-21
+## [1.1.0] - release candidate, not published
 
-Visual-convergence release. v1.1.0 preserves the v1.0 Standalone, Connected, protocol, privacy, and bounded-scene contracts while making the spatial graph the primary application surface.
+Candidate graph-interaction convergence release. v1.1.0 preserves the v1.0 Standalone/Connected authority and bounded-scene contracts while correcting hierarchy, navigation, sensory feedback, and ordinary-user Voice setup. It is not published until the retained release gates pass.
 
 ### Added
 
@@ -16,22 +16,28 @@ Visual-convergence release. v1.1.0 preserves the v1.0 Standalone, Connected, pro
 - A collapsed Search trigger that expands on click or `Ctrl+F`, returns focus predictably on dismissal, and continues to use the existing bounded Search authority.
 - A focus reticle and explicit immediate/secondary/ambient presentation bands derived only from already-admitted layout and selection state.
 - A restrained aperture treatment for the existing bounded data-rain loading identity.
+- Explicit semantic scene relations independent of renderer density; every admitted structural child is announced and rendered as a direct child.
+- Separate Back, Up, Root, and Trail actions with geometric arrow selection and provider-authored Connected parent IDs.
+- Deterministic bounded idle float/hover lens, terminal-style visual Details reveal, locally generated interaction cues, and a persisted master Sound switch.
+- Safe explicit Standalone ordinary-file activation with selected-root/reparse/type revalidation; Connected projected paths remain non-authoritative.
+- A pinned, per-file hash-bound whisper.cpp v1.9.2 Windows runtime and `ggml-base.en-q5_1` model with installed licenses and package/release manifest binding.
 
 ### Changed
 
 - Replaced the reserved two-row toolbar and full-width footer with compact floating navigation, mode, utility, zoom, voice, status, details, Search, and accessibility surfaces over a full-client graph.
 - The Current Focus chip prioritizes the focused item name while retaining the full authorized path in tooltip and automation help.
 - Structural edge styling now considers both endpoints, avoiding presentation differences caused only by edge orientation.
-- Dense Structure scenes now keep at most eight children in the crisp labeled focus plane, recede the next 16 to subdued glyphs, and treat the remaining bounded siblings as faint point context. Selection, hover, and Search restore any receding node and its real connection.
+- Dense Structure scenes keep every admitted child on semantic depth 1 as a recognizable outlined glyph. Separate 12/16/remainder visual bands affect density and label priority only; same-level siblings are never demoted into fake deeper point-stars.
 - Dark and Light themes now use deeper navy/cyan and pale ice-blue surface hierarchies with reduced hard rectangular chrome.
-- Voice-disabled presentation collapses to one compact action; active voice states retain their level, status, transcript, and cancellation feedback.
+- Voice is click-to-toggle: the first action listens and the second stops/transcribes locally. Up/Root/selected-node and Enter/Go-into variants map to the same session actions as pointer/keyboard input.
+- The borderless angular shell retains explicit custom minimize/maximize/close and window drag actions; Details semantics are complete immediately even while the visual terminal text reveals.
 
 ### Accessibility and performance
 
 - Minimum-window and 100/125/150/200% text-scale tests now cover the floating shell and expandable Search rather than the superseded two-row header.
 - First-run guidance now yields while a secondary panel is open, and the bottom status surface yields when a side panel claims its space, so neither can obscure focused controls at the supported minimum size.
-- Existing keyboard, graph/list automation parity, reduced-motion/effects, density, cache, and renderer-profile suites remain in force.
-- Scene admission, node/edge counts, filesystem authority, protocol behavior, persistence, and public interfaces are unchanged. Structure's deterministic radial presentation bands were retuned without changing graph membership or navigation.
+- Keyboard, graph/list automation parity, `SelectionItem`, 44-DIP targets, reduced-motion/details/motion, mute parity, actual-resource contrast, density, cache, and renderer-profile contracts are executable.
+- Scene admission, node/edge caps, server-authored Context, provider replacement, and stale-result contracts remain unchanged. Connected opaque identity comparison now correctly remains ordinal on Windows.
 
 ## [1.0.0] - 2026-08-21
 

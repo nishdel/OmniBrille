@@ -84,7 +84,7 @@ public sealed class PackagingMetadataTests
     }
 
     [Fact]
-    public void RedistributedDependencies_HavePackagedNoticesWithoutBundledVoiceModel()
+    public void RedistributedDependencies_HaveNoticesAndPinnedInstallerOwnedVoiceBundle()
     {
         var root = FindRepositoryRoot();
         var infrastructure = XDocument.Load(Path.Combine(
@@ -135,7 +135,34 @@ public sealed class PackagingMetadataTests
         Assert.True(File.Exists(Path.Combine(root, "THIRD-PARTY-LICENSES", "ANGLE-LICENSE.txt")));
         Assert.True(File.Exists(Path.Combine(root, "THIRD-PARTY-LICENSES", "Inter-OFL-1.1.txt")));
         Assert.True(File.Exists(Path.Combine(root, "THIRD-PARTY-LICENSES", "Tmds.DBus-LICENSE.txt")));
-        Assert.Contains("whisper.cpp and GGML speech models are not included", notice, StringComparison.Ordinal);
+        Assert.Contains("whisper.cpp v1.9.2 Windows x64 CPU runtime", notice, StringComparison.Ordinal);
+        Assert.Contains("ggml-base.en-q5_1.bin", notice, StringComparison.Ordinal);
+        Assert.Contains("does not download, update, or replace", notice, StringComparison.Ordinal);
+        Assert.True(File.Exists(Path.Combine(root, "THIRD-PARTY-LICENSES", "whisper.cpp-MIT.txt")));
+        Assert.True(File.Exists(Path.Combine(root, "THIRD-PARTY-LICENSES", "OpenAI-Whisper-MIT.txt")));
+        var voiceBundleScript = File.ReadAllText(Path.Combine(root, "build", "Get-VoiceBundle.ps1"));
+        var voiceProvider = File.ReadAllText(Path.Combine(
+            root,
+            "src",
+            "OmniBrille.Infrastructure",
+            "Voice",
+            "WhisperCliSpeechRecognitionProvider.cs"));
+        Assert.Contains("49DCC16DE826F20BD53D44F947A1AE49DFA81F86CAD67A64D80820CB192D674A", voiceBundleScript, StringComparison.Ordinal);
+        Assert.Contains("4BAF70DD0D7C4247BA2B81FAFD9C01005AC77C2F9EF064E00DCF195D0E2FDD2F", voiceBundleScript, StringComparison.Ordinal);
+        Assert.Contains("/${modelName}?download=true", voiceBundleScript, StringComparison.Ordinal);
+        Assert.Contains("4BAF70DD0D7C4247BA2B81FAFD9C01005AC77C2F9EF064E00DCF195D0E2FDD2F", voiceProvider, StringComparison.Ordinal);
+        var runtimeBlock = System.Text.RegularExpressions.Regex.Match(
+            voiceBundleScript,
+            @"\$runtimeFiles = \[ordered\]@\{(?<content>[\s\S]*?)\r?\n\}");
+        Assert.True(runtimeBlock.Success);
+        var runtimeHashes = System.Text.RegularExpressions.Regex.Matches(
+            runtimeBlock.Groups["content"].Value,
+            "[A-F0-9]{64}")
+            .Select(match => match.Value)
+            .ToArray();
+        Assert.Equal(13, runtimeHashes.Length);
+        Assert.All(runtimeHashes, hash => Assert.Contains(hash, voiceProvider, StringComparison.Ordinal));
+        Assert.Contains("Get-VoiceBundle.ps1", File.ReadAllText(Path.Combine(root, "build", "Package-Windows.ps1")), StringComparison.Ordinal);
     }
 
     private static string FindRepositoryRoot()

@@ -20,6 +20,9 @@ public enum VoiceIntentKind
 {
     Search,
     GoBack,
+    GoUp,
+    GoRoot,
+    ActivateSelectedNode,
     OpenVisibleNode,
     FocusVisibleNode,
     ZoomIn,

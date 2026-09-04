@@ -63,31 +63,32 @@ public sealed class RadialGraphLayoutTests
     }
 
     [Fact]
-    public void Layout_UsesSparseFocusPlaneAndAtmosphericOuterRingForDenseScene()
+    public void Layout_KeepsAllDenseStructuralChildrenOnOneTruthfulPlaneWithDensityBands()
     {
         var focus = Node("root", ExplorerNodeKind.Folder);
         var children = Enumerable.Range(0, 40).Select(index => Node($"n{index:D2}", ExplorerNodeKind.File)).ToArray();
 
         var layout = new RadialGraphLayout().Layout(Neighborhood(focus, children));
 
-        Assert.Equal([0, 1, 2, 3], layout.Values.Select(node => node.Depth).Distinct().Order().ToArray());
-        Assert.Equal(8, layout.Values.Count(node => node.Depth == 1));
-        Assert.Equal(16, layout.Values.Count(node => node.Depth == 2));
-        Assert.Equal(16, layout.Values.Count(node => node.Depth == 3));
-        Assert.All(layout.Values.Where(node => node.Depth == 1), node =>
+        Assert.Equal([0, 1], layout.Values.Select(node => node.Depth).Distinct().Order().ToArray());
+        Assert.Equal(12, layout.Values.Count(node => node.PresentationBand == 1));
+        Assert.Equal(16, layout.Values.Count(node => node.PresentationBand == 2));
+        Assert.Equal(12, layout.Values.Count(node => node.PresentationBand == 3));
+        Assert.All(children, child => Assert.Equal(1, layout[child.Id].Depth));
+        Assert.All(layout.Values.Where(node => node.PresentationBand == 1), node =>
         {
             Assert.True(node.Scale >= 0.8);
             Assert.True(node.Opacity >= 0.95);
         });
-        Assert.All(layout.Values.Where(node => node.Depth == 2), node =>
+        Assert.All(layout.Values.Where(node => node.PresentationBand == 2), node =>
         {
-            Assert.InRange(node.Scale, 0.5, 0.65);
-            Assert.InRange(node.Opacity, 0.4, 0.6);
+            Assert.InRange(node.Scale, 0.65, 0.75);
+            Assert.InRange(node.Opacity, 0.8, 0.95);
         });
-        Assert.All(layout.Values.Where(node => node.Depth == 3), node =>
+        Assert.All(layout.Values.Where(node => node.PresentationBand == 3), node =>
         {
-            Assert.True(node.Scale < 0.34);
-            Assert.True(node.Opacity < 0.3);
+            Assert.True(node.Scale >= 0.5);
+            Assert.True(node.Opacity >= 0.65);
         });
     }
 
@@ -119,8 +120,8 @@ public sealed class RadialGraphLayoutTests
 
         var layout = new RadialGraphLayout().Layout(neighborhood, misleadingPreviousLayout);
 
-        Assert.All(folders, folder => Assert.InRange(layout[folder.Id].Depth, 1, 2));
-        Assert.True(files.Count(file => layout[file.Id].Depth == 3) > folders.Count(folder => layout[folder.Id].Depth == 3));
+        Assert.All(folders, folder => Assert.InRange(layout[folder.Id].PresentationBand, 1, 2));
+        Assert.True(files.Count(file => layout[file.Id].PresentationBand == 3) > folders.Count(folder => layout[folder.Id].PresentationBand == 3));
     }
 
     private static ExplorerNeighborhood Neighborhood(ExplorerNode focus, IEnumerable<ExplorerNode> children)

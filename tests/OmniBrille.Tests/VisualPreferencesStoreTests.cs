@@ -16,9 +16,8 @@ public sealed class VisualPreferencesStoreTests
             ReducedEffects: true,
             DiagnosticsVisible: true,
             VoiceEnabled: true,
-            VoiceRuntimePath: Path.Combine(directory.Path, "whisper-cli.exe"),
-            VoiceModelPath: Path.Combine(directory.Path, "ggml-base.en.bin"),
-            VoiceLanguage: "auto");
+            VoiceLanguage: "auto",
+            SoundEnabled: false);
 
         store.Save(expected);
         var actual = store.Load();
@@ -27,7 +26,7 @@ public sealed class VisualPreferencesStoreTests
     }
 
     [Fact]
-    public void Load_PreVoicePreferenceFileUsesSafeDisabledDefaults()
+    public void Load_PreVoicePreferenceFileUsesInstallerOwnedVoiceAndSoundDefaults()
     {
         using var directory = new TemporaryDirectory();
         File.WriteAllText(
@@ -45,10 +44,36 @@ public sealed class VisualPreferencesStoreTests
 
         Assert.Equal("Light", preferences.Theme);
         Assert.True(preferences.ReducedMotion);
-        Assert.False(preferences.VoiceEnabled);
-        Assert.Null(preferences.VoiceRuntimePath);
-        Assert.Null(preferences.VoiceModelPath);
+        Assert.True(preferences.VoiceEnabled);
         Assert.Equal("en", preferences.VoiceLanguage);
+        Assert.True(preferences.SoundEnabled);
+    }
+
+    [Fact]
+    public void Load_LegacyVoiceOverridesAreRemovedWithoutRetainingTheirValues()
+    {
+        using var directory = new TemporaryDirectory();
+        var settingsPath = Path.Combine(directory.Path, "visual-preferences.json");
+        File.WriteAllText(
+            settingsPath,
+            """
+            {
+              "Theme": "Light",
+              "VoiceEnabled": true,
+              "VoiceRuntimePath": "C:\\private\\whisper-cli.exe",
+              "VoiceModelPath": "C:\\private\\model.bin",
+              "VoiceLanguage": "auto"
+            }
+            """);
+
+        var preferences = new JsonVisualPreferencesStore(directory.Path).Load();
+        var migratedJson = File.ReadAllText(settingsPath);
+
+        Assert.Equal("Light", preferences.Theme);
+        Assert.Equal("auto", preferences.VoiceLanguage);
+        Assert.DoesNotContain("VoiceRuntimePath", migratedJson, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("VoiceModelPath", migratedJson, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("private", migratedJson, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

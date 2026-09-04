@@ -5,7 +5,7 @@ namespace OmniBrille.Desktop.Presentation;
 
 public sealed class ExplorerSession : IDisposable
 {
-    private const int ProgressiveBatchSize = 32;
+    private const int ProgressiveBatchSize = 128;
 
     private readonly GraphNeighborhoodBuilder _neighborhoodBuilder;
     private readonly ContextNeighborhoodBuilder _contextBuilder;
@@ -98,6 +98,38 @@ public sealed class ExplorerSession : IDisposable
         : "Standalone";
 
     public bool CanGoBack => ViewMode != ExplorerViewMode.Structure || _aggregatePage is not null || _navigation.CanGoBack;
+
+    public bool CanGoUp => Neighborhood?.Focus.ParentNavigationTarget is not null;
+
+    public bool CanGoRoot => !string.IsNullOrWhiteSpace(AccessRoot) &&
+        (ViewMode != ExplorerViewMode.Structure ||
+         !ExplorerIdentity.Equals(Neighborhood?.Focus.Target, AccessRoot));
+
+    public int NavigationHistoryCount => _navigation.History.Count + _connectedHistory.Count;
+
+    public string NavigationTrailSummary
+    {
+        get
+        {
+            if (NavigationHistoryCount == 0)
+            {
+                return "No previous focus.";
+            }
+
+            if (ProviderMode == ExplorerProviderMode.Connected)
+            {
+                return $"{NavigationHistoryCount:N0} authorized focus stop(s). Opaque connected identities are not exposed as filesystem paths.";
+            }
+
+            return string.Join(
+                Environment.NewLine,
+                _navigation.History
+                    .AsEnumerable()
+                    .Reverse()
+                    .Take(6)
+                    .Select((path, index) => $"{index + 1}. {DisplayPathName(path)}"));
+        }
+    }
 
     public bool IsAggregateRefined => _aggregatePage is not null;
 
@@ -195,7 +227,8 @@ public sealed class ExplorerSession : IDisposable
         {
             _aggregatePage = null;
             RebuildCurrentScene();
-            SelectedNode = Neighborhood?.Focus;
+            SelectedNode = null;
+            SelectedNodeDetails = null;
             Status = "Returned to the aggregate overview.";
             NotifyChanged();
             return true;
@@ -220,6 +253,42 @@ public sealed class ExplorerSession : IDisposable
         return outcome.Applied;
     }
 
+    public async Task<bool> GoUpAsync(CancellationToken cancellationToken = default)
+    {
+        EnsureProvider();
+        var target = Neighborhood?.Focus.ParentNavigationTarget;
+        if (string.IsNullOrWhiteSpace(target))
+        {
+            return false;
+        }
+
+        if (ViewMode != ExplorerViewMode.Structure && ProviderMode == ExplorerProviderMode.Connected)
+        {
+            return await LoadConnectedSceneAsync(target, ViewMode, pushHistory: true, cancellationToken);
+        }
+
+        return await NavigateAsync(target, cancellationToken: cancellationToken);
+    }
+
+    public async Task<bool> GoRootAsync(CancellationToken cancellationToken = default)
+    {
+        EnsureProvider();
+        if (ViewMode != ExplorerViewMode.Structure)
+        {
+            if (!await SwitchToStructureAsync(cancellationToken))
+            {
+                return false;
+            }
+        }
+
+        if (ExplorerIdentity.Equals(Neighborhood?.Focus.Target, AccessRoot))
+        {
+            return false;
+        }
+
+        return await NavigateAsync(AccessRoot, cancellationToken: cancellationToken);
+    }
+
     public bool ActivateAggregate(string nodeId)
     {
         if (_currentSnapshot is null || Neighborhood is null)
@@ -239,7 +308,8 @@ public sealed class ExplorerSession : IDisposable
             ? null
             : new AggregatePage(action.TargetOffset ?? 0, 0);
         RebuildCurrentScene();
-        SelectedNode = Neighborhood?.Focus;
+        SelectedNode = null;
+        SelectedNodeDetails = null;
         UpdateHighlights(notify: false);
         Status = _aggregatePage is null
             ? "Aggregate overview restored."
@@ -491,13 +561,12 @@ public sealed class ExplorerSession : IDisposable
         var result = BuildConnectedNeighborhood(_currentContextSnapshot, ViewMode);
         Neighborhood = result.Neighborhood;
         ContextFilterSummary = result.Summary;
-        if (SelectedNode is null ||
+        if (SelectedNode is not null &&
             !Neighborhood.Nodes.Any(node => ExplorerIdentity.Equals(node.Id, SelectedNode.Id)))
         {
-            SelectedNode = Neighborhood.Focus;
+            SelectedNode = null;
             SelectedNodeDetails = null;
             _detailsCancellation?.Cancel();
-            _ = RefreshSelectedNodeDetailsAsync();
         }
 
         UpdateHighlights(notify: false);
@@ -664,7 +733,7 @@ public sealed class ExplorerSession : IDisposable
             Neighborhood = neighborhood;
             _currentContextSnapshot = snapshot;
             ContextFilterSummary = result.Summary;
-            SelectedNode = neighborhood.Focus;
+            SelectedNode = null;
             SelectedNodeDetails = null;
             _currentSnapshot = null;
             _previousContext = null;
@@ -674,7 +743,6 @@ public sealed class ExplorerSession : IDisposable
             UpdateConnectedStatus();
 
             _detailsCancellation?.Cancel();
-            _ = RefreshSelectedNodeDetailsAsync(CancellationToken.None);
             UpdateHighlights(notify: false);
             NotifyChanged();
             return true;
@@ -741,11 +809,13 @@ public sealed class ExplorerSession : IDisposable
         {
             if (_provider is IProgressiveExplorerProvider progressiveProvider)
             {
+                var progressiveBatchIndex = 0;
                 await foreach (var batch in progressiveProvider.GetDirectoryBatchesAsync(
                                    path,
                                    ProgressiveBatchSize,
                                    _loadCancellation.Token))
                 {
+                    progressiveBatchIndex++;
                     if (requestVersion != Volatile.Read(ref _loadRequestVersion))
                     {
                         (_provider as IExplorerProviderDiagnostics)?.ReportStaleResponseRejected();
@@ -768,6 +838,16 @@ public sealed class ExplorerSession : IDisposable
                         LoadState = ExplorerLoadState.Failed;
                         Status = batch.Warning ?? "The folder could not be read.";
                         return new LoadOutcome(false, batch.Failure);
+                    }
+
+                    var shouldProject = progressiveBatchIndex == 1 ||
+                        children.Count <= 512 ||
+                        progressiveBatchIndex % 4 == 0 ||
+                        batch.IsComplete ||
+                        batch.Failure != ExplorerFailureKind.None;
+                    if (!shouldProject)
+                    {
+                        continue;
                     }
 
                     ApplySnapshot(snapshot, previousContext, preferredSelectionId);
@@ -857,12 +937,15 @@ public sealed class ExplorerSession : IDisposable
         _previousContext = previousContext;
         Neighborhood = _neighborhoodBuilder.Build(snapshot, previousContext, preferredSelectionId, _aggregatePage);
         SelectedNode = preferredSelectionId is null
-            ? Neighborhood.Focus
+            ? null
             : Neighborhood.Nodes.FirstOrDefault(node =>
-                ExplorerIdentity.Equals(node.Id, preferredSelectionId)) ?? Neighborhood.Focus;
+                ExplorerIdentity.Equals(node.Id, preferredSelectionId));
         SelectedNodeDetails = null;
         _detailsCancellation?.Cancel();
-        _ = RefreshSelectedNodeDetailsAsync();
+        if (SelectedNode is not null)
+        {
+            _ = RefreshSelectedNodeDetailsAsync();
+        }
         UpdateHighlights(notify: false);
     }
 
@@ -905,14 +988,17 @@ public sealed class ExplorerSession : IDisposable
         }
 
         var total = Neighborhood?.TotalChildCount ?? snapshot.Children.Count;
-        var visible = Math.Max(0, (Neighborhood?.Nodes.Count ?? 1) - 1);
+        var visible = Neighborhood?.Nodes.Count(node =>
+            ExplorerSceneSemantics.RelationOf(Neighborhood, node) is
+                ExplorerSceneRelation.DirectChild or
+                ExplorerSceneRelation.StructuralAndContextual) ?? 0;
         Status = total == 0
             ? ProviderMode == ExplorerProviderMode.Connected
                 ? "This authorized indexed folder is empty · focus remains visible"
                 : "This folder is empty · focus remains visible"
             : ProviderMode == ExplorerProviderMode.Connected
-                ? $"{total:N0} indexed items · {visible:N0} graph nodes visible"
-                : $"{total:N0} items · {visible:N0} graph nodes visible";
+                ? $"{total:N0} indexed items · {visible:N0} children visible"
+                : $"{total:N0} items · {visible:N0} children visible";
         if (!string.IsNullOrWhiteSpace(snapshot.Warning))
         {
             Status += $" · {snapshot.Warning}";
@@ -962,6 +1048,12 @@ public sealed class ExplorerSession : IDisposable
         string focusId) => structureSnapshot is not null &&
         (ExplorerIdentity.Equals(structureSnapshot.Focus.Id, focusId) ||
          structureSnapshot.Children.Any(child => ExplorerIdentity.Equals(child.Id, focusId)));
+
+    private static string DisplayPathName(string path)
+    {
+        var name = Path.GetFileName(path);
+        return string.IsNullOrWhiteSpace(name) ? path : name;
+    }
 
     private static ExplorerContextSnapshot MergeHybridStructure(
         ExplorerContextSnapshot contextSnapshot,
@@ -1017,7 +1109,7 @@ public sealed class ExplorerSession : IDisposable
         Neighborhood = result.Neighborhood;
         _currentContextSnapshot = snapshot;
         ContextFilterSummary = result.Summary;
-        SelectedNode = Neighborhood.Focus;
+        SelectedNode = null;
         SelectedNodeDetails = null;
         _currentSnapshot = null;
         _previousContext = null;
@@ -1025,7 +1117,6 @@ public sealed class ExplorerSession : IDisposable
         LoadedItemCount = Math.Max(0, Neighborhood.Nodes.Count - 1);
         LoadState = ExplorerLoadState.Ready;
         _detailsCancellation?.Cancel();
-        _ = RefreshSelectedNodeDetailsAsync(CancellationToken.None);
         UpdateHighlights(notify: false);
         UpdateConnectedStatus();
     }

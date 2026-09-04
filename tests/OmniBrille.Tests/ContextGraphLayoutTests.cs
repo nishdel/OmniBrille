@@ -27,6 +27,7 @@ public sealed class ContextGraphLayoutTests
         Assert.Equal(1, layout["node-00"].Depth);
         Assert.Equal(1, layout["node-09"].Depth);
         Assert.Equal(2, layout["node-10"].Depth);
+        Assert.All(layout.Values, node => Assert.Equal(node.Depth, node.PresentationBand));
     }
 
     [Fact]

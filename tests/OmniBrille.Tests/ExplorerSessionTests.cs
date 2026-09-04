@@ -44,6 +44,34 @@ public sealed class ExplorerSessionTests
     }
 
     [Fact]
+    public async Task UpAndRoot_UseProviderAuthoredContainmentWithoutChangingBackSemantics()
+    {
+        var root = Normalize("up-root");
+        var child = Path.Combine(root, "child");
+        var grandchild = Path.Combine(child, "grandchild");
+        var rootEntry = EntryWithParent(root, null);
+        var childEntry = EntryWithParent(child, root);
+        var grandchildEntry = EntryWithParent(grandchild, child);
+        var provider = new FakeProvider(root,
+        [
+            new ExplorerDirectorySnapshot(rootEntry, [childEntry]),
+            new ExplorerDirectorySnapshot(childEntry, [grandchildEntry]),
+            new ExplorerDirectorySnapshot(grandchildEntry, []),
+        ]);
+        using var session = new ExplorerSession();
+        await session.OpenRootAsync(provider, provider);
+        Assert.True(await session.NavigateAsync(child));
+        Assert.True(await session.NavigateAsync(grandchild));
+
+        Assert.True(session.CanGoUp);
+        Assert.True(await session.GoUpAsync());
+        Assert.Equal(child, session.CurrentPath);
+        Assert.True(await session.GoRootAsync());
+        Assert.Equal(root, session.CurrentPath);
+        Assert.True(session.CanGoBack);
+    }
+
+    [Fact]
     public async Task FailedNavigation_DoesNotReplaceCurrentFocus()
     {
         var root = Normalize("root");
@@ -177,6 +205,23 @@ public sealed class ExplorerSessionTests
     }
 
     [Fact]
+    public async Task DenseProgressiveLoad_CoalescesProjectionAndKeepsFinalSceneBounded()
+    {
+        var root = Normalize("progressive-dense-root");
+        var provider = new BurstProgressiveProvider(root, 5_000);
+        using var session = new ExplorerSession();
+        var stateChanges = 0;
+        session.StateChanged += (_, _) => stateChanges++;
+
+        await session.OpenRootAsync(provider, provider);
+
+        Assert.Equal(5_000, session.LoadedItemCount);
+        Assert.Equal(ExplorerLoadState.Ready, session.LoadState);
+        Assert.InRange(session.Neighborhood!.Nodes.Count, 1, GraphNeighborhoodBuilder.DefaultNodeBudget);
+        Assert.InRange(stateChanges, 2, 16);
+    }
+
+    [Fact]
     public async Task NewerNavigationPreventsStaleResultFromOverwritingScene()
     {
         var root = Normalize("stale-root");
@@ -253,6 +298,9 @@ public sealed class ExplorerSessionTests
 
     private static ExplorerEntry Entry(string path, ExplorerNodeKind kind) =>
         new(path, Path.GetFileName(path), path, kind);
+
+    private static ExplorerEntry EntryWithParent(string path, string? parent) =>
+        new(path, Path.GetFileName(path), path, ExplorerNodeKind.Folder, ParentNavigationTarget: parent);
 
     private static ExplorerDirectorySnapshot Snapshot(string path, params ExplorerEntry[] children) =>
         new(Entry(path, ExplorerNodeKind.Folder), children);
@@ -406,6 +454,52 @@ public sealed class ExplorerSessionTests
         }
 
         public void ReportStaleResponseRejected() => StaleResponseRejections++;
+    }
+
+    private sealed class BurstProgressiveProvider :
+        IExplorerProvider,
+        IProgressiveExplorerProvider,
+        IExplorerSearchProvider
+    {
+        private readonly int _itemCount;
+
+        public BurstProgressiveProvider(string root, int itemCount)
+        {
+            AccessRoot = root;
+            _itemCount = itemCount;
+        }
+
+        public string AccessRoot { get; }
+
+        public Task<ExplorerDirectorySnapshot> GetDirectoryAsync(string path, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public async IAsyncEnumerable<ExplorerDirectoryBatch> GetDirectoryBatchesAsync(
+            string path,
+            int batchSize,
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            var observed = 0;
+            while (observed < _itemCount)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var count = Math.Min(batchSize, _itemCount - observed);
+                var entries = Enumerable.Range(observed, count)
+                    .Select(index => Entry(Path.Combine(path, $"item-{index:D5}.txt"), ExplorerNodeKind.File))
+                    .ToArray();
+                observed += count;
+                yield return new ExplorerDirectoryBatch(
+                    Entry(path, ExplorerNodeKind.Folder),
+                    entries,
+                    observed,
+                    observed == _itemCount,
+                    TotalChildCount: _itemCount);
+                await Task.Yield();
+            }
+        }
+
+        public Task<ExplorerSearchResult> SearchAsync(SearchRequest request, CancellationToken cancellationToken) =>
+            Task.FromResult(new ExplorerSearchResult([], false, 0));
     }
 
     private static async Task WaitUntilAsync(Func<bool> condition)

@@ -49,6 +49,14 @@ public sealed class SystemVoiceProcessRunner : IVoiceProcessRunner
             startInfo.ArgumentList.Add(argument);
         }
 
+        // The bundled native process does not need the application's tokens, service settings,
+        // redirected temp authority, or arbitrary PATH. Its explicit input/output workspace is
+        // already the validated working directory supplied by the provider.
+        startInfo.Environment.Clear();
+        CopyEnvironment("SystemRoot", startInfo);
+        CopyEnvironment("WINDIR", startInfo);
+        startInfo.Environment["PATH"] = workingDirectory;
+
         using var process = new Process { StartInfo = startInfo };
         try
         {
@@ -69,12 +77,14 @@ public sealed class SystemVoiceProcessRunner : IVoiceProcessRunner
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
-                Kill(process);
+                await TerminateAsync(process).ConfigureAwait(false);
+                await Task.WhenAll(outputTask, errorTask).ConfigureAwait(false);
                 throw new TimeoutException("The local speech process exceeded its bounded timeout.");
             }
             catch (OperationCanceledException)
             {
-                Kill(process);
+                await TerminateAsync(process).ConfigureAwait(false);
+                await Task.WhenAll(outputTask, errorTask).ConfigureAwait(false);
                 throw;
             }
 
@@ -119,7 +129,7 @@ public sealed class SystemVoiceProcessRunner : IVoiceProcessRunner
         return (builder.ToString(), truncated);
     }
 
-    private static void Kill(Process process)
+    private static async Task TerminateAsync(Process process)
     {
         try
         {
@@ -130,6 +140,26 @@ public sealed class SystemVoiceProcessRunner : IVoiceProcessRunner
         }
         catch (Exception exception) when (exception is InvalidOperationException or System.ComponentModel.Win32Exception)
         {
+            throw new InvalidOperationException("The local speech process could not be terminated safely.", exception);
+        }
+
+        using var terminationTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        try
+        {
+            await process.WaitForExitAsync(terminationTimeout.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException exception)
+        {
+            throw new TimeoutException("The local speech process did not terminate within the cleanup bound.", exception);
+        }
+    }
+
+    private static void CopyEnvironment(string name, ProcessStartInfo startInfo)
+    {
+        var value = Environment.GetEnvironmentVariable(name);
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            startInfo.Environment[name] = value;
         }
     }
 }

@@ -10,33 +10,89 @@
         MinWidth="820"
         MinHeight="520"
         Icon="/Assets/OmniBrille.ico"
+        WindowDecorations="None"
+        ExtendClientAreaToDecorationsHint="True"
         WindowStartupLocation="CenterScreen">
   <Grid x:Name="HeaderLayout">
       <rendering:GraphSceneControl x:Name="GraphScene"
                                    AutomationProperties.Name="Spatial Structure graph"
                                    AutomationProperties.HelpText="Use arrow keys to select nodes, Enter to activate, Backspace to go back, plus or minus to zoom, and drag empty space to pan." />
 
-      <Border Classes="floating"
+      <Grid x:Name="CustomTitleBar"
+            Height="48"
+            VerticalAlignment="Top"
+            Background="#01000000"
+            PointerPressed="OnTitleBarPointerPressed"
+            DoubleTapped="OnTitleBarDoubleTapped"
+            ColumnDefinitions="*,Auto"
+            AutomationProperties.Name="OmniBrille window title bar">
+        <TextBlock Text="OMNIBRILLE // SPATIAL EXPLORER"
+                   Margin="14,0,0,0"
+                   VerticalAlignment="Center"
+                   FontSize="9"
+                   LetterSpacing="1.4"
+                   Foreground="{DynamicResource SecondaryTextBrush}" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" Margin="0,2,6,2">
+          <Button x:Name="MinimizeWindowButton" Classes="hud compact" MinWidth="44" MinHeight="44" Height="44" Padding="0" Content="—" Click="OnMinimizeClick" AutomationProperties.Name="Minimize window" />
+          <Button x:Name="MaximizeWindowButton" Classes="hud compact" MinWidth="44" MinHeight="44" Height="44" Padding="0" Content="□" Click="OnMaximizeClick" AutomationProperties.Name="Maximize or restore window" />
+          <Button x:Name="CloseWindowButton" Classes="hud compact" MinWidth="44" MinHeight="44" Height="44" Padding="0" Content="×" Click="OnCloseWindowClick" AutomationProperties.Name="Close window" />
+        </StackPanel>
+      </Grid>
+
+      <Border x:Name="NavigationHud"
+              Classes="floating"
               HorizontalAlignment="Left"
               VerticalAlignment="Top"
-              Margin="16"
+              Margin="16,52,0,0"
               Padding="4">
         <StackPanel Orientation="Horizontal" Spacing="3">
           <Button x:Name="ChooseFolderButton"
-                  Classes="hud icon"
-                  Content="⌂"
-                  Click="OnChooseFolderClick"
-                  ToolTip.Tip="Choose access folder"
-                  AutomationProperties.Name="Choose an access folder"
-                  AutomationProperties.HelpText="Selects the only filesystem root OmniBrille may inspect." />
+                  Classes="hud"
+                  Content="ROOT"
+                  Click="OnRootClick"
+                  IsEnabled="False"
+                  ToolTip.Tip="Return to the active authority root · Alt+Home"
+                  AutomationProperties.Name="Navigate to the active root"
+                  AutomationProperties.HelpText="Returns to the current Standalone or OmniSorSe-authorized root without changing provider authority." />
           <Button x:Name="BackButton"
-                  Classes="hud icon"
+                  Classes="hud"
                   Click="OnBackClick"
                   IsEnabled="False"
-                  Content="‹"
+                  Content="BACK"
                   ToolTip.Tip="Back"
                   AutomationProperties.Name="Navigate back"
-                  AutomationProperties.HelpText="Returns to the aggregate overview or previous folder." />
+                  AutomationProperties.HelpText="Returns through navigation history. This is separate from Up." />
+          <Button x:Name="UpButton"
+                  Classes="hud"
+                  Click="OnUpClick"
+                  IsEnabled="False"
+                  Content="UP"
+                  ToolTip.Tip="Up one containment level · Alt+Up"
+                  AutomationProperties.Name="Navigate up one containment level"
+                  AutomationProperties.HelpText="Moves to the authoritative parent without consuming Back history." />
+          <Button x:Name="HistoryButton"
+                  Classes="hud"
+                  Click="OnHistoryClick"
+                  Content="TRAIL 0"
+                  ToolTip.Tip="Show navigation history"
+                  AutomationProperties.Name="Show navigation history" />
+        </StackPanel>
+      </Border>
+
+      <Border x:Name="HistoryPanel"
+              Classes="panel"
+              IsVisible="False"
+              Width="300"
+              HorizontalAlignment="Left"
+              VerticalAlignment="Top"
+              Margin="16,106,0,0"
+              Padding="12"
+              AutomationProperties.Name="Navigation trail">
+        <StackPanel Spacing="7">
+          <TextBlock Text="NAVIGATION TRAIL" Classes="eyebrow" Foreground="{DynamicResource AccentBrush}" />
+          <TextBlock x:Name="HistoryText" Text="No previous focus." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+          <TextBlock Text="BACK retraces this trail. UP moves to the containment parent and adds a new trail stop."
+                     FontSize="10" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" />
         </StackPanel>
       </Border>
 
@@ -44,27 +100,28 @@
               Classes="floating"
               HorizontalAlignment="Center"
               VerticalAlignment="Top"
-              Margin="0,14,0,0"
+              Margin="0,110,0,0"
               Padding="18,7"
-              MaxWidth="430">
+              MaxWidth="400">
         <StackPanel HorizontalAlignment="Center">
-          <TextBlock Text="CURRENT FOCUS"
+          <TextBlock Text="CURRENT FOCUS // SOLID LINKS ARE DIRECT CHILDREN"
                      Classes="eyebrow"
                      HorizontalAlignment="Center" />
           <TextBlock x:Name="CurrentPathText"
                      Text="No folder selected"
                      FontSize="13"
                      FontWeight="SemiBold"
-                     MaxWidth="390"
+                     MaxWidth="360"
                      TextTrimming="CharacterEllipsis"
                      HorizontalAlignment="Center" />
         </StackPanel>
       </Border>
 
-      <Border Classes="floating"
+      <Border x:Name="ModeHud"
+              Classes="floating"
               HorizontalAlignment="Center"
               VerticalAlignment="Top"
-              Margin="0,66,0,0"
+              Margin="0,166,0,0"
               Padding="3">
         <StackPanel Orientation="Horizontal" Spacing="1">
           <RadioButton x:Name="StructureModeButton"
@@ -102,10 +159,11 @@
         </StackPanel>
       </Border>
 
-      <Border Classes="floating"
+      <Border x:Name="UtilityHud"
+              Classes="floating"
               HorizontalAlignment="Right"
               VerticalAlignment="Top"
-              Margin="0,16,16,0"
+              Margin="0,52,16,0"
               Padding="4">
         <StackPanel Orientation="Horizontal" Spacing="3">
           <Button x:Name="SearchToggleButton"
@@ -145,6 +203,12 @@
                   Click="OnSettingsClick"
                   ToolTip.Tip="Visual settings"
                   AutomationProperties.Name="Visual settings" />
+          <Button x:Name="SoundButton"
+                  Classes="hud compact"
+                  Content="SOUND ON"
+                  Click="OnSoundToggleClick"
+                  ToolTip.Tip="Mute or enable interaction sounds"
+                  AutomationProperties.Name="Mute interaction sounds" />
         </StackPanel>
       </Border>
 
@@ -154,7 +218,7 @@
               Width="330"
               HorizontalAlignment="Right"
               VerticalAlignment="Top"
-              Margin="0,62,16,0"
+              Margin="0,90,16,0"
               Padding="5">
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
           <TextBox x:Name="SearchBox"
@@ -221,10 +285,10 @@
           <Button x:Name="VoiceButton"
                   Grid.Column="1"
                   Classes="hud compact"
-                  Content="Voice off"
+                  Content="Listen"
                   Click="OnVoiceButtonClick"
-                  AutomationProperties.Name="Push to talk"
-                  AutomationProperties.HelpText="Configure local voice in Settings. Control Shift Space toggles push to talk." />
+                  AutomationProperties.Name="Start local voice listening"
+                  AutomationProperties.HelpText="Press once to listen and again to stop and transcribe locally. Control Shift Space." />
           <ProgressBar x:Name="VoiceLevelIndicator"
                        Grid.Column="2"
                        Width="54"
@@ -294,6 +358,11 @@
                   Content="Open authorized root"
                   Click="OnOpenConnectedRootClick"
                   AutomationProperties.Name="Open selected OmniSorSe root" />
+          <Button x:Name="ChooseStandaloneFolderButton"
+                  Classes="hud"
+                  Content="Choose Standalone folder"
+                  Click="OnChooseFolderClick"
+                  AutomationProperties.Name="Choose a Standalone access folder" />
           <Grid ColumnDefinitions="*,*" ColumnSpacing="6">
             <Button x:Name="ReconnectButton"
                     Classes="hud"
@@ -487,43 +556,59 @@
               MaxHeight="520"
               HorizontalAlignment="Right"
               VerticalAlignment="Center"
-              Margin="0,58,16,58"
+              Margin="0,58,16,92"
               Padding="17"
+              Focusable="True"
               AutomationProperties.Name="Selected node details">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
           <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
             <TextBlock x:Name="DetailsNameText" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap" />
-            <Button Grid.Column="1" Classes="hud compact" Content="×" Click="OnCloseDetailsClick" AutomationProperties.Name="Close node details" />
+            <Button x:Name="CloseDetailsButton"
+                    Grid.Column="1"
+                    Classes="hud compact"
+                    MinWidth="44"
+                    Margin="0,0,18,0"
+                    Content="×"
+                    Click="OnCloseDetailsClick"
+                    AutomationProperties.Name="Close node details" />
           </Grid>
           <Border Grid.Row="1" Height="1" Background="{DynamicResource BorderBrush}" Margin="0,11" />
-          <Grid Grid.Row="2" ColumnDefinitions="78,*" Margin="0,3">
+          <TextBlock x:Name="DetailsTerminalText"
+                     Grid.Row="2"
+                     Margin="0,0,0,8"
+                     FontFamily="Cascadia Mono"
+                     FontSize="10"
+                     Foreground="{DynamicResource AccentBrush}"
+                     TextWrapping="Wrap"
+                     AutomationProperties.Name="Visual terminal detail reveal" />
+          <Grid Grid.Row="3" ColumnDefinitions="78,*" Margin="0,3">
             <TextBlock Text="Type" Foreground="{DynamicResource SecondaryTextBrush}" />
             <TextBlock x:Name="DetailsTypeText" Grid.Column="1" />
           </Grid>
-          <Grid Grid.Row="3" ColumnDefinitions="78,*" Margin="0,3">
+          <Grid Grid.Row="4" ColumnDefinitions="78,*" Margin="0,3">
             <TextBlock Text="Size/items" Foreground="{DynamicResource SecondaryTextBrush}" />
             <TextBlock x:Name="DetailsSizeText" Grid.Column="1" />
           </Grid>
-          <Grid Grid.Row="4" ColumnDefinitions="78,*" Margin="0,3">
+          <Grid Grid.Row="5" ColumnDefinitions="78,*" Margin="0,3">
             <TextBlock Text="Modified" Foreground="{DynamicResource SecondaryTextBrush}" />
             <TextBlock x:Name="DetailsModifiedText" Grid.Column="1" />
           </Grid>
-          <Grid Grid.Row="5" ColumnDefinitions="78,*" Margin="0,3">
+          <Grid Grid.Row="6" ColumnDefinitions="78,*" Margin="0,3">
             <TextBlock Text="Access" Foreground="{DynamicResource SecondaryTextBrush}" />
             <TextBlock x:Name="DetailsAccessText" Grid.Column="1" />
           </Grid>
-          <StackPanel Grid.Row="6" Margin="0,12,0,0">
+          <StackPanel Grid.Row="7" Margin="0,12,0,0">
             <TextBlock Text="PATH" FontSize="9" LetterSpacing="1.4" Foreground="{DynamicResource SecondaryTextBrush}" />
             <TextBlock x:Name="DetailsPathText" Margin="0,5,0,0" TextWrapping="Wrap" />
           </StackPanel>
-          <TextBlock x:Name="DetailsHintText" Grid.Row="7" Margin="0,14,0,0" TextWrapping="Wrap" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
-          <Grid Grid.Row="8" ColumnDefinitions="78,*" Margin="0,10,0,0">
+          <TextBlock x:Name="DetailsHintText" Grid.Row="8" Margin="0,14,0,0" TextWrapping="Wrap" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
+          <Grid Grid.Row="9" ColumnDefinitions="78,*" Margin="0,10,0,0">
             <TextBlock Text="Index" Foreground="{DynamicResource SecondaryTextBrush}" />
             <TextBlock x:Name="DetailsIndexText" Grid.Column="1" Text="—" />
           </Grid>
           <TextBlock x:Name="DetailsSummaryText"
-                     Grid.Row="9"
+                     Grid.Row="10"
                      Margin="0,10,0,0"
                      MaxHeight="96"
                      TextWrapping="Wrap"
@@ -531,7 +616,7 @@
                      FontSize="10"
                      Foreground="{DynamicResource SecondaryTextBrush}" />
           <StackPanel x:Name="RelationshipDetailsSection"
-                      Grid.Row="10"
+                      Grid.Row="11"
                       IsVisible="False"
                       Margin="0,12,0,0"
                       Spacing="5"
@@ -590,6 +675,11 @@
                     Content="Developer diagnostics"
                     IsCheckedChanged="OnVisualPreferenceChanged"
                     AutomationProperties.Name="Developer diagnostics" />
+          <CheckBox x:Name="SoundEnabledToggle"
+                    Content="Interaction sounds"
+                    IsCheckedChanged="OnVisualPreferenceChanged"
+                    AutomationProperties.Name="Enable interaction sounds"
+                    AutomationProperties.HelpText="Sounds are optional and never communicate unique state." />
           <Button x:Name="CopyDiagnosticsButton"
                   Classes="hud"
                   Content="Copy safe diagnostics"
@@ -604,24 +694,15 @@
           <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,6" />
           <TextBlock Text="LOCAL VOICE" FontSize="10" LetterSpacing="1.5" Foreground="{DynamicResource AccentBrush}" />
           <CheckBox x:Name="VoiceEnabledToggle"
-                    Content="Voice enabled"
+                    IsVisible="False"
+                    Content="Local voice available"
                     IsCheckedChanged="OnVoicePreferenceChanged"
-                    AutomationProperties.Name="Enable local push-to-talk voice"
+                    AutomationProperties.Name="Enable local toggle voice"
                     AutomationProperties.HelpText="Voice remains optional and records only after explicit activation." />
-          <TextBlock Text="Push-to-talk only. Audio is processed locally and is not retained. A user-provided whisper.cpp runtime and GGML model are required."
+          <TextBlock Text="Toggle listening: press Listen once to capture and again to stop. The pinned whisper.cpp CPU runtime and English model are installed with OmniBrille. Audio is processed locally and is not retained."
                      FontSize="10"
                      TextWrapping="Wrap"
                      Foreground="{DynamicResource SecondaryTextBrush}" />
-          <TextBlock Text="whisper.cpp executable" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
-          <TextBox x:Name="VoiceRuntimePathBox"
-                   PlaceholderText="Path to whisper-cli.exe"
-                   LostFocus="OnVoiceConfigurationChanged"
-                   AutomationProperties.Name="Local speech runtime path" />
-          <TextBlock Text="Speech model" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
-          <TextBox x:Name="VoiceModelPathBox"
-                   PlaceholderText="Path to a GGML model file"
-                   LostFocus="OnVoiceConfigurationChanged"
-                   AutomationProperties.Name="Local speech model path" />
           <TextBlock Text="Transcription language" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" />
           <ComboBox x:Name="VoiceLanguagePicker"
                     Classes="hud"
@@ -630,7 +711,7 @@
             <ComboBoxItem Content="English" />
             <ComboBoxItem Content="Auto-detect (Search only; commands remain English)" />
           </ComboBox>
-          <TextBlock Text="Recommended: whisper.cpp base.en for accuracy or tiny.en for lower latency. Models are never downloaded automatically or bundled into the standard installer."
+          <TextBlock Text="Voice is optional. No speech assets are downloaded or updated while the installed application is running."
                      FontSize="10"
                      TextWrapping="Wrap"
                      Foreground="{DynamicResource SecondaryTextBrush}" />
@@ -760,8 +841,15 @@
                    LetterSpacing="1.6"
                    Foreground="{DynamicResource AccentBrush}" />
         <TextBlock x:Name="StatusText" Grid.Column="1" Margin="12,0,0,0" Text="Choose a folder to begin. Only that location will be accessible."
-                   TextTrimming="CharacterEllipsis" Foreground="{DynamicResource SecondaryTextBrush}" AutomationProperties.LiveSetting="Polite" />
+                   TextTrimming="CharacterEllipsis" Foreground="{DynamicResource SecondaryTextBrush}" />
       </Grid>
       </Border>
+      <TextBlock x:Name="StatusAnnouncer"
+                 Width="1"
+                 Height="1"
+                 Opacity="0.01"
+                 IsHitTestVisible="False"
+                 AutomationProperties.Name="OmniBrille status announcements"
+                 AutomationProperties.LiveSetting="Polite" />
   </Grid>
 </Window>

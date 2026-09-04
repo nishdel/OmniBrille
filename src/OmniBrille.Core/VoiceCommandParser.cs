@@ -10,6 +10,19 @@ public sealed class VoiceCommandParser
             ["go back"] = VoiceIntentKind.GoBack,
             ["back"] = VoiceIntentKind.GoBack,
             ["previous"] = VoiceIntentKind.GoBack,
+            ["go up"] = VoiceIntentKind.GoUp,
+            ["up one level"] = VoiceIntentKind.GoUp,
+            ["parent"] = VoiceIntentKind.GoUp,
+            ["parent folder"] = VoiceIntentKind.GoUp,
+            ["open parent"] = VoiceIntentKind.GoUp,
+            ["root"] = VoiceIntentKind.GoRoot,
+            ["home"] = VoiceIntentKind.GoRoot,
+            ["go to root"] = VoiceIntentKind.GoRoot,
+            ["go home"] = VoiceIntentKind.GoRoot,
+            ["root folder"] = VoiceIntentKind.GoRoot,
+            ["open selected"] = VoiceIntentKind.ActivateSelectedNode,
+            ["enter selected"] = VoiceIntentKind.ActivateSelectedNode,
+            ["activate selected"] = VoiceIntentKind.ActivateSelectedNode,
             ["zoom in"] = VoiceIntentKind.ZoomIn,
             ["zoom out"] = VoiceIntentKind.ZoomOut,
             ["reset view"] = VoiceIntentKind.ResetView,
@@ -67,7 +80,11 @@ public sealed class VoiceCommandParser
             return new VoiceIntent(kind);
         }
 
-        if (TryArgumentCommand(trimmed, normalized, "open ", VoiceIntentKind.OpenVisibleNode, out var open))
+        if (TryArgumentCommand(trimmed, normalized, "open ", VoiceIntentKind.OpenVisibleNode, out var open) ||
+            TryArgumentCommand(trimmed, normalized, "enter ", VoiceIntentKind.OpenVisibleNode, out open) ||
+            TryArgumentCommand(trimmed, normalized, "go into ", VoiceIntentKind.OpenVisibleNode, out open) ||
+            TryArgumentCommand(trimmed, normalized, "navigate to ", VoiceIntentKind.OpenVisibleNode, out open) ||
+            TryArgumentCommand(trimmed, normalized, "go to ", VoiceIntentKind.OpenVisibleNode, out open))
         {
             return open;
         }
@@ -122,12 +139,32 @@ public sealed class VoiceCommandParser
     {
         if (normalized.StartsWith(prefix, StringComparison.Ordinal) && normalized.Length > prefix.Length)
         {
-            intent = new VoiceIntent(kind, ExtractOriginalArgument(original, prefix.Length));
+            intent = new VoiceIntent(kind, ExtractCommandArgument(original, prefix));
             return true;
         }
 
         intent = default!;
         return false;
+    }
+
+    private static string ExtractCommandArgument(string original, string normalizedPrefix)
+    {
+        var wordsToSkip = normalizedPrefix.Count(character => character == ' ');
+        var index = 0;
+        for (var word = 0; word < wordsToSkip; word++)
+        {
+            while (index < original.Length && char.IsWhiteSpace(original[index]))
+            {
+                index++;
+            }
+
+            while (index < original.Length && !char.IsWhiteSpace(original[index]))
+            {
+                index++;
+            }
+        }
+
+        return TrimTerminalPunctuation(original[index..].Trim());
     }
 
     private static string ExtractOriginalArgument(string original, int normalizedPrefixLength)

@@ -115,11 +115,13 @@ Status language is intentionally conservative: checked items exist in the applic
 - [x] Replace the DNG-bearing official SkiaSharp Win32 runtime with a pinned, project-built DNG-free native package; preserve build provenance, target-aware notices, and fail-closed upgrade checks.
 - [ ] Treat Connected-mode broad compatibility, real voice hardware, interactive Linux/macOS, and screen-reader certification as follow-up unless separately validated.
 
-## Stage 13 — Graph-first visual convergence (release candidate)
+## Stage 13 — Graph-first visual convergence (superseded candidate)
+
+This candidate established the full-client shell but owner issues #1–#7 later invalidated its hierarchy, compact-control, static-interaction, Voice-setup, and release-readiness conclusions. Its checked items are historical implementation facts, not current acceptance evidence.
 
 - [x] Replace the reserved two-row application header and full-width footer with reusable compact floating surfaces over a full-client graph.
 - [x] Add a centered Current Focus chip, segmented mode selector, collapsed/expandable Search, compact navigation/zoom/Voice/status controls, and integrated secondary panels without duplicating session state.
-- [x] Match the retained original concepts with an eight-node crisp Structure focus plane, subdued secondary glyphs, faint ambient siblings, and state-driven promotion; preserve node/edge admission and filesystem meaning.
+- [x] Implement the earlier eight-node crisp/density-band concept; later superseded because it made direct children appear to occupy false deeper hierarchy.
 - [x] Refine the deep navy/cyan and pale ice-blue themes plus the bounded data-rain identity without adding blur, unbounded resources, or a second animation loop.
 - [x] Extend minimum-window, Search focus/dismissal, text-scale, hierarchy, keyboard, automation, reduced-effects, and renderer-profile validation.
 - [x] Capture and independently review the final corrected v1.1.0 screenshot set from one exact candidate using non-private data.
@@ -127,10 +129,21 @@ Status language is intentionally conservative: checked items exist in the applic
 - [ ] Record the v1.1.0 signing decision before publication; the owner’s prior unsigned authorization applies specifically to v1.0.0.
 - [ ] Publish v1.1.0 only after all release gates pass. The existing v1.0.0 tag and artifacts are immutable historical release evidence.
 
+## Stage 14 — Focus Plane + Navigation Trail convergence (implementation complete; release qualification open)
+
+- [x] Separate explicit current-focus/direct-child/previous-focus/Context/aggregate semantics from 12/16/remainder presentation density and keep every admitted direct child a recognizable glyph.
+- [x] Add visible Back, Up, Root, and Trail actions, 44-DIP shell/graph targets, geometric arrow navigation, and shared pointer/keyboard/voice session operations without deriving Connected authority from display paths.
+- [x] Add bounded analytic float/hover lens, terminal-style Details reveal, safe Standalone ordinary-file activation, local interaction cues, master mute, and complete Reduced motion/Sound-off parity.
+- [x] Replace user-supplied Voice setup with a pinned installer-owned whisper.cpp v1.9.2/base.en q5_1 bundle, full per-file hash/provenance/license/manifest gates, minimal process environment, and no installed-app downloads.
+- [x] Add actual-resource contrast, graph selection pattern, target size, semantic relation, connected case-sensitive identity, Up/Root, motion, mute, Voice grammar, and file-activation regression contracts.
+- [ ] Capture and independently review a fresh exact-candidate Dark/Light/dense/nested/Search/list/listening/minimum-window set; earlier v1.1 screenshots are superseded.
+- [ ] Validate real Narrator or NVDA behavior, actual Windows text/high-contrast settings, borderless chrome DPI/snap, GPU-backed motion, physical sound output, real microphone capture/transcription, and exact installed/uninstalled voice bytes.
+- [ ] Revalidate the claimed Connected combination with a live host, run clean exact-artifact/hosted qualification, record the v1.1 signing decision, and independently approve the final artifact before publication.
+
 ## Unscheduled engineering follow-up
 
-- [ ] Correct `NavigationState` to compare Connected opaque targets with ordinal semantics and add a Windows regression covering IDs that differ only by case, including Back/history coherence. Current provider/session behavior can apply the new scene while retaining the old target. Route through Architecture/Integration, Implementation, and independent adversarial review.
+- [x] Correct `NavigationState` to compare Connected opaque targets with ordinal semantics and add a Windows regression covering IDs that differ only by case, including Back/history coherence.
 - [ ] Decide whether every advertised Protocol v1 limit must be validated or whether unconsumed fields should be explicitly outside client negotiation, then add focused malformed-info tests. Current validation covers the safety limits OmniBrille consumes but not `MaximumDepth`, snippet/topic/entity/reason bounds, or maximum concurrency. Route through Architecture/Integration and Adversarial Review.
 - [ ] Make Context/Hybrid availability reflect negotiated optional capabilities before activation, and add a capability-negative connected regression test. Current code fails closed on request but reports the expected capability absence as a generic connection failure. Route through Architecture/Integration, UX/Accessibility, and independent adversarial review.
-- [ ] Couple contrast validation to actual application theme resources if a reliable low-maintenance test seam can be established; current contrast math tests use separately declared literals.
+- [x] Couple contrast validation to actual application theme resources, including alpha-composited HUD/loading states and text/focus floors.
 - [ ] Split `MainWindow`, `ExplorerSession`, and the headless fixture by concern only during future touched-area work. Preserve the single state authority and avoid a standalone refactor campaign.

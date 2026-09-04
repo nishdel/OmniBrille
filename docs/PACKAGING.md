@@ -2,7 +2,7 @@
 
 ## Supported package
 
-OmniBrille uses pinned Inno Setup 6.7.3 for one per-user Windows x64 installer. It is a standalone-capable application and installs no OmniSorSe binary, service, startup entry, telemetry component, updater, file association, speech recognizer, or speech model.
+OmniBrille uses pinned Inno Setup 6.7.3 for one per-user Windows x64 installer. It is a standalone-capable application and installs no OmniSorSe binary, service, startup entry, telemetry component, updater, or file association. The package includes one pinned local-only whisper.cpp runtime/model bundle so ordinary users do not need to configure executable paths.
 
 ```text
 %LOCALAPPDATA%\Programs\OmniBrille\OmniBrille.exe
@@ -30,7 +30,13 @@ OmniBrille-1.1.0-win-x64-setup-dependencies.json
 OmniBrille-1.1.0-win-x64-setup-release-notes.md
 ```
 
-The manifest binds the installer to version, release commit, UTC build time, runtime/deployment, Explorer Protocol version, size, checksum, signing state, and—when built in Actions—the workflow run. The dependency document is a sanitized project dependency graph; it is neither an exact packaged-file inventory nor a formal SPDX/CycloneDX SBOM. The generated notes bind the same exact artifact to its install, support, and limitation guidance.
+The schema-5 manifest binds the installer to version, release commit, UTC build time, runtime/deployment, Explorer Protocol version, size, checksum, signing state, voice-bundle manifest hash/file inventory, and—when built in Actions—the workflow run. The dependency document is a sanitized project dependency graph; it is neither an exact packaged-file inventory nor a formal SPDX/CycloneDX SBOM. The generated notes bind the same exact artifact to its install, support, and limitation guidance.
+
+## Pinned local voice bundle
+
+`build/Get-VoiceBundle.ps1` is the sole voice-asset acquisition path. It downloads whisper.cpp v1.9.2 Windows x64 CPU archive `49DCC16DE826F20BD53D44F947A1AE49DFA81F86CAD67A64D80820CB192D674A` at commit `306c88f4d1286aec1bf96e544632897886af5501` and `ggml-base.en-q5_1.bin` `4BAF70DD0D7C4247BA2B81FAFD9C01005AC77C2F9EF064E00DCF195D0E2FDD2F` at model repository commit `c521a4b02f422512d734391fdf08bb08c0862f68`. Downloads/cache/output are restricted below ignored `artifacts`; every allowlisted extracted DLL/executable is independently hashed before publish.
+
+The installed `Voice/voice-bundle-manifest.json` records source URLs, pins, hashes, byte sizes, and `installedApplicationDownloadsAssets=false`. Package, release, and hosted artifact-only checks validate every entry, reject unexpected runtime files, require the whisper.cpp/OpenAI Whisper MIT licenses, and bind the voice manifest into the release manifest. The application repeats the runtime/model hash checks before use. Any asset update requires an explicit version/provenance/hash/license review and a new package qualification.
 
 OmniBrille project code is licensed `MIT`, recorded by `PackageLicenseExpression` and the authoritative root `LICENSE`. The release manifest records that exact expression and the source URL for its release commit. The installed application includes the project `LICENSE`, [`THIRD-PARTY-NOTICES.txt`](../THIRD-PARTY-NOTICES.txt), and complete redistributed runtime notices below `THIRD-PARTY-LICENSES`. Public release verification fails if the MIT text/metadata is absent, if a reviewed notice is missing, or if a packaged notice differs from its repository source.
 
@@ -82,9 +88,9 @@ That workflow deliberately does not create a tag or GitHub Release. Its non-inte
 
 ## Install, upgrade, and uninstall boundaries
 
-The installer owns its application directory, Start Menu shortcut, and uninstall registration. It excludes PDB/source/test/database/key/audio/model material, development paths, unexpected OmniSorSe binaries, whisper.cpp, and GGML models.
+The installer owns its application directory, Start Menu shortcut, uninstall registration, and pinned `Voice` bundle. It excludes PDB/source/test/database/key/raw-or-test-audio material, development paths, unexpected OmniSorSe binaries, and any voice file outside the reviewed allowlist.
 
-Safe UI preferences remain at `%LOCALAPPDATA%\OmniBrille\visual-preferences.json` and intentionally survive upgrade/uninstall. They may include theme, effects, diagnostics, and optional voice configuration paths. Selected roots, queries, audio, transcripts, grants, bearer tokens, endpoints, connected node IDs, and Context caches are not persisted. User content, OmniSorSe state, and external voice components are never removed.
+Safe UI preferences remain at `%LOCALAPPDATA%\OmniBrille\visual-preferences.json` and intentionally survive upgrade/uninstall. They may include theme, effects, diagnostics, sound, voice enablement, and language. Selected roots, queries, audio, transcripts, grants, bearer tokens, endpoints, connected node IDs, and Context caches are not persisted. User content and OmniSorSe state are never removed; uninstall removes installer-owned voice assets.
 
 Forward in-place upgrade is supported through the stable application ID. Downgrade is neither blocked nor promised. A public release must validate the exact installer’s fresh install, representative Standalone interaction, normal close/relaunch, and uninstall. Earlier release lifecycle measurements are historical evidence, not proof for a new exact artifact.
 

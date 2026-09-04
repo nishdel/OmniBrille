@@ -36,6 +36,67 @@ public enum ExplorerNodeRole
     Contextual = 2,
 }
 
+/// <summary>
+/// The user-facing relationship of a node to the current scene focus. This is semantic
+/// navigation state and must never be inferred from a renderer density band.
+/// </summary>
+public enum ExplorerSceneRelation
+{
+    CurrentFocus,
+    DirectChild,
+    PreviousFocus,
+    Contextual,
+    StructuralAndContextual,
+    Aggregate,
+    Visible,
+}
+
+public static class ExplorerSceneSemantics
+{
+    public static ExplorerSceneRelation RelationOf(ExplorerNeighborhood neighborhood, ExplorerNode node)
+    {
+        ArgumentNullException.ThrowIfNull(neighborhood);
+        ArgumentNullException.ThrowIfNull(node);
+
+        if (ExplorerIdentity.Equals(node.Id, neighborhood.FocusNodeId))
+        {
+            return ExplorerSceneRelation.CurrentFocus;
+        }
+
+        if (node.Kind == ExplorerNodeKind.Context)
+        {
+            return ExplorerSceneRelation.PreviousFocus;
+        }
+
+        if (node.Kind == ExplorerNodeKind.Aggregate)
+        {
+            return ExplorerSceneRelation.Aggregate;
+        }
+
+        var structural = (node.Roles & ExplorerNodeRole.Structural) != 0;
+        var contextual = (node.Roles & ExplorerNodeRole.Contextual) != 0;
+        return (structural, contextual) switch
+        {
+            (true, true) => ExplorerSceneRelation.StructuralAndContextual,
+            (true, false) => ExplorerSceneRelation.DirectChild,
+            (false, true) => ExplorerSceneRelation.Contextual,
+            _ => ExplorerSceneRelation.Visible,
+        };
+    }
+
+    public static string Describe(ExplorerNeighborhood neighborhood, ExplorerNode node) =>
+        RelationOf(neighborhood, node) switch
+        {
+            ExplorerSceneRelation.CurrentFocus => "current focus",
+            ExplorerSceneRelation.DirectChild => $"direct child of {neighborhood.Focus.Name}",
+            ExplorerSceneRelation.PreviousFocus => "previous focus in navigation history",
+            ExplorerSceneRelation.Contextual => $"contextually related to {neighborhood.Focus.Name}",
+            ExplorerSceneRelation.StructuralAndContextual => $"direct child of and contextually related to {neighborhood.Focus.Name}",
+            ExplorerSceneRelation.Aggregate => "bounded overflow portal",
+            _ => "visible graph item",
+        };
+}
+
 public enum ExplorerGraphEdgeKind
 {
     Structural,

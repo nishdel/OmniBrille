@@ -12,7 +12,7 @@ OmniBrille needs readable focus-centered navigation, stable input/automation tar
 
 - Build provider-independent immutable snapshots into one bounded visible scene.
 - Keep the default scene at 48 combined nodes. Context/Hybrid use the limits owned by `ContextRenderBudgetPolicy`; [`context-rendering-contract.md`](../context-rendering-contract.md) is authoritative for current numeric limits.
-- Use deterministic Structure rings, Context rings, and Hybrid planes with stable IDs/positions rather than continuous force simulation.
+- Use deterministic Structure rings, Context rings, and Hybrid planes with stable immutable base positions rather than continuous force simulation. A bounded analytic visual offset/lens may be evaluated from time and hover state; it cannot accumulate simulation state or change topology.
 - Draw with an Avalonia custom `Control`/`DrawingContext`; keep layout and presentation policy in Core and input/transient drawing state in Desktop.
 - Bound text/brush/pen caches and retain local phase/allocation diagnostics.
 - Preserve structural correctness, accessibility, and user-controlled reduced motion/effects before adding density or decoration.
@@ -28,11 +28,12 @@ Determinism makes navigation, Back, tests, accessibility projection, and perform
 - Changing a scene/edge/label/cache limit requires representative density, label, keyboard/list, and performance review—not only unit tests.
 - Warm headless samples are engineering evidence, not GPU/runtime guarantees; an absolute CI frame-time gate is intentionally absent.
 - Relationship interaction remains node-centric because Protocol v1 lacks durable relationship identity.
+- Reduced motion returns the exact immutable base layout and stops the shared motion ticker; hidden/minimized/teardown states also stop it.
 
 ## Rejected alternatives
 
 - Unbounded or recursively preloaded scenes.
-- Continuous force-directed simulation.
+- Continuous force-directed or accumulating physics simulation.
 - Raising density because a synthetic frame happens to render quickly.
 - WebView/WebGL or direct Skia/Win2D without measured need.
 - Client-created semantic clustering or inferred Context.

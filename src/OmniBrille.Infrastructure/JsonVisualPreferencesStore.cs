@@ -28,7 +28,13 @@ public sealed class JsonVisualPreferencesStore : IVisualPreferencesStore
             }
 
             var json = File.ReadAllText(_settingsPath);
-            return (JsonSerializer.Deserialize<VisualPreferences>(json) ?? new VisualPreferences()).Normalize();
+            var preferences = (JsonSerializer.Deserialize<VisualPreferences>(json) ?? new VisualPreferences()).Normalize();
+            if (ContainsLegacyVoiceOverrides(json))
+            {
+                Save(preferences);
+            }
+
+            return preferences;
         }
         catch (Exception exception) when (IsRecoverable(exception))
         {
@@ -60,4 +66,13 @@ public sealed class JsonVisualPreferencesStore : IVisualPreferencesStore
         System.Security.SecurityException or
         JsonException or
         NotSupportedException;
+
+    private static bool ContainsLegacyVoiceOverrides(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        return document.RootElement.ValueKind == JsonValueKind.Object &&
+            document.RootElement.EnumerateObject().Any(property =>
+                string.Equals(property.Name, "VoiceRuntimePath", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(property.Name, "VoiceModelPath", StringComparison.OrdinalIgnoreCase));
+    }
 }

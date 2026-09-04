@@ -12,6 +12,7 @@ Repository evidence wins in this order: current source and observable behavior, 
 | Subsystems, ownership, flows, state, and invariants | [`docs/architecture.md`](../architecture.md) | Authoritative current architecture |
 | Terms whose meanings must not blur | [`docs/glossary.md`](../glossary.md) | Authoritative terminology |
 | Context/Hybrid presentation limits | [`docs/context-rendering-contract.md`](../context-rendering-contract.md) | Authoritative subsystem contract |
+| Graph/list/input/sensory action-state parity | [`docs/interaction-state-contract.md`](../interaction-state-contract.md) | Authoritative interaction contract |
 | Explorer Protocol client and connected boundary | [`docs/explorer-protocol.md`](../explorer-protocol.md) | Current client contract plus explicitly historical external validation |
 | Voice input boundary | [`docs/voice.md`](../voice.md) | Authoritative subsystem guide |
 | Packaging, compatibility, privacy, and release gates | [`docs/PACKAGING.md`](../PACKAGING.md), [`COMPATIBILITY.md`](../../COMPATIBILITY.md), [`RELEASE_CHECKLIST.md`](../../RELEASE_CHECKLIST.md) | Current guidance and tested combinations |

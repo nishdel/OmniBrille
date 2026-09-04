@@ -1,12 +1,13 @@
 namespace OmniBrille.Core;
 
-public sealed record GraphLayoutNode(
+public readonly record struct GraphLayoutNode(
     string NodeId,
     double X,
     double Y,
     double Scale,
     double Opacity,
-    int Depth = 1);
+    int Depth = 1,
+    int PresentationBand = 0);
 
 public interface IGraphLayoutEngine
 {
@@ -31,7 +32,7 @@ public sealed class RadialGraphLayout : IGraphLayoutEngine
         var context = neighborhood.Nodes.FirstOrDefault(node => node.Kind == ExplorerNodeKind.Context);
         if (context is not null)
         {
-            result[context.Id] = new(context.Id, -0.48, -0.72, 0.58, 0.3, 3);
+            result[context.Id] = new(context.Id, -0.5, -0.7, 0.62, 0.42, 2, 3);
         }
 
         var children = neighborhood.Nodes
@@ -54,8 +55,8 @@ public sealed class RadialGraphLayout : IGraphLayoutEngine
                     continue;
                 }
 
-                var intendedDepth = slots[childIndex].Depth;
-                var nearestSlot = FindNearestAvailableSlot(previous, slots, occupiedSlots, intendedDepth);
+                var intendedBand = slots[childIndex].PresentationBand;
+                var nearestSlot = FindNearestAvailableSlot(previous, slots, occupiedSlots, intendedBand);
                 if (nearestSlot < 0)
                 {
                     continue;
@@ -69,7 +70,8 @@ public sealed class RadialGraphLayout : IGraphLayoutEngine
                     slot.Y,
                     slot.Scale,
                     slot.Opacity,
-                    slot.Depth);
+                    slot.Depth,
+                    slot.PresentationBand);
             }
         }
 
@@ -81,12 +83,12 @@ public sealed class RadialGraphLayout : IGraphLayoutEngine
                 continue;
             }
 
-            var intendedDepth = slots[childIndex].Depth;
+            var intendedBand = slots[childIndex].PresentationBand;
             var slotIndex = Enumerable.Range(0, slots.Length).First(index =>
-                !occupiedSlots.Contains(index) && slots[index].Depth == intendedDepth);
+                !occupiedSlots.Contains(index) && slots[index].PresentationBand == intendedBand);
             occupiedSlots.Add(slotIndex);
             var slot = slots[slotIndex];
-            result[child.Id] = new(child.Id, slot.X, slot.Y, slot.Scale, slot.Opacity, slot.Depth);
+            result[child.Id] = new(child.Id, slot.X, slot.Y, slot.Scale, slot.Opacity, slot.Depth, slot.PresentationBand);
         }
 
         return result;
@@ -95,14 +97,16 @@ public sealed class RadialGraphLayout : IGraphLayoutEngine
     private static GraphSlot[] CreateSlots(int count)
     {
         var slots = new List<GraphSlot>(count);
-        var innerCount = Math.Min(8, count);
-        AddRing(slots, innerCount, 0.31, 0.28, 0.84, 0.98, 1, -Math.PI / 2);
+        // Every admitted structural item is a direct child on one semantic focus plane.
+        // Rings are collision/density bands only; they never represent filesystem depth.
+        var innerCount = Math.Min(12, count);
+        AddRing(slots, innerCount, 0.29, 0.27, 0.86, 1, 1, 1, -Math.PI / 2);
 
         var middleCount = Math.Min(16, count - slots.Count);
-        AddRing(slots, middleCount, 0.5, 0.43, 0.58, 0.52, 2, (-Math.PI / 2) + 0.14);
+        AddRing(slots, middleCount, 0.49, 0.43, 0.7, 0.88, 1, 2, (-Math.PI / 2) + 0.14);
 
         var outerCount = count - slots.Count;
-        AddRing(slots, outerCount, 0.67, 0.57, 0.32, 0.26, 3, (-Math.PI / 2) + 0.08);
+        AddRing(slots, outerCount, 0.68, 0.58, 0.56, 0.7, 1, 3, (-Math.PI / 2) + 0.08);
         return [.. slots];
     }
 
@@ -114,6 +118,7 @@ public sealed class RadialGraphLayout : IGraphLayoutEngine
         double scale,
         double opacity,
         int depth,
+        int presentationBand,
         double startAngle)
     {
         for (var index = 0; index < count; index++)
@@ -124,7 +129,8 @@ public sealed class RadialGraphLayout : IGraphLayoutEngine
                 Math.Sin(angle) * radiusY,
                 scale,
                 opacity,
-                depth));
+                depth,
+                presentationBand));
         }
     }
 
@@ -132,10 +138,10 @@ public sealed class RadialGraphLayout : IGraphLayoutEngine
         GraphLayoutNode previous,
         GraphSlot[] slots,
         HashSet<int> occupiedSlots,
-        int intendedDepth)
+        int intendedBand)
     {
         return Enumerable.Range(0, slots.Length)
-            .Where(index => !occupiedSlots.Contains(index) && slots[index].Depth == intendedDepth)
+            .Where(index => !occupiedSlots.Contains(index) && slots[index].PresentationBand == intendedBand)
             .OrderBy(index => DistanceSquared(previous, slots[index]))
             .ThenBy(index => index)
             .DefaultIfEmpty(-1)
@@ -154,5 +160,6 @@ public sealed class RadialGraphLayout : IGraphLayoutEngine
         double Y,
         double Scale,
         double Opacity,
-        int Depth);
+        int Depth,
+        int PresentationBand);
 }

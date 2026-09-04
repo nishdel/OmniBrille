@@ -55,6 +55,7 @@ public sealed class ContextGraphLayout : IGraphLayoutEngine
                     Math.Sin(angle) * ring.RadiusY * radialDepth,
                     ring.Scale * (1 - (weakness * 0.08)),
                     ring.Opacity * (1 - (weakness * 0.16)),
+                    ring.Depth,
                     ring.Depth);
                 result[node.Id] = PreserveAngle(target, previousLayout);
             }

@@ -104,7 +104,9 @@ public sealed class ReleaseHardeningTests
         Assert.Contains("if: always()", workflow, StringComparison.Ordinal);
         Assert.Contains("needs: build-dng-free-skia", workflow, StringComparison.Ordinal);
         Assert.Contains("Installed Skia native binary does not match", workflow, StringComparison.Ordinal);
-        Assert.Contains("$manifest.schemaVersion -ne 4", workflow, StringComparison.Ordinal);
+        Assert.Contains("$manifest.schemaVersion -ne 5", workflow, StringComparison.Ordinal);
+        Assert.Contains("Unsafe or duplicate installed voice manifest path", workflow, StringComparison.Ordinal);
+        Assert.Contains("Unexpected files were found in the installed voice bundle", workflow, StringComparison.Ordinal);
         Assert.Contains("OmniBrille-dng-free-skia-3.119.4", workflow, StringComparison.Ordinal);
         Assert.Contains("no upstream source branch or permanent fork", provenanceGuide, StringComparison.Ordinal);
         Assert.Contains("proof-bundle.sha256", provenanceGuide, StringComparison.Ordinal);
@@ -121,7 +123,9 @@ public sealed class ReleaseHardeningTests
         Assert.Contains("Get-FileHash", metadataScript, StringComparison.Ordinal);
         Assert.Contains("safe.directory", metadataScript, StringComparison.Ordinal);
         Assert.Contains("explorerProtocol", metadataScript, StringComparison.Ordinal);
-        Assert.Contains("schemaVersion = 4", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("schemaVersion = 5", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("voiceBundle", metadataScript, StringComparison.Ordinal);
+        Assert.Contains("installedAppDownloadsAssets = $false", metadataScript, StringComparison.Ordinal);
         Assert.Contains("projectLicenseExpression = 'MIT'", metadataScript, StringComparison.Ordinal);
         Assert.Contains("rather than 'NotSigned'", metadataScript, StringComparison.Ordinal);
         Assert.Contains("distributionNotices", metadataScript, StringComparison.Ordinal);

@@ -34,6 +34,8 @@ public sealed class DataRainControl : Control
     private readonly BoundedLruCache<DataTokenKey, FormattedText> _textCache = new(96);
     private double _phase;
     private bool _isActive;
+    private bool _motionAllowed = true;
+    private bool _reducedMotion;
     private TimeSpan _lastRenderDuration;
     private int _renderedTokenCount;
 
@@ -43,7 +45,7 @@ public sealed class DataRainControl : Control
         _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(55) };
         _timer.Tick += (_, _) =>
         {
-            if (!_isActive || ReducedMotion)
+            if (!_isActive || ReducedMotion || !_motionAllowed)
             {
                 return;
             }
@@ -53,12 +55,27 @@ public sealed class DataRainControl : Control
         };
     }
 
-    public bool ReducedMotion { get; set; }
+    public bool ReducedMotion
+    {
+        get => _reducedMotion;
+        set
+        {
+            if (_reducedMotion == value)
+            {
+                return;
+            }
+
+            _reducedMotion = value;
+            UpdateTimer();
+            InvalidateVisual();
+        }
+    }
 
     public bool ReducedEffects { get; set; }
 
     public DataRainDiagnostics Diagnostics => new(
         _isActive,
+        _timer.IsEnabled,
         _renderedTokenCount,
         _lastRenderDuration,
         _textCache.Count);
@@ -66,16 +83,14 @@ public sealed class DataRainControl : Control
     public void SetActive(bool isActive)
     {
         _isActive = isActive;
-        if (isActive && !ReducedMotion)
-        {
-            _timer.Start();
-        }
-        else
-        {
-            _timer.Stop();
-        }
-
+        UpdateTimer();
         InvalidateVisual();
+    }
+
+    public void SetMotionActivity(bool active)
+    {
+        _motionAllowed = active;
+        UpdateTimer();
     }
 
     public override void Render(DrawingContext context)
@@ -151,8 +166,28 @@ public sealed class DataRainControl : Control
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
-        _timer.Stop();
+        _motionAllowed = false;
+        UpdateTimer();
         base.OnDetachedFromVisualTree(e);
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        _motionAllowed = true;
+        UpdateTimer();
+    }
+
+    private void UpdateTimer()
+    {
+        if (_isActive && !_reducedMotion && _motionAllowed)
+        {
+            _timer.Start();
+        }
+        else
+        {
+            _timer.Stop();
+        }
     }
 
     private readonly record struct DataTokenKey(string Text, double FontSize, Color Color);
@@ -160,6 +195,7 @@ public sealed class DataRainControl : Control
 
 public sealed record DataRainDiagnostics(
     bool IsActive,
+    bool TimerActive,
     int RenderedTokens,
     TimeSpan LastRenderDuration,
     int TextCacheEntries);

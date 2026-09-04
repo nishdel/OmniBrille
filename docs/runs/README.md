@@ -18,3 +18,4 @@ Retain a report only for architecture/product boundary changes, serious regressi
 - [`2026-08-21-v1.0.0-public-release.md`](2026-08-21-v1.0.0-public-release.md) — DNG-free renderer remediation, exact-artifact qualification, and the published first stable release.
 - [`2026-08-21-v1.1.0-visual-convergence.md`](2026-08-21-v1.1.0-visual-convergence.md) — graph-first visual convergence, renderer/accessibility qualification, and the paused v1.1 publication boundary.
 - [`2026-08-21-v1.1.0-focus-plane-correction.md`](2026-08-21-v1.1.0-focus-plane-correction.md) — concept-led sparse focus-plane correction, exact installed screenshots, and retained v1.1 publication gates.
+- [`2026-08-21-v1.1.0-focus-plane-navigation-trail.md`](2026-08-21-v1.1.0-focus-plane-navigation-trail.md) — semantic focus-plane/navigation-trail rework, bundled local Voice and sensory feedback, adversarial review fixes, and deliberately incomplete release qualification.

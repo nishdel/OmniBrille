@@ -10,6 +10,7 @@ using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using OmniBrille.Core;
 using OmniBrille.Desktop.Presentation;
 using OmniBrille.Desktop.Support;
@@ -29,7 +30,10 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
     private readonly DispatcherTimer _diagnosticsTimer;
     private readonly DispatcherTimer _voiceVisualTimer;
     private readonly DispatcherTimer _voiceTranscriptTimer;
+    private readonly DispatcherTimer _detailsTypingTimer;
     private readonly VoiceInteractionCoordinator _voice;
+    private readonly IFileActivationService _fileActivation;
+    private readonly IInteractionSoundService _sound;
     private VisualPreferences _preferences;
     private ExplorerNeighborhood? _lastRenderedNeighborhood;
     private bool _detailsDismissed;
@@ -38,6 +42,10 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
     private bool _isApplyingContextFilters;
     private bool _isSynchronizingAccessibleList;
     private bool _voicePulseHigh;
+    private string _detailsTypingTarget = string.Empty;
+    private int _detailsTypingIndex;
+    private string? _lastDetailsNodeId;
+    private string? _lastAnnouncement;
     private bool _isDisposed;
 
     public MainWindow()
@@ -64,13 +72,18 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         IOmniSorSeConnectionCoordinator? connection = null,
         string? handoffEndpoint = null,
         IAudioCaptureService? audioCapture = null,
-        ISpeechRecognitionProvider? speechRecognition = null)
+        ISpeechRecognitionProvider? speechRecognition = null,
+        IFileActivationService? fileActivation = null,
+        IInteractionSoundService? interactionSound = null)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _preferencesStore = preferencesStore ?? throw new ArgumentNullException(nameof(preferencesStore));
         _connection = connection ?? new OmniSorSeConnectionCoordinator();
         _handoffEndpoint = handoffEndpoint;
+        _fileActivation = fileActivation ?? new ShellFileActivationService();
+        _sound = interactionSound ?? new CyberInteractionSoundService();
         _preferences = _preferencesStore.Load().Normalize();
+        _sound.Enabled = _preferences.SoundEnabled;
         _voice = new VoiceInteractionCoordinator(
             audioCapture ?? new WindowsWaveInAudioCaptureService(),
             speechRecognition ?? new WhisperCliSpeechRecognitionProvider(),
@@ -101,14 +114,27 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             handledEventsToo: true);
         GraphScene.NodeSelected += OnGraphNodeSelected;
         GraphScene.NodeActivated += OnGraphNodeActivated;
+        GraphScene.NodeHovered += OnGraphNodeHovered;
         GraphScene.BackRequested += async (_, _) => await GoBackAsync();
         GraphScene.DismissRequested += (_, _) => DismissTransientSurfaces();
         KeyDown += OnWindowKeyDown;
+        Activated += (_, _) => UpdateMotionActivity();
+        Deactivated += (_, _) => UpdateMotionActivity();
+        PropertyChanged += (_, args) =>
+        {
+            if (args.Property == WindowStateProperty)
+            {
+                UpdateMotionActivity();
+            }
+        };
         Closed += (_, _) => Dispose();
 
         _diagnosticsTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
         _diagnosticsTimer.Tick += (_, _) => UpdateDiagnostics();
-        _diagnosticsTimer.Start();
+        if (_preferences.DiagnosticsVisible)
+        {
+            _diagnosticsTimer.Start();
+        }
 
         _voiceVisualTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(180) };
         _voiceVisualTimer.Tick += (_, _) => UpdateVoiceListeningVisual();
@@ -118,11 +144,18 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             _voiceTranscriptTimer.Stop();
             _voice.DismissTranscript();
         };
+        _detailsTypingTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(18) };
+        _detailsTypingTimer.Tick += (_, _) => AdvanceDetailsTyping();
 
         ApplyPreferencesToControls();
         UpdateVoiceView();
         UpdateView();
 
+        SizeChanged += (_, _) =>
+        {
+            UpdateResponsiveShellVisibility();
+            UpdateMotionActivity();
+        };
         Opened += async (_, _) => await InitializeProviderAsync(startupRoot);
     }
 
@@ -289,9 +322,20 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             SettingsPanel.IsVisible = false;
             AccessibleListPanel.IsVisible = false;
             ContextFilterPanel.IsVisible = false;
+            HistoryPanel.IsVisible = false;
             SearchResultsPanel.IsVisible = false;
+            _detailsDismissed = true;
+            DetailsPanel.IsVisible = false;
             PopulateConnectedRoots();
             UpdateConnectionView();
+            if (ConnectedRootPicker.IsVisible)
+            {
+                ConnectedRootPicker.Focus();
+            }
+            else
+            {
+                ChooseStandaloneFolderButton.Focus();
+            }
         }
         else
         {
@@ -319,7 +363,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         _session.Reset();
         ConnectedRootPicker.ItemsSource = null;
         ConnectionPanel.IsVisible = false;
-        ChooseFolderButton.Focus();
+        ChooseStandaloneFolderButton.Focus();
         UpdateConnectionView();
         UpdateWelcomeAndStatusVisibility();
     }
@@ -480,11 +524,107 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
 
     private async void OnBackClick(object? sender, RoutedEventArgs e) => await GoBackAsync();
 
+    private async void OnUpClick(object? sender, RoutedEventArgs e) => await GoUpAsync();
+
+    private async void OnRootClick(object? sender, RoutedEventArgs e) => await GoRootAsync();
+
+    private async Task GoRootAsync()
+    {
+        try
+        {
+            if (await _session.GoRootAsync())
+            {
+                _sound.Play(InteractionSoundCue.Navigate);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async Task GoUpAsync()
+    {
+        try
+        {
+            if (await _session.GoUpAsync())
+            {
+                _sound.Play(InteractionSoundCue.Navigate);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private void OnHistoryClick(object? sender, RoutedEventArgs e)
+    {
+        if (_session.NavigationHistoryCount == 0)
+        {
+            return;
+        }
+
+        var showHistory = !HistoryPanel.IsVisible;
+        ConnectionPanel.IsVisible = false;
+        SettingsPanel.IsVisible = false;
+        AccessibleListPanel.IsVisible = false;
+        ContextFilterPanel.IsVisible = false;
+        HistoryPanel.IsVisible = false;
+        CollapseSearchEditor();
+        _detailsDismissed = true;
+        DetailsPanel.IsVisible = false;
+        HistoryPanel.IsVisible = showHistory;
+        UpdateHistoryView();
+        UpdateWelcomeAndStatusVisibility();
+    }
+
+    private void OnSoundToggleClick(object? sender, RoutedEventArgs e)
+    {
+        _preferences = (_preferences with { SoundEnabled = !_preferences.SoundEnabled }).Normalize();
+        _preferencesStore.Save(_preferences);
+        _sound.Enabled = _preferences.SoundEnabled;
+        ApplyPreferencesToControls();
+        if (_preferences.SoundEnabled)
+        {
+            _sound.Play(InteractionSoundCue.Select);
+        }
+    }
+
+    private void OnTitleBarPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        for (var visual = e.Source as Visual; visual is not null && visual != CustomTitleBar; visual = visual.GetVisualParent())
+        {
+            if (visual is Button)
+            {
+                return;
+            }
+        }
+
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            BeginMoveDrag(e);
+        }
+    }
+
+    private void OnTitleBarDoubleTapped(object? sender, TappedEventArgs e) => ToggleMaximized();
+
+    private void OnMinimizeClick(object? sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+
+    private void OnMaximizeClick(object? sender, RoutedEventArgs e) => ToggleMaximized();
+
+    private void OnCloseWindowClick(object? sender, RoutedEventArgs e) => Close();
+
+    private void ToggleMaximized() => WindowState = WindowState == WindowState.Maximized
+        ? WindowState.Normal
+        : WindowState.Maximized;
+
     private async Task GoBackAsync()
     {
         try
         {
-            await _session.GoBackAsync();
+            if (await _session.GoBackAsync())
+            {
+                _sound.Play(InteractionSoundCue.Navigate);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -511,6 +651,9 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         SettingsPanel.IsVisible = false;
         AccessibleListPanel.IsVisible = false;
         ContextFilterPanel.IsVisible = false;
+        HistoryPanel.IsVisible = false;
+        _detailsDismissed = true;
+        DetailsPanel.IsVisible = false;
         SearchEditor.IsVisible = true;
         AutomationProperties.SetName(SearchToggleButton, "Collapse Search");
         UpdateWelcomeAndStatusVisibility();
@@ -576,6 +719,35 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
 
                 await _session.GoBackAsync(cancellationToken);
                 return VoiceActionResult.Completed("Moved back.");
+
+            case VoiceIntentKind.GoUp:
+                if (!await _session.GoUpAsync(cancellationToken))
+                {
+                    return VoiceActionResult.Rejected("The current focus has no authorized parent in this scope.");
+                }
+
+                _sound.Play(InteractionSoundCue.Navigate);
+                return VoiceActionResult.Completed("Moved up one containment level.");
+
+            case VoiceIntentKind.GoRoot:
+                if (!await _session.GoRootAsync(cancellationToken))
+                {
+                    return VoiceActionResult.Rejected("The current focus is already at the authorized root.");
+                }
+
+                _sound.Play(InteractionSoundCue.Navigate);
+                return VoiceActionResult.Completed("Moved to the authorized root.");
+
+            case VoiceIntentKind.ActivateSelectedNode:
+                var selectedNode = _session.SelectedNode;
+                if (selectedNode is null)
+                {
+                    return VoiceActionResult.Rejected("Select a visible node before opening it.");
+                }
+
+                return await ActivateNodeAsync(selectedNode.Id)
+                    ? VoiceActionResult.Completed($"Opened {selectedNode.Name}.")
+                    : VoiceActionResult.Rejected("The selected item could not be opened safely.");
 
             case VoiceIntentKind.OpenVisibleNode:
             case VoiceIntentKind.FocusVisibleNode:
@@ -676,11 +848,11 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         var node = matches[0];
         _detailsDismissed = false;
         _session.SelectNode(node.Id);
-        if (intent.Kind == VoiceIntentKind.OpenVisibleNode &&
-            (node.Kind is ExplorerNodeKind.Folder or ExplorerNodeKind.Context or ExplorerNodeKind.Aggregate))
+        if (intent.Kind == VoiceIntentKind.OpenVisibleNode)
         {
-            await ActivateNodeAsync(node.Id);
-            return VoiceActionResult.Completed($"Opened {node.Name}.");
+            return await ActivateNodeAsync(node.Id)
+                ? VoiceActionResult.Completed($"Opened {node.Name}.")
+                : VoiceActionResult.Rejected($"{node.Name} could not be opened safely.");
         }
 
         return VoiceActionResult.Completed($"Focused {node.Name}.");
@@ -803,6 +975,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             ReducedMotion = ReducedMotionToggle.IsChecked == true,
             ReducedEffects = ReducedEffectsToggle.IsChecked == true,
             DiagnosticsVisible = DiagnosticsToggle.IsChecked == true,
+            SoundEnabled = SoundEnabledToggle.IsChecked == true,
         };
         _preferencesStore.Save(_preferences);
         ApplyVisualPreferences();
@@ -853,6 +1026,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
     {
         _detailsDismissed = true;
         DetailsPanel.IsVisible = false;
+        UpdateResponsiveShellVisibility();
         GraphScene.Focus();
     }
 
@@ -918,20 +1092,6 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         await RefreshVoiceCapabilityAsync();
     }
 
-    private async void OnVoiceConfigurationChanged(object? sender, RoutedEventArgs e)
-    {
-        if (_isApplyingPreferences)
-        {
-            return;
-        }
-
-        SaveVoicePreferences();
-        if (_preferences.VoiceEnabled && !_voice.IsActive)
-        {
-            await RefreshVoiceCapabilityAsync();
-        }
-    }
-
     private async void OnVoiceLanguageChanged(object? sender, SelectionChangedEventArgs e)
     {
         if (_isApplyingPreferences)
@@ -951,8 +1111,6 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         _preferences = (_preferences with
         {
             VoiceEnabled = VoiceEnabledToggle.IsChecked == true,
-            VoiceRuntimePath = VoiceRuntimePathBox.Text,
-            VoiceModelPath = VoiceModelPathBox.Text,
             VoiceLanguage = VoiceLanguagePicker.SelectedIndex == 1 ? "auto" : "en",
         }).Normalize();
         _preferencesStore.Save(_preferences);
@@ -976,11 +1134,9 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
     {
         if (!_preferences.VoiceEnabled)
         {
-            SettingsPanel.IsVisible = true;
-            UpdateView();
-            VoiceEnabledToggle.Focus();
-            SetTransientStatus("Enable Voice in Settings and configure a local whisper.cpp runtime and model.");
-            return;
+            _preferences = (_preferences with { VoiceEnabled = true }).Normalize();
+            _preferencesStore.Save(_preferences);
+            VoiceEnabledToggle.IsChecked = true;
         }
 
         try
@@ -1046,13 +1202,13 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         VoiceCancelButton.IsVisible = _voice.IsActive;
         VoiceButton.Content = _voice.State switch
         {
-            VoiceCapabilityState.Listening => "Stop & transcribe",
+            VoiceCapabilityState.Listening => "Listening… Stop",
             VoiceCapabilityState.Loading or VoiceCapabilityState.Transcribing or VoiceCapabilityState.Executing => "Cancel voice",
-            VoiceCapabilityState.Disabled => "Voice off",
-            _ => "Push to talk",
+            VoiceCapabilityState.Disabled => "Listen",
+            _ => "Listen",
         };
         var stateName = _voice.State.ToString();
-        AutomationProperties.SetName(VoiceButton, $"Push to talk. Voice state: {stateName}");
+        AutomationProperties.SetName(VoiceButton, $"Toggle local listening. Voice state: {stateName}");
         AutomationProperties.SetHelpText(
             VoiceButton,
             "Press once to begin bounded microphone capture and again to stop and transcribe locally. Keyboard shortcut Control Shift Space.");
@@ -1189,6 +1345,15 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         _detailsDismissed = false;
         SettingsPanel.IsVisible = false;
         _session.SelectNode(nodeId);
+        _sound.Play(InteractionSoundCue.Select);
+    }
+
+    private void OnGraphNodeHovered(object? sender, string? nodeId)
+    {
+        if (nodeId is not null)
+        {
+            _sound.Play(InteractionSoundCue.Hover);
+        }
     }
 
     private async void OnGraphNodeActivated(object? sender, string nodeId)
@@ -1196,13 +1361,13 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         await ActivateNodeAsync(nodeId);
     }
 
-    private async Task ActivateNodeAsync(string nodeId)
+    private async Task<bool> ActivateNodeAsync(string nodeId)
     {
         var node = _session.Neighborhood?.Nodes.FirstOrDefault(item =>
             ExplorerIdentity.Equals(item.Id, nodeId));
         if (node is null)
         {
-            return;
+            return false;
         }
 
         if (node.Kind == ExplorerNodeKind.Aggregate)
@@ -1212,7 +1377,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
                 SetTransientStatus("This aggregate is informational because the source enumeration was bounded.");
             }
 
-            return;
+            return true;
         }
 
         if (IsContextualMode(_session.ViewMode) &&
@@ -1233,19 +1398,53 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             {
             }
 
-            return;
+            return true;
         }
 
         if (node.Kind is ExplorerNodeKind.Folder or ExplorerNodeKind.Context && node.IsNavigable)
         {
             try
             {
-                await _session.NavigateAsync(node.Target);
+                var opened = await _session.NavigateAsync(node.Target);
+                if (opened)
+                {
+                    _sound.Play(InteractionSoundCue.FolderEnter);
+                }
+
+                return opened;
             }
             catch (OperationCanceledException)
             {
+                return false;
             }
         }
+
+        if (node.Kind == ExplorerNodeKind.File)
+        {
+            if (_session.ProviderMode != ExplorerProviderMode.Standalone)
+            {
+                SetTransientStatus("Connected file opening is unavailable because projected paths are not filesystem authority.");
+                return false;
+            }
+
+            var result = await _fileActivation.OpenAsync(_session.AccessRoot, node.Path);
+            SetTransientStatus(result switch
+            {
+                FileActivationResult.Opened => $"Opened {node.Name} with its Windows app.",
+                FileActivationResult.HighRiskTypeBlocked => "Executable and script-like files are not launched from the spatial graph.",
+                FileActivationResult.ReparsePointBlocked => "This reparse-point file was not launched.",
+                FileActivationResult.NotFound => "The selected file is no longer available.",
+                FileActivationResult.OutsideAccessRoot => "The selected file is outside the authorized root.",
+                _ => "Windows could not open the selected file safely.",
+            });
+            if (result == FileActivationResult.Opened)
+            {
+                _sound.Play(InteractionSoundCue.FileOpen);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
@@ -1276,6 +1475,27 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         else if ((e.Key == Key.Left && e.KeyModifiers.HasFlag(KeyModifiers.Alt)) || e.Key == Key.BrowserBack)
         {
             _ = GoBackAsync();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Up && e.KeyModifiers.HasFlag(KeyModifiers.Alt))
+        {
+            _ = GoUpAsync();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Home && e.KeyModifiers.HasFlag(KeyModifiers.Alt))
+        {
+            _ = GoRootAsync();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.I && e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        {
+            if (_session.SelectedNode is not null)
+            {
+                _detailsDismissed = false;
+                UpdateView();
+                DetailsPanel.Focus();
+            }
+
             e.Handled = true;
         }
         else if (e.Key == Key.L &&
@@ -1342,6 +1562,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         AutomationProperties.SetName(FocusHud, $"Current focus: {CurrentPathText.Text}");
         AutomationProperties.SetHelpText(FocusHud, currentPath);
         StatusText.Text = _session.Status;
+        AnnounceStatus(_session.Status);
         ViewModeStatusText.Text = _session.ViewMode.ToString().ToUpperInvariant();
         Title = $"OmniBrille — {_session.ViewMode}";
         _isApplyingPreferences = true;
@@ -1391,6 +1612,15 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             AccessibleOpenButton,
             IsContextualMode(_session.ViewMode) ? "Focus selected graph node" : "Open selected structural node");
         BackButton.IsEnabled = _session.CanGoBack && !_session.IsLoading;
+        UpButton.IsEnabled = _session.CanGoUp && !_session.IsLoading;
+        ChooseFolderButton.IsEnabled = _session.CanGoRoot && !_session.IsLoading;
+        HistoryButton.IsEnabled = _session.NavigationHistoryCount > 0;
+        HistoryButton.Content = $"TRAIL {_session.NavigationHistoryCount}";
+        SoundButton.Content = _preferences.SoundEnabled ? "SOUND ON" : "SOUND OFF";
+        AutomationProperties.SetName(
+            SoundButton,
+            _preferences.SoundEnabled ? "Mute interaction sounds" : "Enable interaction sounds");
+        UpdateHistoryView();
         ContextFilterButton.IsVisible = IsContextualMode(_session.ViewMode);
         if (!IsContextualMode(_session.ViewMode))
         {
@@ -1479,15 +1709,23 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         GraphScene.ReducedMotion = _preferences.ReducedMotion;
         GraphScene.ReducedEffects = _preferences.ReducedEffects;
         GraphScene.TextScale = Math.Clamp(FontSize / 13d, 1, 2);
-        GraphScene.SearchActive = results is not null && _session.SearchQuery.Length > 0;
+        var graphSearchActive = results is not null && _session.SearchQuery.Length > 0;
+        GraphScene.SearchActive = graphSearchActive;
         DataRain.ReducedMotion = _preferences.ReducedMotion;
         DataRain.ReducedEffects = _preferences.ReducedEffects;
         var neighborhoodChanged = !ReferenceEquals(neighborhood, _lastRenderedNeighborhood);
-        GraphScene.SetScene(
-            neighborhood,
-            selected?.Id,
-            _session.HighlightedNodeIds,
-            animate: neighborhoodChanged && !_preferences.ReducedMotion);
+        if (neighborhoodChanged)
+        {
+            GraphScene.SetScene(
+                neighborhood,
+                selected?.Id,
+                _session.HighlightedNodeIds,
+                animate: !_preferences.ReducedMotion);
+        }
+        else
+        {
+            GraphScene.SetInteractionState(selected?.Id, _session.HighlightedNodeIds, graphSearchActive);
+        }
         _lastRenderedNeighborhood = neighborhood;
         SynchronizeAccessibleList();
         DiagnosticsPanel.IsVisible = _preferences.DiagnosticsVisible;
@@ -1560,7 +1798,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
                 ? _session.ViewMode == ExplorerViewMode.Hybrid
                     ? "Read-only indexed data. Solid edges show Structure; dashed edges show OmniSorSe-authored Context."
                     : "Read-only indexed data supplied by OmniSorSe Explorer Protocol v1."
-                : "Double-click a folder to move it into focus. Reparse-point folders are shown but never traversed.";
+                : "Single-click selects and inspects. Double-click enters a folder or opens an ordinary file with Windows. Reparse points and executable/script-like files are never launched.";
         DetailsIndexText.Text = connectedDetails is null
             ? _session.ProviderMode == ExplorerProviderMode.Connected ? "Loading…" : "Not applicable"
             : connectedDetails.IsFullyIndexed ? "Complete" : "Incomplete";
@@ -1603,6 +1841,51 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             AutomationProperties.SetHelpText(RelationshipDetailsSection, accessibleRelationshipSummary);
             AutomationProperties.SetHelpText(DetailsPanel, accessibleRelationshipSummary);
         }
+
+        var terminal = string.Join(
+            Environment.NewLine,
+            $"> inspect --node \"{selected.Name}\"",
+            $"TYPE  {DetailsTypeText.Text}",
+            $"ACCESS  {DetailsAccessText.Text}",
+            $"INDEX  {DetailsIndexText.Text}",
+            "STATUS  READY");
+        AutomationProperties.SetName(DetailsTerminalText, terminal.Replace(Environment.NewLine, ". "));
+        StartDetailsTyping(selected.Id, terminal);
+    }
+
+    private void StartDetailsTyping(string nodeId, string terminal)
+    {
+        if (ExplorerIdentity.Equals(_lastDetailsNodeId, nodeId) &&
+            string.Equals(_detailsTypingTarget, terminal, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _lastDetailsNodeId = nodeId;
+        _detailsTypingTarget = terminal;
+        _detailsTypingIndex = 0;
+        _detailsTypingTimer.Stop();
+        if (_preferences.ReducedMotion)
+        {
+            DetailsTerminalText.Text = terminal;
+            return;
+        }
+
+        DetailsTerminalText.Text = string.Empty;
+        _detailsTypingTimer.Start();
+    }
+
+    private void AdvanceDetailsTyping()
+    {
+        if (_preferences.ReducedMotion || _detailsTypingIndex >= _detailsTypingTarget.Length)
+        {
+            DetailsTerminalText.Text = _detailsTypingTarget;
+            _detailsTypingTimer.Stop();
+            return;
+        }
+
+        _detailsTypingIndex = Math.Min(_detailsTypingTarget.Length, _detailsTypingIndex + 4);
+        DetailsTerminalText.Text = _detailsTypingTarget[.._detailsTypingIndex];
     }
 
     private void ApplyPreferencesToControls()
@@ -1614,9 +1897,8 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             ReducedMotionToggle.IsChecked = _preferences.ReducedMotion;
             ReducedEffectsToggle.IsChecked = _preferences.ReducedEffects;
             DiagnosticsToggle.IsChecked = _preferences.DiagnosticsVisible;
+            SoundEnabledToggle.IsChecked = _preferences.SoundEnabled;
             VoiceEnabledToggle.IsChecked = _preferences.VoiceEnabled;
-            VoiceRuntimePathBox.Text = _preferences.VoiceRuntimePath ?? string.Empty;
-            VoiceModelPathBox.Text = _preferences.VoiceModelPath ?? string.Empty;
             VoiceLanguagePicker.SelectedIndex = _preferences.VoiceLanguage == "auto" ? 1 : 0;
         }
         finally
@@ -1641,6 +1923,22 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         DataRain.ReducedMotion = _preferences.ReducedMotion;
         DataRain.ReducedEffects = _preferences.ReducedEffects;
         DiagnosticsPanel.IsVisible = _preferences.DiagnosticsVisible;
+        _sound.Enabled = _preferences.SoundEnabled;
+        SoundButton.Content = _preferences.SoundEnabled ? "SOUND ON" : "SOUND OFF";
+        if (_preferences.DiagnosticsVisible)
+        {
+            _diagnosticsTimer.Start();
+        }
+        else
+        {
+            _diagnosticsTimer.Stop();
+        }
+
+        if (_preferences.ReducedMotion && _detailsTypingTimer.IsEnabled)
+        {
+            DetailsTerminalText.Text = _detailsTypingTarget;
+            _detailsTypingTimer.Stop();
+        }
         UpdateVoiceView();
         GraphScene.InvalidateVisual();
         DataRain.InvalidateVisual();
@@ -1711,10 +2009,9 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             var accessibleState = state.Length == 0
                 ? string.Empty
                 : $", {string.Join(", ", stateParts).ToLowerInvariant()}";
+            var sceneRelation = ExplorerSceneSemantics.Describe(neighborhood, node);
             var role = DescribeRoles(node);
-            var roleDescription = neighborhood.ViewMode == ExplorerViewMode.Hybrid
-                ? $", {role}"
-                : string.Empty;
+            var roleDescription = $", {sceneRelation}";
             var relationDescription = relationship is null
                 ? string.Empty
                 : string.IsNullOrWhiteSpace(relationship.Reason)
@@ -1724,8 +2021,8 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
                 node.Id,
                 node.Name,
                 neighborhood.ViewMode == ExplorerViewMode.Hybrid
-                    ? $"{kind} · {role} · {node.Path}"
-                    : $"{kind} · {node.Path}",
+                    ? $"{kind} · {sceneRelation} · {role} · {node.Path}"
+                    : $"{kind} · {sceneRelation} · {node.Path}",
                 state,
                 $"{node.Name}, {kind}{roleDescription}{accessibleState}{relationDescription}");
         }).ToArray() ?? [];
@@ -1777,6 +2074,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             SettingsPanel.IsVisible ||
             AccessibleListPanel.IsVisible ||
             ContextFilterPanel.IsVisible ||
+            HistoryPanel.IsVisible ||
             SearchResultsPanel.IsVisible;
 
         WelcomePanel.IsVisible = _session.Neighborhood is null &&
@@ -1785,9 +2083,49 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             !SearchEditor.IsVisible &&
             !DetailsPanel.IsVisible;
         StatusHud.IsVisible = !panelOwnsStatusSpace;
+        UpdateResponsiveShellVisibility();
     }
 
-    private void SetTransientStatus(string message) => StatusText.Text = message;
+    private void UpdateResponsiveShellVisibility()
+    {
+        var detailsOwnsCompactRightPlane = ClientSize.Width <= 900 && DetailsPanel.IsVisible;
+        FocusHud.IsVisible = !detailsOwnsCompactRightPlane;
+        ModeHud.IsVisible = !detailsOwnsCompactRightPlane;
+        UtilityHud.IsVisible = !detailsOwnsCompactRightPlane;
+    }
+
+    private void UpdateHistoryView()
+    {
+        if (HistoryText is not null)
+        {
+            HistoryText.Text = _session.NavigationTrailSummary;
+        }
+    }
+
+    private void AnnounceStatus(string message)
+    {
+        if (string.Equals(_lastAnnouncement, message, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _lastAnnouncement = message;
+        StatusAnnouncer.Text = message;
+        AutomationProperties.SetName(StatusAnnouncer, message);
+    }
+
+    private void UpdateMotionActivity()
+    {
+        var active = IsVisible && IsActive && WindowState != WindowState.Minimized;
+        GraphScene.SetMotionActivity(active);
+        DataRain.SetMotionActivity(active);
+    }
+
+    private void SetTransientStatus(string message)
+    {
+        StatusText.Text = message;
+        AnnounceStatus(message);
+    }
 
     public void Dispose()
     {
@@ -1799,8 +2137,13 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         _diagnosticsTimer.Stop();
         _voiceVisualTimer.Stop();
         _voiceTranscriptTimer.Stop();
+        _detailsTypingTimer.Stop();
+        GraphScene.SetMotionActivity(false);
+        DataRain.SetMotionActivity(false);
+        GraphScene.NodeHovered -= OnGraphNodeHovered;
         _voice.StateChanged -= OnVoiceStateChanged;
         _voice.Dispose();
+        _sound.Dispose();
         _connection.StateChanged -= OnConnectionStateChanged;
         _session.ProviderFailed -= OnProviderFailed;
         _session.Dispose();

@@ -11,6 +11,11 @@ This file defines terms that repository history shows are easy to conflate. Curr
 | **Selected node** | The visible node whose details/actions are active. Selection may change without acquiring a new graph focus. |
 | **Keyboard focus** | The Avalonia control currently receiving keyboard input. It is UI state, not graph focus. |
 | **Previous-focus node** | In Structure scenes, a receding orientation node represented by `ExplorerNodeKind.Context`. This enum value is historical structural context, not semantic Context mode. |
+| **Scene relation** | The explicit relationship of a visible node to graph focus: current focus, direct child, previous focus, contextual, structural-and-contextual, aggregate, or visible. It is not a renderer density value. |
+| **Presentation band** | A deterministic visual radius/scale/label-priority group. It never represents filesystem depth, containment, or provider authority. |
+| **Back** | Chronological session history, including mode/refocus and aggregate history where applicable. It is distinct from Up. |
+| **Up** | Navigation to the provider-authored containment parent of the current focus. Connected Up uses an opaque parent ID, never a display path. |
+| **Navigation trail** | A bounded human-safe summary of Back history. Connected opaque IDs are deliberately not exposed. |
 | **Standalone access root** | The filesystem path explicitly chosen by the user. It is the lexical security/navigation boundary for standalone enumeration and Search. |
 | **Connected access root** | An opaque OmniSorSe-issued source node ID. It is not a filesystem path and grants no direct filesystem authority. |
 | **Navigation target** | A provider-specific target: normally a path in Standalone and an opaque node ID in Connected. Code using it must not assume one representation. |

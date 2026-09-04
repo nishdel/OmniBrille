@@ -50,6 +50,14 @@ texts and notices are installed in THIRD-PARTY-LICENSES beside OmniBrille.exe.
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
+- whisper.cpp v1.9.2 Windows x64 CPU runtime, commit
+  306c88f4d1286aec1bf96e544632897886af5501
+  Project: https://github.com/ggml-org/whisper.cpp
+  License: MIT; see whisper.cpp-MIT.txt
+- Quantized English Whisper base model ggml-base.en-q5_1.bin, pinned from
+  ggerganov/whisper.cpp commit c521a4b02f422512d734391fdf08bb08c0862f68
+  Model architecture and original weights: https://github.com/openai/whisper
+  License: MIT; see OpenAI-Whisper-MIT.txt
 - Microsoft .NET 8 self-contained Windows runtime components
   Project: https://github.com/dotnet/runtime
   License and required notices: see DotNet-LICENSE.txt and
@@ -59,6 +67,4 @@ texts and notices are installed in THIRD-PARTY-LICENSES beside OmniBrille.exe.
   License: the same MIT text in DotNet-LICENSE.txt
   Required notices: see System.IO.Pipelines-THIRD-PARTY-NOTICES.txt
 
-whisper.cpp and GGML speech models are not included in OmniBrille. Users who
-configure external voice components are responsible for obtaining them from
-trusted sources and reviewing their applicable licenses.
+The pinned voice runtime and model are installed for local CPU processing. OmniBrille does not download, update, or replace those executable/model bytes while the installed app runs.

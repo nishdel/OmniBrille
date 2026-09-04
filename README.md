@@ -6,7 +6,7 @@
 
 Explore a folder as a spatial graph—locally, privately, and without indexing your whole computer.
 
-OmniBrille is a Windows desktop file explorer that keeps the folder you are exploring at the center and arranges its immediate contents around it. Drill into folders, go back, search the selected tree, inspect details, and switch between a visual graph and a synchronized accessible list.
+OmniBrille is a Windows desktop file explorer that keeps the folder you are exploring at the center and arranges its immediate contents around it. Direct children remain one truthful spatial plane; Back, Up, Root, and Trail provide distinct orientation. Search the selected tree, inspect terminal-style Details, and use either the visual graph or its synchronized accessible list.
 
 ## Download
 
@@ -16,30 +16,20 @@ OmniBrille is a Windows desktop file explorer that keeps the folder you are expl
 
 Windows x64 is the only v1.0 download target. Interactive release qualification was performed on Windows 10 22H2 x64; other Windows client versions were not separately validated. Ubuntu is covered by source build/tests only; Linux desktop packaging and interactive use are not validated. macOS is not validated.
 
-## See it in action
+## Current visual evidence
 
-![Focused Dark Structure plane in OmniBrille's graph-first shell](docs/assets/screenshots/v1.1-dark-structure.png)
-
-| Sparse pale ice-blue Light plane | Compact Search within the selected root |
-|---|---|
-| ![Focused Light Structure plane with subdued surrounding nodes](docs/assets/screenshots/v1.1-light-structure.png) | ![Search results emphasized while unrelated graph nodes recede](docs/assets/screenshots/v1.1-search.png) |
-
-| Nested focus and integrated details | Accessible list synchronized with the bounded graph |
-|---|---|
-| ![Nested focus with the integrated floating details panel](docs/assets/screenshots/v1.1-nested-details.png) | ![Accessible list over the same graph-first shell](docs/assets/screenshots/v1.1-accessible-list.png) |
-
-These are real installed-app captures of the v1.1 visual-convergence candidate using purpose-built, non-private demo folders. The latest published download remains v1.0.0 until v1.1 completes its exact-artifact, signing-decision, and publication gates. See the [capture provenance](docs/assets/screenshots/README.md).
+The existing v1.1 images are retained only as [superseded historical evidence](docs/assets/screenshots/README.md). They do not depict the current hierarchy/navigation/motion implementation and are intentionally not presented here as current screenshots. A fresh set from the exact installed candidate is required before publication. The latest published download remains v1.0.0 until v1.1 completes its visual, exact-artifact, hardware/accessibility, signing-decision, and publication gates.
 
 ## What it does
 
 - Starts empty and reads only a folder you explicitly choose.
 - Shows one focused folder and a bounded set of nearby items instead of crawling an entire drive.
 - Streams large directories progressively and groups overflow into reversible pages.
-- Supports drill-down, Back, selection, details, pan, zoom, and keyboard navigation.
+- Supports drill-down, distinct Back/Up/Root/Trail navigation, geometric keyboard selection, safe ordinary-file opening, Details, pan, and zoom.
 - Searches names, folders, and paths inside the selected root with bounded foreground work.
-- Provides Dark and Light themes, reduced motion, and reduced visual effects.
-- Provides a synchronized accessible list with keyboard actions and graph automation peers.
-- Stores only visual and optional voice configuration; selected roots and searches are not persisted.
+- Provides Dark and Light themes, reduced motion/effects, and an obvious persisted master Sound switch.
+- Provides a synchronized accessible list plus bounded graph `SelectionItem`/invoke automation over the same session state.
+- Stores only safe sensory/voice preferences; selected roots and searches are not persisted.
 - Has no telemetry, cloud upload, background indexer, service, auto-start entry, updater, or destructive file operation.
 
 ## Standalone first; OmniSorSe optional
@@ -54,7 +44,7 @@ Connected mode is compatibility-dependent and is not a promise of support for ev
 
 Standalone access is limited to the selected root. OmniBrille does not recursively follow directory reparse points, modify files, or persist the chosen root. Search is bounded and runs only when requested.
 
-Optional local push-to-talk is disabled by default and requires a user-provided whisper.cpp runtime and model; neither is bundled or downloaded. Real microphone hardware behavior has not been validated for v1.0 and is outside the supported release contract. There is no wake word or always-listening mode.
+Current v1.1 source implements explicit click-to-toggle local Voice with a pinned installer-owned whisper.cpp v1.9.2 runtime and quantized English base model. The build/package/application verify exact hashes; the installed app performs no voice-asset download or update. Real microphone hardware remains unvalidated and blocks any v1.1 Voice release claim. The published v1.0.0 artifact still uses its documented user-configured optional path. Neither version has a wake word or always-listening mode.
 
 The GitHub Release includes the release manifest, dependency graph, exact installer checksum, and generated artifact notes. The installed application contains the MIT project license and separately applicable third-party license/notice files. The repository records the [security and privacy posture](docs/SECURITY-PRIVACY.md). `Copy safe diagnostics` produces a user-reviewed support snapshot designed to exclude paths, filenames, queries, content, endpoints, grants, tokens, and session/node IDs.
 
@@ -77,7 +67,9 @@ The official v1.0.0 GitHub Release contains the exact artifact notes and checksu
 | Search | `Ctrl+F` |
 | Accessible list | `Ctrl+Shift+L` |
 | Back | `Backspace` or `Alt+Left` |
-| Select / activate | Arrow keys / `Enter` |
+| Up / Root | `Alt+Up` / `Alt+Home` |
+| Select / activate | Geometric arrow keys / `Enter` |
+| Reopen Details | `Ctrl+I` |
 | Zoom / reset | `+`, `-`, `0` |
 | Structure / Context / Hybrid | `Ctrl+1`, `Ctrl+2`, `Ctrl+3` |
 | Cancel or dismiss | `Escape` |

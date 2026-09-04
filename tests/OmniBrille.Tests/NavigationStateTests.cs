@@ -72,4 +72,17 @@ public sealed class NavigationStateTests
     {
         Assert.False(ExplorerIdentity.Equals("node-A", "node-a"));
     }
+
+    [Fact]
+    public void ConnectedNavigation_DoesNotCollapseDifferentlyCasedOpaqueIds()
+    {
+        var state = new NavigationState();
+        state.SetRoot("opaque-root", ExplorerProviderMode.Connected);
+
+        state.NavigateTo("Node-A");
+        state.NavigateTo("node-a");
+
+        Assert.Equal("node-a", state.CurrentPath);
+        Assert.Equal(["opaque-root", "Node-A"], state.History);
+    }
 }
