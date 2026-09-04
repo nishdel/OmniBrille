@@ -2,15 +2,17 @@
 
 Checkboxes are maintainer gates. Automation does not mark manual checks complete, and a source build is not installed-artifact validation. The immutable v1.0.0 outcome remains in the [v1.0.0 owner report](docs/runs/2026-08-21-v1.0.0-public-release.md).
 
+Stable v1.1.0 was published on 2026-09-04 after explicit owner authorization to proceed unsigned. Checked items below record evidence actually obtained. Unchecked manual, hardware, assistive-technology, live Connected, and broader-platform gates were not performed and are not implied by publication or by the deliberately limited public support claims.
+
 ## Release authority
 
 - [x] Use a new `v1.1.0` release; do not move `v1.0.0` or replace its checksum-bound assets.
 - [x] Keep Explorer Protocol v1, server-authored Context, provider replacement, stale-result, and 48-node scene-admission contracts unchanged; explicitly review the new navigation, file-activation, sound, and installer-owned Voice boundaries.
-- [ ] The release commit is identified, independently reviewed, clean, and equals GitHub `main`.
-- [x] Source/package version authorities, executable, installer, changelog, compatibility, release notes, screenshot provenance, and candidate artifact names say `1.1.0`; README keeps the published `1.0.0` download explicit until v1.1 publication.
+- [x] The release commit is identified, independently reviewed, clean, and equals GitHub `main`.
+- [x] Source/package version authorities, executable, installer, changelog, compatibility, release notes, screenshot provenance, and artifact names say `1.1.0`; README points to the stable v1.1.0 download and keeps v1.0.0 as historical release evidence.
 - [x] MIT project licensing and the separate installed third-party terms remain unchanged.
 - [x] The pinned DNG-free native renderer package/provenance gate remains unchanged and fail-closed.
-- [ ] The owner has explicitly selected signed or unsigned publication for v1.1.0. If unsigned, the exact installer/application report `NotSigned` and public notes retain the SmartScreen/Unknown Publisher disclosure.
+- [x] The owner explicitly selected unsigned publication for v1.1.0. The exact installer/application report `NotSigned`, and public notes retain the SmartScreen/Unknown Publisher disclosure.
 
 ## Focus Plane + Navigation Trail gate
 
@@ -26,12 +28,12 @@ Checkboxes are maintainer gates. Automation does not mark manual checks complete
 
 ## Automated release gate
 
-- [ ] Run `.\build\verify-release.ps1` from the exact clean Windows release commit.
-- [ ] Engineering-document validation, restore, format, Release build/analyzers, all tests, and NuGet vulnerability audit pass.
-- [ ] The release-candidate workflow succeeds for the selected signing mode on the exact release commit.
-- [ ] Installer, `.sha256`, manifest, dependency graph, generated notes, native proof, and hosted validation JSON are retained together.
-- [ ] Independent, sidecar, manifest, and uploaded SHA-256 values all agree.
-- [ ] The artifact-only gate passes version/signature policy, install, first launch, normal close/relaunch, registration, uninstall, and cleanup.
+- [x] Run `.\build\verify-release.ps1` from the exact clean Windows release commit.
+- [x] Engineering-document validation, restore, format, Release build/analyzers, all tests, and NuGet vulnerability audit pass.
+- [x] The release-candidate workflow succeeds for unsigned mode on the exact release commit.
+- [x] Installer, `.sha256`, manifest, dependency graph, generated notes, native proof, and hosted validation JSON are retained together.
+- [x] Independent, sidecar, manifest, validation-record, and uploaded SHA-256 values all agree.
+- [x] The artifact-only gate passes version/signature policy, install, first launch, normal close/relaunch, registration, uninstall, and cleanup.
 
 ## Exact installed Windows candidate
 
@@ -54,16 +56,16 @@ Checkboxes are maintainer gates. Automation does not mark manual checks complete
 
 ## Privacy and public truthfulness
 
-- [ ] Installed files contain project/dependency/voice licenses and only the exact allowlisted voice runtime/model; they contain no PDB/source/test/database/key/raw-or-test-audio material, private content, or developer paths.
+- [x] Hosted package and installed-artifact gates confirm project/dependency/voice licenses, the exact allowlisted voice runtime/model, and absence of forbidden PDB/source/test/database/key/raw-or-test-audio material, private content, and developer paths.
 - [ ] README, screenshots, generated notes, release body, platform/Connected/voice/accessibility/signing status, and downloadable files describe the same artifact.
 - [ ] No telemetry, cloud upload, background recorder/indexer service, auto-start, file mutation, installed-app asset download, or updater was introduced.
 - [ ] Independent adversarial review finds no blocker and distinguishes verified, inferred, and unverified claims.
 
 ## Publication
 
-- [ ] Push the exact release commit to `main` normally and wait for required CI.
-- [ ] Create annotated tag `v1.1.0` on that exact commit and push normally.
-- [ ] Create non-prerelease GitHub Release `OmniBrille 1.1.0` with reviewed generated notes.
-- [ ] Attach only the exact validated installer, checksum, manifest, dependency graph, and notes; never rebuild after validation.
-- [ ] Verify the public page, tag, assets, direct download, checksum, repository metadata, and README links.
-- [ ] Retain the owner report/retrospective as historical evidence without rewriting the v1.0.0 record.
+- [x] Push the exact release commit to `main` normally and wait for required CI.
+- [x] Create annotated tag `v1.1.0` on that exact commit and push normally.
+- [x] Create stable non-prerelease GitHub Release `OmniBrille 1.1.0` with reviewed user-facing notes.
+- [x] Attach only the exact validated installer, checksum, manifest, dependency graph, generated notes, and hosted validation record; never rebuild after validation.
+- [x] Verify the public page, tag, assets, direct download, checksum, repository metadata, and README links.
+- [x] Retain the owner report/retrospective as historical evidence without rewriting the v1.0.0 record.

@@ -1,8 +1,8 @@
-> **Candidate template:** v1.1.0 is the current source/release candidate, not a published release. The current public release remains v1.0.0. These instructions become download instructions only after the exact candidate passes the remaining release gates and is published.
+> **Stable release:** v1.1.0 is the current public release. Download only from the official [v1.1.0 GitHub Release](https://github.com/nishdel/OmniBrille/releases/tag/v1.1.0); v1.0.0 remains available as the previous release.
 
 ## Install on Windows
 
-The OmniBrille 1.1.0 candidate produces a self-contained Windows x64 installer. It installs for the current user at `%LOCALAPPDATA%\Programs\OmniBrille`, creates a Start Menu shortcut and uninstall entry, and requires no separately installed .NET runtime or administrator access.
+The OmniBrille 1.1.0 release provides a self-contained Windows x64 installer. It installs for the current user at `%LOCALAPPDATA%\Programs\OmniBrille`, creates a Start Menu shortcut and uninstall entry, and requires no separately installed .NET runtime or administrator access.
 
 OmniBrille installs no service, startup task, file association, telemetry component, updater, or OmniSorSe binary. It includes an installer-owned, hash-bound local whisper.cpp runtime and English model; the installed app never downloads or updates those assets.
 
@@ -18,7 +18,7 @@ The generated artifact-specific notes place the expected SHA-256 above this temp
 
 ## License and source
 
-OmniBrille project code is licensed under the **MIT License**. The candidate includes the full `LICENSE`. If v1.1.0 is published, its source will be available from the matching `v1.1.0` tag and source archives on the official GitHub Release. Bundled third-party components retain their own installed licenses and notices. The Windows renderer uses a project-built SkiaSharp 3.119.4 native asset with the unused Adobe DNG/RAW codec excluded; its exact upstream pins, build configuration, hash, and notice derivation are recorded in the release manifest and repository provenance guide.
+OmniBrille project code is licensed under the **MIT License**. The release includes the full `LICENSE`, and its source is available from the matching `v1.1.0` tag and source archives on the official GitHub Release. Bundled third-party components retain their own installed licenses and notices. The Windows renderer uses a project-built SkiaSharp 3.119.4 native asset with the unused Adobe DNG/RAW codec excluded; its exact upstream pins, build configuration, hash, and notice derivation are recorded in the release manifest and repository provenance guide.
 
 ## What changed in v1.1
 
@@ -42,14 +42,14 @@ OmniBrille project code is licensed under the **MIT License**. The candidate inc
 
 ## Current limitations
 
-- Windows x64 is the only download target. Exact local build/install/upgrade qualification is recorded against Windows 10 22H2 x64; manual visual, physical-hardware, and assistive-technology qualification for this candidate remains pending. Other Windows client versions are not separately validated.
+- Windows x64 is the only download target. Exact local build/install/upgrade qualification is recorded against Windows 10 22H2 x64, and the public artifact passed a fresh hosted Windows lifecycle; manual visual, physical-hardware, and assistive-technology qualification remains unverified. Other Windows client versions are not separately validated.
 - Linux has source build/test coverage only; no package or interactive-runtime support is claimed. macOS runtime is unverified.
 - Connected mode depends on a compatible OmniSorSe build and is not the primary v1.1 support contract.
 - Automated keyboard, list, text-scaling, and automation coverage is not screen-reader certification.
 - Real microphone, physical sound output, Narrator/NVDA, custom-chrome DPI/snap, and GPU-backed continuous-motion validation remain outstanding and block their respective v1.1 release claims.
 - Destructive file operations, automatic updating, cloud services, always-listening audio, and telemetry are intentionally absent.
 
-The exact public v1.0.0 installer has been exercised as the predecessor for an in-place upgrade to this locally built candidate: installer-owned files advance to v1.1.0, the obsolete v1.0 runtime-diagnostics file is removed, preferences are preserved, and uninstall still removes only installer-owned state. The hosted release-candidate workflow independently covers a fresh install rather than this upgrade path.
+The exact public v1.0.0 installer was exercised as the predecessor for an in-place upgrade to an exact-release-commit local package: installer-owned files advanced to v1.1.0, the obsolete v1.0 runtime-diagnostics file was removed, preferences were preserved, and uninstall still removed only installer-owned state. The separately timestamped public artifact passed the hosted fresh-install workflow rather than that upgrade path.
 
 ## Privacy and support
 

@@ -6,9 +6,9 @@ All notable OmniBrille changes are recorded here. The project uses SemVer-compat
 
 - No changes yet.
 
-## [1.1.0] - release candidate, not published
+## [1.1.0] - 2026-09-04
 
-Candidate graph-interaction convergence release. v1.1.0 preserves the v1.0 Standalone/Connected authority and bounded-scene contracts while correcting hierarchy, navigation, sensory feedback, and ordinary-user Voice setup. It is not published until the retained release gates pass.
+Second stable public release. v1.1.0 preserves the v1.0 Standalone/Connected authority and bounded-scene contracts while correcting hierarchy, navigation, sensory feedback, and ordinary-user Voice setup. Public claims remain limited to the qualification actually performed and documented in the README and compatibility matrix.
 
 ### Added
 

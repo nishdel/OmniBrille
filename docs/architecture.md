@@ -4,7 +4,7 @@
 
 ## Status and goals
 
-This document describes the current architecture: an independently packaged Standalone Structure explorer and compatibility-dependent Connected Structure/Context/Hybrid explorer, plus optional click-to-toggle local Voice. The published support contract remains Windows x64 Standalone. The v1.1 candidate adds explicit semantic hierarchy, navigation, sensory feedback, safe file activation, and a pinned installer-owned voice bundle without changing Explorer Protocol v1 or server-authored Context authority.
+This document describes the current architecture: an independently packaged Standalone Structure explorer and compatibility-dependent Connected Structure/Context/Hybrid explorer, plus optional click-to-toggle local Voice. The published v1.1 support contract remains Windows x64 Standalone. The v1.1 release adds explicit semantic hierarchy, navigation, sensory feedback, safe file activation, and a pinned installer-owned voice bundle without changing Explorer Protocol v1 or server-authored Context authority.
 
 OmniSorSe owns scanning, indexing, Search, Content Intelligence, Media Intelligence, OCR, transcripts, Related Files, organization, safe file operations, and persistent intelligence/index state. OmniBrille owns standalone spatial navigation, provider-independent Structure/Context/Hybrid presentation, and optional local speech transcription as an input method. Hybrid composes existing authorized snapshots; it does not create intelligence. Voice queries still use the current standalone/OmniSorSe Search provider. In short, OmniSorSe is the brain; OmniBrille is the visual lens and spatial navigation interface.
 

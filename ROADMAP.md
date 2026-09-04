@@ -129,7 +129,7 @@ This candidate established the full-client shell but owner issues #1–#7 later 
 - [ ] Record the v1.1.0 signing decision before publication; the owner’s prior unsigned authorization applies specifically to v1.0.0.
 - [ ] Publish v1.1.0 only after all release gates pass. The existing v1.0.0 tag and artifacts are immutable historical release evidence.
 
-## Stage 14 — Focus Plane + Navigation Trail convergence (implementation complete; release qualification open)
+## Stage 14 — Focus Plane + Navigation Trail convergence (stable v1.1.0 published; manual follow-up open)
 
 - [x] Separate explicit current-focus/direct-child/previous-focus/Context/aggregate semantics from 12/16/remainder presentation density and keep every admitted direct child a recognizable glyph.
 - [x] Add visible Back, Up, Root, and Trail actions, 44-DIP shell/graph targets, geometric arrow navigation, and shared pointer/keyboard/voice session operations without deriving Connected authority from display paths.
@@ -138,7 +138,8 @@ This candidate established the full-client shell but owner issues #1–#7 later 
 - [x] Add actual-resource contrast, graph selection pattern, target size, semantic relation, connected case-sensitive identity, Up/Root, motion, mute, Voice grammar, and file-activation regression contracts.
 - [ ] Capture and independently review a fresh exact-candidate Dark/Light/dense/nested/Search/list/listening/minimum-window set; earlier v1.1 screenshots are superseded.
 - [ ] Validate real Narrator or NVDA behavior, actual Windows text/high-contrast settings, borderless chrome DPI/snap, GPU-backed motion, physical sound output, real microphone capture/transcription, and exact installed/uninstalled voice bytes.
-- [ ] Revalidate the claimed Connected combination with a live host, run clean exact-artifact/hosted qualification, record the v1.1 signing decision, and independently approve the final artifact before publication.
+- [x] Run clean exact-artifact/hosted qualification, record the explicit unsigned decision, and publish stable v1.1.0 from the exact qualified commit with deliberately limited public claims.
+- [ ] Revalidate the compatibility-dependent Connected combination with a live host and complete the outstanding manual visual, assistive-technology, hardware, and broader-platform follow-up before making any stronger claims.
 
 ## Unscheduled engineering follow-up
 

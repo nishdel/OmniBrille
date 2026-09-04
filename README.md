@@ -10,15 +10,15 @@ OmniBrille is a Windows desktop file explorer that keeps the folder you are expl
 
 ## Download
 
-[Download OmniBrille 1.0.0 for Windows x64](https://github.com/nishdel/OmniBrille/releases/download/v1.0.0/OmniBrille-1.0.0-win-x64-setup.exe), or review the checksum and supporting files on the official [v1.0.0 GitHub Release](https://github.com/nishdel/OmniBrille/releases/tag/v1.0.0). The installer is self-contained, installs for the current user, and does not require a separate .NET installation or administrator access. It can be removed from Windows Installed apps.
+[Download OmniBrille 1.1.0 for Windows x64](https://github.com/nishdel/OmniBrille/releases/download/v1.1.0/OmniBrille-1.1.0-win-x64-setup.exe), or review the checksum and supporting files on the official [v1.1.0 GitHub Release](https://github.com/nishdel/OmniBrille/releases/tag/v1.1.0). The installer is self-contained, installs for the current user, and does not require a separate .NET installation or administrator access. It can be removed from Windows Installed apps. [v1.0.0](https://github.com/nishdel/OmniBrille/releases/tag/v1.0.0) remains available as the previous stable release.
 
-> **Signing notice:** the v1.0.0 installer is unsigned. Windows may show **Unknown Publisher** or a SmartScreen reputation warning. Download only from the official GitHub Release, compare its SHA-256 with the attached checksum, and follow your organization’s security policy. A checksum detects corruption; it does not authenticate an unsigned publisher.
+> **Signing notice:** the v1.1.0 installer is unsigned. Windows may show **Unknown Publisher** or a SmartScreen reputation warning. Download only from the official GitHub Release, compare its SHA-256 with the attached checksum, and follow your organization’s security policy. A checksum detects corruption; it does not authenticate an unsigned publisher.
 
-Windows x64 is the only v1.0 download target. Interactive release qualification was performed on Windows 10 22H2 x64; other Windows client versions were not separately validated. Ubuntu is covered by source build/tests only; Linux desktop packaging and interactive use are not validated. macOS is not validated.
+Windows x64 is the only v1.1 download target. The exact public artifact passed automated Windows build/package checks and a fresh hosted Windows install, launch, relaunch, and uninstall lifecycle; an exact-commit local package also passed fresh-install and v1.0.0-upgrade checks on Windows 10 22H2 x64. Manual visual, screen-reader, real-microphone, physical-audio, GPU/DPI/chrome, and live Connected qualification were not completed for the public artifact. Ubuntu is covered by source build/tests only; Linux desktop packaging and interactive use are not validated. macOS is not validated.
 
 ## Current visual evidence
 
-The existing v1.1 images are retained only as [superseded historical evidence](docs/assets/screenshots/README.md). They do not depict the current hierarchy/navigation/motion implementation and are intentionally not presented here as current screenshots. A fresh set from the exact installed candidate is required before publication. The latest published download remains v1.0.0 until v1.1 completes its visual, exact-artifact, hardware/accessibility, signing-decision, and publication gates.
+The existing v1.1 images are retained only as [superseded historical evidence](docs/assets/screenshots/README.md). They do not depict the released hierarchy/navigation/motion implementation and are intentionally not presented here as current v1.1 screenshots. Publication does not imply that the outstanding visual, hardware, or assistive-technology checks were performed.
 
 ## What it does
 
@@ -34,7 +34,7 @@ The existing v1.1 images are retained only as [superseded historical evidence](d
 
 ## Standalone first; OmniSorSe optional
 
-OmniBrille works on its own for Structure navigation and structural Search. This is the supported v1.0 public experience.
+OmniBrille works on its own for Structure navigation and structural Search. This is the supported v1.1 public experience.
 
 A compatible [OmniSorSe](https://github.com/nishdel/OmniSorSe) build can explicitly launch OmniBrille with a short-lived, authorized Explorer Protocol session. In Connected mode, OmniSorSe remains the authority for roots, Search, metadata, and contextual relationships; OmniBrille presents those results as Structure, Context, or Hybrid without reading OmniSorSe’s database or inventing relationships.
 
@@ -44,21 +44,21 @@ Connected mode is compatibility-dependent and is not a promise of support for ev
 
 Standalone access is limited to the selected root. OmniBrille does not recursively follow directory reparse points, modify files, or persist the chosen root. Search is bounded and runs only when requested.
 
-Current v1.1 source implements explicit click-to-toggle local Voice with a pinned installer-owned whisper.cpp v1.9.2 runtime and quantized English base model. The build/package/application verify exact hashes; the installed app performs no voice-asset download or update. Real microphone hardware remains unvalidated and blocks any v1.1 Voice release claim. The published v1.0.0 artifact still uses its documented user-configured optional path. Neither version has a wake word or always-listening mode.
+The v1.1 release implements explicit click-to-toggle local Voice with a pinned installer-owned whisper.cpp v1.9.2 runtime and quantized English base model. The build/package/application verify exact hashes; the installed app performs no voice-asset download or update. Real microphone hardware remains unvalidated, so Voice is included but is not claimed as hardware-qualified. OmniBrille has no wake word or always-listening mode.
 
 The GitHub Release includes the release manifest, dependency graph, exact installer checksum, and generated artifact notes. The installed application contains the MIT project license and separately applicable third-party license/notice files. The repository records the [security and privacy posture](docs/SECURITY-PRIVACY.md). `Copy safe diagnostics` produces a user-reviewed support snapshot designed to exclude paths, filenames, queries, content, endpoints, grants, tokens, and session/node IDs.
 
 ## Current limitations
 
 - The Windows installer is unsigned.
-- The supported public contract is Windows x64 Standalone use; the interactive qualification host was Windows 10 22H2 x64.
+- The supported public contract is Windows x64 Standalone use; exact-artifact automated qualification is broader than the remaining manual visual/hardware evidence.
 - Connected mode requires a compatible OmniSorSe host and has narrower validation than Standalone.
-- Automated accessibility coverage checks keyboard/list/automation behavior, but v1.0 is not claimed as screen-reader-certified or manually validated with every assistive technology.
+- Automated accessibility coverage checks keyboard/list/automation behavior, but v1.1 is not claimed as screen-reader-certified or manually validated with every assistive technology.
 - Performance budgets and diagnostics are backed by tests and representative engineering measurements, not a guarantee for every filesystem or machine.
 - Voice is optional, Windows-only in implementation, and lacks real-microphone validation.
-- There is no auto-update mechanism. The stable installer identity is designed for future in-place releases, but v1.0 does not claim a manually validated upgrade path.
+- There is no auto-update mechanism. The stable installer identity supports in-place upgrades; an exact-commit local v1.1 package was exercised over the public v1.0.0 predecessor, but the separately timestamped public installer was not manually re-exercised as an upgrade.
 
-The official v1.0.0 GitHub Release contains the exact artifact notes and checksum. See [compatibility](COMPATIBILITY.md) for the released support contract.
+The official v1.1.0 GitHub Release contains the exact artifact notes and checksum. See [compatibility](COMPATIBILITY.md) for the released support contract.
 
 ## Keyboard essentials
 

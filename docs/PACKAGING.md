@@ -14,7 +14,7 @@ MSIX was not selected because its identity/signing lifecycle would raise the fir
 
 ## Version and artifacts
 
-`Directory.Build.props` is the version authority for the current v1.1.0 candidate:
+`Directory.Build.props` is the version authority for the current stable v1.1.0 source:
 
 - semantic/informational version: `1.1.0`;
 - assembly version: `1.1.0.0`;
@@ -96,4 +96,6 @@ Forward in-place upgrade is supported through the stable application ID. The v1.
 
 ## Publication boundary
 
-The owner selects and records the project license. Independent release review then checks the exact artifact, validation record, screenshots, public claims, release notes, signing disclosure, compatibility language, and repository state. Only after all mandatory gates pass may the intended version tag and GitHub Release be created. Never retag a different commit or replace an attached installer without changing the release/version and rerunning validation.
+The owner selects and records the project license. Independent release review then checks the exact artifact, validation record, screenshots, public claims, release notes, signing disclosure, compatibility language, and repository state. Never retag a different commit or replace an attached installer without changing the release/version and rerunning validation.
+
+Stable v1.1.0 was published unsigned from tag `v1.1.0` at commit `6a0199c70d230e5162028b860bad95d8fd12a8cb` after the owner explicitly accepted publication. Its automated exact-artifact gates passed; the manual visual, assistive-technology, hardware, live Connected, and broader-platform checks left open in the release checklist were not implied by publication and remain excluded from public qualification claims.
