@@ -54,6 +54,9 @@ UsePreviousGroup=yes
 
 [InstallDelete]
 Type: files; Name: "{app}\*.pdb"
+; Public v1.0.0 carried this runtime diagnostics binary. .NET 8 servicing no longer publishes
+; it for v1.1.0, so remove only that known installer-owned obsolete family during upgrade.
+Type: files; Name: "{app}\mscordaccore_*.dll"
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "*.pdb"; Flags: ignoreversion recursesubdirs createallsubdirs

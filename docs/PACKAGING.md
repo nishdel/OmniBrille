@@ -92,7 +92,7 @@ The installer owns its application directory, Start Menu shortcut, uninstall reg
 
 Safe UI preferences remain at `%LOCALAPPDATA%\OmniBrille\visual-preferences.json` and intentionally survive upgrade/uninstall. They may include theme, effects, diagnostics, sound, voice enablement, and language. Selected roots, queries, audio, transcripts, grants, bearer tokens, endpoints, connected node IDs, and Context caches are not persisted. User content and OmniSorSe state are never removed; uninstall removes installer-owned voice assets.
 
-Forward in-place upgrade is supported through the stable application ID. Downgrade is neither blocked nor promised. A public release must validate the exact installer’s fresh install, representative Standalone interaction, normal close/relaunch, and uninstall. Earlier release lifecycle measurements are historical evidence, not proof for a new exact artifact.
+Forward in-place upgrade is supported through the stable application ID. The v1.1 installer narrowly removes the obsolete installer-owned `mscordaccore_*.dll` runtime-diagnostics family carried by public v1.0.0; it does not broadly clear the application directory. Downgrade is neither blocked nor promised. A public release must validate both a fresh install and an upgrade from the exact public predecessor, plus representative Standalone interaction, normal close/relaunch, and uninstall. Earlier release lifecycle measurements are historical evidence, not proof for a new exact artifact.
 
 ## Publication boundary
 

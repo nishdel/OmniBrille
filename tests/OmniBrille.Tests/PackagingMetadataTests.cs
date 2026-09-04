@@ -61,6 +61,8 @@ public sealed class PackagingMetadataTests
         Assert.Contains("{autoprograms}\\OmniBrille", script, StringComparison.Ordinal);
         Assert.Contains("Excludes: \"*.pdb\"", script, StringComparison.Ordinal);
         Assert.Contains("Type: files; Name: \"{app}\\*.pdb\"", script, StringComparison.Ordinal);
+        Assert.Contains("Type: files; Name: \"{app}\\mscordaccore_*.dll\"", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("Type: filesandordirs; Name: \"{app}\\*\"", script, StringComparison.Ordinal);
         Assert.DoesNotContain("OMNISORSE_OMNIBRILLE_PATH", script, StringComparison.Ordinal);
         Assert.DoesNotContain(string.Concat("Omni", "Explorer"), script, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(string.Concat("Omni", "Nav"), script, StringComparison.OrdinalIgnoreCase);
