@@ -6,7 +6,7 @@
 
 Explore a folder as a spatial graph—locally, privately, and without indexing your whole computer.
 
-OmniBrille is a Windows desktop file explorer that keeps the folder you are exploring at the center and arranges its immediate contents around it. Direct children remain one truthful spatial plane; Back, Up, Root, and Trail provide distinct orientation. Search the selected tree, inspect terminal-style Details, and use either the visual graph or its synchronized accessible list.
+OmniBrille is a Windows desktop file explorer that keeps the folder you are exploring at the center and arranges its immediate contents around it. Back, Up, Root, and Trail provide distinct orientation. Search the selected tree, inspect terminal-style Details, and use either the visual graph or its synchronized accessible list.
 
 ## Download
 
@@ -18,19 +18,28 @@ Windows x64 is the only v1.1 download target. The exact public artifact passed a
 
 ## Current visual evidence
 
+The unreleased issue-fix branch has [four inspected software renders](docs/assets/screenshots/issue-audit-2026-09-11/README.md), showing actual subfolder previews in both themes and all 48 names in dense scenes at normal and minimum zoom. These synthetic-data captures document software composition; native rendering, motion comfort, and DPI validation remain outstanding.
+
 The existing v1.1 images are retained only as [superseded historical evidence](docs/assets/screenshots/README.md). They do not depict the released hierarchy/navigation/motion implementation and are intentionally not presented here as current v1.1 screenshots. Publication does not imply that the outstanding visual, hardware, or assistive-technology checks were performed.
 
-## What it does
+## What the current source does
+
+The source includes [Unreleased changes](CHANGELOG.md#unreleased) beyond the published download above. These changes do not imply qualification or publication of a new installer.
 
 - Starts empty and reads only a folder you explicitly choose.
 - Shows one focused folder and a bounded set of nearby items instead of crawling an entire drive.
+- Keeps direct children distinct from optional subfolder previews: at most four visible folders contribute up to three actual subfolders each, using only free slots within the same 48-node scene.
 - Streams large directories progressively and groups overflow into reversible pages.
-- Supports drill-down, distinct Back/Up/Root/Trail navigation, geometric keyboard selection, safe ordinary-file opening, Details, pan, and zoom.
+- Enters Structure folders and aggregate pages with one click, uses right-click for Back, and makes recent Trail stops actionable. Files remain single-click selections with explicit double-click or keyboard activation.
+- Supports distinct Back/Up/Root navigation, geometric keyboard selection, safe ordinary-file opening, Details, pan, and zoom.
+- Retains every on-screen node name, places labels around glyphs with connector lines where possible, and arranges like file types near each other without inventing semantic relationships. Long names use ellipsis; the synchronized list provides full-size reading in crowded scenes.
 - Searches names, folders, and paths inside the selected root with bounded foreground work.
 - Provides Dark and Light themes, reduced motion/effects, and an obvious persisted master Sound switch.
 - Provides a synchronized accessible list plus bounded graph `SelectionItem`/invoke automation over the same session state.
 - Stores only safe sensory/voice preferences; selected roots and searches are not persisted.
 - Has no telemetry, cloud upload, background indexer, service, auto-start entry, updater, or destructive file operation.
+
+Unreleased Voice interaction starts from the microphone button without an enablement submenu. Stop submits the utterance; two seconds of quiet after detected input also stops it. Initial silence does not submit a command. The pinned local bundle and the hardware-validation limits below remain unchanged.
 
 ## Standalone first; OmniSorSe optional
 

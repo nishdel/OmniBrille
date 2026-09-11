@@ -10,6 +10,7 @@ Historical decisions reconstructed after the fact must say **Reconstructed from 
 | --- | --- | --- |
 | [0001](0001-separate-provider-authorities.md) | Accepted | Keep standalone filesystem and connected OmniSorSe authority separate behind application-local provider contracts |
 | [0002](0002-bounded-deterministic-scenes.md) | Accepted | Use deterministic bounded Structure/Context/Hybrid scenes and a custom drawing renderer |
+| [0003](0003-bounded-descendant-previews.md) | Accepted | Acquire actual descendant previews through bounded provider operations, admitting them only into unused Structure scene slots |
 
 ## Minimal template
 

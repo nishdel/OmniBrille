@@ -11,6 +11,8 @@ Retain a report only for architecture/product boundary changes, serious regressi
 
 ## Reports
 
+- [`2026-09-11-github-issue-audit.md`](2026-09-11-github-issue-audit.md) — nine-issue audit, bounded actual previews, navigation/labels/Voice/sound corrections, software evidence, and retained manual acceptance gates.
+
 - [`2026-08-20-engineering-knowledge-foundation.md`](2026-08-20-engineering-knowledge-foundation.md) — repository archaeology and engineering-knowledge foundation.
 - [`2026-08-20-v1-public-release-preparation.md`](2026-08-20-v1-public-release-preparation.md) — v1.0 stable packaging, public presentation, preflight artifact qualification, and blocked publication boundary.
 - [`2026-08-20-v1-gpl-release-attempt.md`](2026-08-20-v1-gpl-release-attempt.md) — GPL-3.0-only decision, unsigned authorization, dependency-license blocker, and stopped v1.0 publication attempt.

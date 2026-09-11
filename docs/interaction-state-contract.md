@@ -9,7 +9,7 @@ This contract keeps OmniBrille's spatial presentation, keyboard/UIA behavior, se
 | Graph focus | `ExplorerSession.Neighborhood.FocusNodeId` | Center of the acquired bounded scene | Selection, keyboard focus, or density |
 | Selected node | `ExplorerSession.SelectedNode` | Item whose Details/actions are active | Graph focus or pointer hover |
 | Keyboard focus | Avalonia focus manager | Control receiving keys | Graph focus/selection |
-| Scene relation | `ExplorerSceneSemantics` | Current focus, direct child, previous focus, Context, both, or aggregate | `PresentationBand`, radius, opacity, or size |
+| Scene relation | `ExplorerSceneSemantics` | Current focus, direct child, descendant preview, previous focus, Context, both, or aggregate | `PresentationBand`, radius, opacity, or size |
 | Presentation band | layout/presentation policy | Bounded visual density/label priority | Filesystem depth or provider authority |
 | Provider authority | active `IExplorerProvider` | Standalone selected-root paths or Connected opaque IDs | Display path, Details text, or motion |
 
@@ -21,12 +21,13 @@ A newly acquired or navigated scene begins without a selected node; centering gr
 
 | User intent | Pointer/control | Keyboard | Voice | Session/result contract |
 | --- | --- | --- | --- | --- |
-| Select | single click | geometric arrows, list selection | `focus <visible name>` | Changes selection and Details only |
-| Activate selected | double click / Open | `Enter` | `open selected`, `enter selected` | Folder/aggregate navigates; ordinary Standalone file uses safe OS activation |
-| Back | `BACK` | `Backspace`, `Alt+Left` | `back`, `previous` | Unwinds chronological mode/refocus/aggregate/folder history |
+| Select | single click on file or Context/Hybrid node | geometric arrows, list selection | `focus <visible name>` | Changes selection and Details only |
+| Enter Structure folder or aggregate | first click on navigable folder, previous-focus node, or aggregate | select then `Enter` | `open selected`, `enter selected` | Navigates through the same session action; centered focus does not navigate to itself |
+| Activate selected | double click / Open | `Enter` | `open selected`, `enter selected` | Context/Hybrid explicitly refocus; ordinary Standalone file uses safe OS activation. Pointer double-click requires the same node and unchanged scene across both presses |
+| Back | `BACK` or graph right-click | `Backspace`, `Alt+Left` | `back`, `previous` | Unwinds chronological mode/refocus/aggregate/folder history |
 | Up | `UP` | `Alt+Up` | `up`, `parent` | Uses the provider-authored parent target; never display-path inference |
 | Root | `ROOT` | `Alt+Home` | `root`, `home` | Returns to the active Standalone path root or Connected opaque root |
-| Inspect history | `TRAIL` | normal Tab activation | no separate voice intent | Shows bounded human-safe history; Connected IDs remain hidden |
+| Jump to recent history | `TRAIL`, then named destination | normal Tab activation | no separate voice intent | Up to six named, mode-aware destinations in a scrolling surface. Targets remain private; stale or loading actions are rejected. Crossed history is removed only after successful acquisition |
 | Reopen Details | selection or Details action | `Ctrl+I` | `show details` | Reopens the same selected-node projection |
 
 Standalone file activation requires an explicit user action, an ordinary non-reparse file, a path inside the selected root, no reparse-point ancestor below that root, and a non-executable/script/shortcut/URL-like extension. Connected files cannot use projected paths; until the protocol provides an authorized host operation, the UI states that opening is unavailable.
@@ -36,7 +37,7 @@ Standalone file activation requires an explicit user action, an ordinary non-rep
 | Event/state | Visual | Announcement/UIA | Sound | Reduced motion / Sound off |
 | --- | --- | --- | --- | --- |
 | Keyboard enters graph | distinct canvas/selected target cue | selected `TreeItem` remains queryable | none | same static cue |
-| Hover node | bounded target lens and one/two-hop emphasis | no focus/selection change | debounced airy hover | no displacement under Reduced motion; no playback when muted |
+| Hover node | eased local magnification across target and nearby nodes; central focus remains steady | no focus/selection change | debounced airy hover | no displacement under Reduced motion; no playback when muted |
 | Select node | selection halo and Details update | `SelectionItem.IsSelected`; full Details semantics atomic | short select cue | no Details typing under Reduced motion |
 | Navigate | destination moves to focus; prior scene recedes | one polite completion status | folder/navigation cue | immediate base layout under Reduced motion |
 | Loading/Search/status | visible local surface as applicable | one independent polite status authority | none | unchanged |
@@ -45,7 +46,11 @@ Standalone file activation requires an explicit user action, an ordinary non-rep
 
 Graph motion is analytic and bounded around immutable deterministic coordinates. It never changes membership, edge topology, semantic relation, selection, or provider work. One approximately 24-fps foreground timer serves transition/float/lens invalidation and stops for Reduced motion, hidden/minimized windows, teardown, or no scene. There is no background simulation or ambient sound.
 
-Details assigns the complete semantic/automation string before starting its optional visual reveal. A new selection cancels the prior reveal. The terminal projection never emits per-character live announcements.
+Details assigns complete text and automation names to the actual Type-through-Index, summary, and relationship fields before starting an optional sequential visual clip reveal. A new selection or metadata replacement cancels the prior reveal; Reduced motion immediately removes the clips. The projection never substitutes a duplicate command header or emits per-character live announcements.
+
+Every admitted node whose center is on the graph retains its name at every zoom/text scale. Labels use measured widths and ellipsis for long text, move around glyphs and prior labels, and receive peripheral leader lines when displaced and unobstructed. The top/bottom HUD reserves graph-coordinate and label-placement space. Exceptional space pressure may still cause overlapping names; the synchronized list provides full-size reading without changing scene membership.
+
+Descendant previews are actual acquired subfolders, visibly marked with `↳`, connected to their direct-folder parent, and announced as two levels below focus. Their subdued size does not redefine the depth of nearby direct children. Like-type placement and deterministic asymmetry convey organization without adding a relationship.
 
 ## Accessibility and target contract
 
@@ -57,8 +62,8 @@ Details assigns the complete semantic/automation string before starting its opti
 
 ## Voice and audio failure independence
 
-Voice is a click-to-toggle convenience over existing actions: first activation listens; second activation stops and transcribes locally. Grammar has no destructive action, arbitrary shell/file command, or client-created Context. Missing microphone/runtime/model, recognition failure, or cancellation cannot affect typed/pointer navigation or replace provider state.
+Voice is a click-to-toggle convenience over existing actions: first activation enables Voice and listens without an enablement submenu; second activation stops and transcribes locally. The microphone becomes Stop while active, and the same control cancels during initialization/transcription. Two seconds of quiet after detected input also stops capture; initial silence does not submit an utterance. Quiet/duration callbacks and cancellation completion remain bound to their original operation, so older work cannot stop or reset a newer capture. Grammar has no destructive action, arbitrary shell/file command, or client-created Context. Missing microphone/runtime/model, recognition failure, or cancellation cannot affect typed/pointer navigation or replace provider state.
 
 The installed voice runtime/model are pinned, installer-owned, hash-bound, local-only assets whose hashes are rechecked whenever the bundle is resolved. The installed application does not download or update them. The process receives a minimal environment and bounded arguments/output/time. Its GUID workspace must be local and non-reparse; termination is awaited before zero/retry cleanup, and a cleanup failure is surfaced rather than silently ignored. No transcript or audio enters preferences, diagnostics, release metadata, or logs.
 
-Sound is optional redundant feedback generated locally in memory. The persisted `SOUND OFF` control prevents playback work; device failure is swallowed at the sound boundary and never changes `ExplorerSession` outcomes.
+Sound is optional redundant feedback generated locally in memory from bounded deterministic layered sweeps, clicks, and latch cues. The persisted `SOUND OFF` control prevents playback work; device failure is swallowed at the sound boundary and never changes `ExplorerSession` outcomes. Waveform tests can check bounds and silence tails; physical playback and subjective sound character require separate listening evidence.

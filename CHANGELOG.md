@@ -4,7 +4,28 @@ All notable OmniBrille changes are recorded here. The project uses SemVer-compat
 
 ## [Unreleased]
 
-- No changes yet.
+### Added
+
+- Clickable recent Trail destinations with human-readable names, exact provider-bound targets, stale-entry rejection, and chronological Back/mode/aggregate restoration.
+- Actual subfolder previews in Structure scenes: at most four admitted parent folders and three children each, only in free slots of the existing 48-node budget. Preview acquisition is provider-owned, bounded to one additional level, and cannot replace a newer or failed primary scene.
+
+### Changed
+
+- Structure folders and aggregate controls enter on the first click; right-click retraces Back history. Files still require an explicit activation, with double-click bound to the same node and scene. Context/Hybrid retain selection followed by explicit refocus.
+- Navigation controls have centered icons and clearer labels. The graph reserves space for persistent HUD controls. Structural layouts use deterministic varied angles and distances, with like file types grouped visually.
+- Edges and junctions terminate outside glyphs. Hover influence eases across the target and nearby nodes while the central orientation anchor stays still.
+- Every node whose center is in the viewport retains its name. Labels use measured widths, bounded placement around glyphs, and leader lines instead of hiding an arbitrary subset at different zoom levels.
+- The visual Details reveal spans the actual metadata fields; complete semantic text is assigned immediately, new selections cancel the reveal, and Reduced motion reveals it immediately.
+- Interaction sounds use deterministic layered sweeps and latch cues while retaining the existing persisted mute and bounded playback behavior.
+- The first microphone action enables Voice and starts listening directly. The microphone becomes Stop during an active operation; two seconds of quiet after detected input completes an utterance, while initial silence never submits a command.
+
+### Fixed
+
+- Deferred Voice startup no longer cancels itself through a duplicate preference-triggered capability refresh.
+- Voice silence/duration callbacks are bound to their originating operation; cancelled or obsolete recognition cannot publish a transcript or execute an action. Capture and returned PCM buffers are cleared after use.
+- Failed Trail/Structure-return navigation preserves the prior mode, scene, and history; late provider failures cannot restore obsolete state.
+
+These are current-source changes, not a new release or a claim of installed, hardware, visual, or assistive-technology qualification. Validation evidence and remaining gates are recorded separately from historical release entries.
 
 ## [1.1.0] - 2026-09-04
 

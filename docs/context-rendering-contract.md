@@ -4,7 +4,7 @@
 
 ## Status
 
-This is the renderer-facing contract implemented through Stage 10. OmniSorSe remains authoritative for every contextual node, relationship, score, reason, and provenance record; OmniBrille does not infer semantic relationships or read OmniSorSe storage directly. Synthetic pressure fixtures remain test-only and never appear in the production UI. Hybrid is a provider-independent composition of existing Structure and Context data, not a wire capability or semantic engine.
+This is the current renderer-facing contract, including the Stage 10 Hybrid boundary. OmniSorSe remains authoritative for every contextual node, relationship, score, reason, and provenance record; OmniBrille does not infer semantic relationships or read OmniSorSe storage directly. Synthetic pressure fixtures remain test-only and never appear in the production UI. Hybrid is a provider-independent composition of existing Structure and Context data, not a wire capability or semantic engine.
 
 Stage 5 consumes bounded contextual neighborhoods and Related Files through `GetNeighborhood(IncludeContext: true)` and focus-local `GetRelated`, with edge kind, strength, reason, evidence class, and provenance. The shipped `ExplorerEdge` does **not** contain a stable relationship ID. OmniBrille therefore derives an ephemeral session-local SHA-256-derived scene key from source, target, kind, reason, and provenance. That key only deduplicates immutable snapshots; it is not persisted or treated as durable across refresh/session restart.
 
@@ -14,7 +14,7 @@ Stage 3 profiling keeps one conservative combined scene envelope:
 
 | Item | Default limit | Rationale |
 |---|---:|---|
-| Combined visible nodes | 48 | Existing Structure readability and stable three-depth layout; includes focus, prior context, aggregates, and contextual nodes. |
+| Combined visible nodes | 48 | Bounded scene readability; includes focus, prior context, aggregates, and every admitted structural or contextual node. Presentation bands do not imply depth. |
 | Structural edges | 47 | A normal bounded containment tree needs at most `nodes - 1`. |
 | Contextual edges | 36 | 0.75 per node globally; enough for focus-local context without many-to-many saturation. |
 | Combined edge slots | 84 | Conservative envelope; a full structural tree plus the contextual cap normally uses 83. |
@@ -23,6 +23,8 @@ Stage 3 profiling keeps one conservative combined scene envelope:
 These are engineering defaults, not wire constants or universal hardware guarantees. Candidate 32/48/64 Structure scenes were profiled; 48 remains the readability default. A synthetic 48-node scene with 72 contextual edges was rejected because its density and cold-frame cost were disproportionate. The accepted 47-structural/36-context fixture produced 83 combined edges and a comfortable warmed local headless sample. Changing a limit requires new representative profiling, label-pressure review, keyboard/list review, and documentation.
 
 Context and Hybrid never add 48 nodes beside 48 Structure nodes. All modes share the 48-node cap. `ExplorerSession` retains the immutable provider snapshot separately from its filtered/rendered projection; the Context and Hybrid builders are stateless. The projection renders only endpoints of accepted relationships and accepted structural edges, and omitted server nodes remain honestly truncated. Client semantic clustering is forbidden. Presentation filtering/summary may group only exact server fields and never creates a relationship.
+
+Unreleased descendant preview acquisition belongs only to a successful Structure overview with unused scene slots. It samples actual subfolders through the active provider, checks explicit parent authority, and does not recursively expand Context/Hybrid or invent contextual edges. Hybrid continues to compose the retained snapshot's primary Structure focus and children through its existing builder; it does not independently acquire or admit the preview collection. See [ADR 0003](decisions/0003-bounded-descendant-previews.md).
 
 Hybrid allocation is deterministic. It keeps focus, structural parent/orientation, and immediate structural edges before lower-priority content; when matching Context exists it reserves at most 18 node slots for strongest authoritative relationship endpoints, then fills unused capacity with Structure. Shared structural/contextual IDs become one node with combined roles. The resulting structural and contextual edges still pass through their independent caps and the 84 combined cap.
 
@@ -52,6 +54,8 @@ The renderer distinguishes five layers without relying on color alone:
 - decorative background: faint, non-interactive atmosphere with no node IDs, automation peers, or filesystem meaning.
 
 Context edges must sit below focus glyphs and labels, must not permanently label every relationship, and must obey Reduced visual effects by removing nonessential glow/animation while keeping selection and line-style distinctions. Reduced motion makes relationship replacement immediate and understandable.
+
+The shared renderer retains names for every admitted node centered on the graph, using measured label placement and bounded leaders instead of zoom-dependent label omission. This does not add permanent edge labels or change relationship admission. Structural/Context connectors terminate outside their endpoint glyphs, and the shell's reserved HUD area also bounds label placement. A constrained viewport can still require ellipsis or yield overlaps; the accessible list retains the same authoritative node projection.
 
 ## Reason and provenance seam
 

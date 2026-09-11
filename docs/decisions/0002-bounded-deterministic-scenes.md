@@ -2,6 +2,8 @@
 
 Status: Accepted
 
+Current refinement: [ADR 0003](0003-bounded-descendant-previews.md) adds bounded actual descendant previews within the same scene cap. The current Structure layout varies radial slots and groups file types; deterministic placement and separate semantic depth remain unchanged principles.
+
 Reconstructed from repository evidence.
 
 ## Context

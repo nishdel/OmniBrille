@@ -1,6 +1,6 @@
 # Local click-to-toggle voice
 
-Stage 9 adds optional, one-shot voice input to OmniBrille. It is not a general assistant: each explicit utterance becomes either a deterministic UI/navigation command or an existing Search request. There is no wake word, always-listening mode, conversational loop, destructive voice action, LLM intent parser, cloud transcription requirement, or telemetry.
+Voice provides optional, one-shot input to OmniBrille. The current source includes Unreleased microphone/Stop and quiet-completion refinements to the Stage 9 boundary. Each explicit utterance becomes either a deterministic UI/navigation command or an existing Search request. There is no wake word, always-listening mode, conversational loop, destructive voice action, LLM intent parser, cloud transcription requirement, or telemetry.
 
 ## Technology decision
 
@@ -26,10 +26,10 @@ An unavailable or integrity-failing bundle reports a reinstall action and leaves
 
 1. Install the Windows x64 package containing the pinned voice bundle.
 2. Select English, or Auto-detect for free-form transcription. Deterministic commands are English-only.
-3. Click **Listen** or press `Ctrl+Shift+Space` once to begin.
-4. Click/press the same control again to stop and transcribe. `Escape` or **Cancel** stops capture/transcription.
+3. Click the **microphone** or press `Ctrl+Shift+Space` once to enable Voice and begin. No enablement submenu is required; this action owns the capability check and capture startup.
+4. Click **Stop**, press the same shortcut again, or pause for two seconds after detected input to stop and transcribe. During initialization or transcription the same control cancels the active operation. `Escape` or **Cancel** also cancels capture/transcription.
 
-Microphone activation is always visible in the bottom HUD. Capture automatically stops after 45 seconds. Reduced motion replaces the listening pulse with a static high-contrast state; Reduced visual effects removes optional glow while keeping state explicit. The recognized text appears briefly and can be corrected in the normal Search box.
+Microphone activation is visible in the bottom HUD through the Stop icon, level meter, and text state. Capture automatically stops after 45 seconds. The quiet detector uses normalized PCM peak samples reported approximately every 100 ms: a level of at least 0.025 marks detected input, and two seconds of lower levels then requests completion. This is a level gate, not a speech-recognition model; noise can trigger it. Initial silence alone never requests quiet-completion, and the duration limit reports no detected speech without submitting an utterance. Reduced motion replaces the listening pulse with a static high-contrast state; Reduced visual effects removes optional glow while keeping state explicit. The recognized text appears briefly and can be corrected in the normal Search box.
 
 ## Deterministic grammar
 
@@ -48,6 +48,7 @@ Standalone voice Search uses the current bounded standalone structural provider.
 
 - Voice readiness is lazy and cannot prevent application startup.
 - Microphone capture begins only after explicit activation and runs only inside OmniBrille.
+- Quiet and duration callbacks retain their originating operation identity. Cancellation, provider replacement, and a newer listening operation invalidate deferred callbacks/results before transcript display or command execution. Returned PCM clips and the capture buffer are cleared when their ownership ends.
 - The in-memory capture is bounded to 45 seconds. If whisper.cpp requires a file, OmniBrille creates a GUID-named, app-owned workspace on a local, non-network Windows volume, rejects reparse-point ancestors, and passes its WAV path through `ProcessStartInfo.ArgumentList`. Cancellation or timeout kills the process tree and waits for exit before cleanup. Audio/transcript buffers are zeroed, deletion is retried with bounded backoff, and the operation reports cleanup failure instead of claiming that locked sensitive files were removed. Provider startup schedules one background pass over at most sixteen stale, application-shaped workspaces older than one hour; it rejects files larger than OmniBrille's producer bounds before zeroing, and readiness/transcription await the result.
 - Raw audio and transcripts are not persisted or logged. The transcript preview is cleared after 12 seconds. Search receives the recognized query through the same in-memory flow as typed Search.
 - Sanitized diagnostics contain only voice state, bounded timing, transcript length, classification, and a safe error category—never audio, transcript text, runtime/model path, query, token, or user content.
