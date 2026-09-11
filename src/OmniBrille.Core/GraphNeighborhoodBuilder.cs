@@ -3,6 +3,8 @@ namespace OmniBrille.Core;
 public sealed class GraphNeighborhoodBuilder
 {
     public const int DefaultNodeBudget = 48;
+    public const int MaximumPreviewParents = 4;
+    public const int MaximumPreviewChildrenPerParent = 3;
 
     private readonly int _nodeBudget;
 
@@ -63,6 +65,7 @@ public sealed class GraphNeighborhoodBuilder
             ? BuildOverview(snapshot, orderedChildren, preferredNodeId, available, nodes, edges, pageableChildCount)
             : BuildRefinedPage(snapshot, orderedChildren, aggregatePage, available, nodes, edges);
         var hiddenCount = Math.Max(0, pageableChildCount - visibleChildCount);
+        AddPreviews(snapshot, nodes, edges);
 
         return new ExplorerNeighborhood(
             snapshot.Focus.Id,
@@ -73,6 +76,54 @@ public sealed class GraphNeighborhoodBuilder
             snapshot.Warning,
             snapshot.WasTruncated,
             aggregatePage is null ? null : NormalizePage(aggregatePage, orderedChildren.Length, available));
+    }
+
+    private void AddPreviews(ExplorerDirectorySnapshot snapshot, List<ExplorerNode> nodes, List<ExplorerEdge> edges)
+    {
+        if (snapshot.Previews is null || nodes.Count >= _nodeBudget)
+        {
+            return;
+        }
+
+        var admittedIds = nodes.Select(node => node.Id).ToHashSet(ExplorerIdentity.Comparer);
+        var parentIds = new HashSet<string>(ExplorerIdentity.Comparer);
+        foreach (var preview in snapshot.Previews.Take(MaximumPreviewParents))
+        {
+            if (!parentIds.Add(preview.ParentNodeId))
+            {
+                continue;
+            }
+
+            var parent = nodes.FirstOrDefault(node =>
+                ExplorerIdentity.Equals(node.Id, preview.ParentNodeId) &&
+                node.Kind == ExplorerNodeKind.Folder && node.IsNavigable &&
+                (node.Roles & ExplorerNodeRole.DescendantPreview) == 0 &&
+                edges.Any(edge => edge.Kind == ExplorerGraphEdgeKind.Structural &&
+                    ExplorerIdentity.Equals(edge.SourceId, snapshot.Focus.Id) &&
+                    ExplorerIdentity.Equals(edge.TargetId, node.Id)));
+            if (parent is null)
+            {
+                continue;
+            }
+
+            foreach (var child in preview.Children.Take(MaximumPreviewChildrenPerParent))
+            {
+                if (nodes.Count >= _nodeBudget)
+                {
+                    return;
+                }
+
+                if (child.Kind != ExplorerNodeKind.Folder || !child.IsNavigable || child.IsReparsePoint ||
+                    !ExplorerIdentity.Equals(child.ParentNavigationTarget, parent.Target) ||
+                    !admittedIds.Add(child.Id))
+                {
+                    continue;
+                }
+
+                nodes.Add(ExplorerNode.FromEntry(child, ExplorerNodeRole.Structural | ExplorerNodeRole.DescendantPreview));
+                edges.Add(new ExplorerEdge(parent.Id, child.Id));
+            }
+        }
     }
 
     private static ExplorerEntry[] Order(IReadOnlyList<ExplorerEntry> children) => children

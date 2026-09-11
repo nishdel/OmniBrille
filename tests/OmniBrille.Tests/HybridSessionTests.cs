@@ -46,6 +46,78 @@ public sealed class HybridSessionTests
     }
 
     [Fact]
+    public async Task TrailJump_RestoresTheChosenModeAndPrunesCrossedConnectedHistory()
+    {
+        var provider = HybridProvider.Immediate();
+        using var session = new ExplorerSession();
+        await session.OpenRootAsync(provider, provider);
+        session.SelectNode("a");
+        Assert.True(await session.SwitchToContextAsync());
+        Assert.True(await session.SwitchToHybridAsync());
+        Assert.True(await session.FocusHybridNodeAsync("b"));
+        Assert.Equal([ExplorerViewMode.Hybrid, ExplorerViewMode.Context, ExplorerViewMode.Structure],
+            session.NavigationTrail.Select(entry => entry.ViewMode));
+
+        Assert.True(await session.NavigateTrailAsync(session.NavigationTrail[1]));
+
+        Assert.Equal("a", session.Neighborhood!.FocusNodeId);
+        Assert.Equal(ExplorerViewMode.Context, session.ViewMode);
+        Assert.Equal(0, session.NavigationHistoryCount);
+        Assert.True(await session.GoBackAsync());
+        Assert.Equal(ExplorerViewMode.Structure, session.ViewMode);
+        Assert.Equal("a", session.SelectedNode!.Id);
+    }
+
+    [Fact]
+    public async Task FailedTrailStructureReturn_RetainsHybridModeAndBackHistory()
+    {
+        var provider = HybridProvider.Immediate();
+        using var session = new ExplorerSession();
+        await session.OpenRootAsync(provider, provider);
+        Assert.True(await session.SwitchToContextAsync("a"));
+        Assert.True(await session.SwitchToHybridAsync());
+        Assert.True(await session.FocusHybridNodeAsync("b"));
+        provider.FailDirectoryRequests = true;
+        var priorScene = session.Neighborhood;
+        var destination = session.NavigationTrail.Single(entry => entry.ViewMode == ExplorerViewMode.Structure);
+
+        Assert.False(await session.NavigateTrailAsync(destination));
+
+        Assert.Same(priorScene, session.Neighborhood);
+        Assert.Equal(ExplorerViewMode.Hybrid, session.ViewMode);
+        Assert.Equal(2, session.NavigationHistoryCount);
+        provider.FailDirectoryRequests = false;
+        Assert.True(await session.GoBackAsync());
+        Assert.Equal("a", session.Neighborhood!.FocusNodeId);
+        Assert.Equal(ExplorerViewMode.Hybrid, session.ViewMode);
+    }
+
+    [Fact]
+    public async Task TrailStructureReturn_RestoresAggregatePageBeforeBackReturnsToOverview()
+    {
+        var provider = HybridProvider.Immediate();
+        provider.AdditionalChildren = Enumerable.Range(0, 30)
+            .Select(index => Entry($"file-{index}", ExplorerNodeKind.File, "root")).ToArray();
+        using var session = new ExplorerSession(new GraphNeighborhoodBuilder(8));
+        await session.OpenRootAsync(provider, provider);
+        var aggregate = Assert.Single(session.Neighborhood!.Nodes, node => node.Kind == ExplorerNodeKind.Aggregate);
+        Assert.True(session.ActivateAggregate(aggregate.Id));
+        var pageIds = session.Neighborhood.Nodes.Select(node => node.Id).ToArray();
+        Assert.True(await session.SwitchToContextAsync("a"));
+        Assert.True(await session.SwitchToHybridAsync());
+
+        Assert.True(await session.NavigateTrailAsync(session.NavigationTrail.Single(entry =>
+            entry.ViewMode == ExplorerViewMode.Structure)));
+
+        Assert.Equal(ExplorerViewMode.Structure, session.ViewMode);
+        Assert.True(session.IsAggregateRefined);
+        Assert.Equal(pageIds, session.Neighborhood.Nodes.Select(node => node.Id));
+        Assert.True(await session.GoBackAsync());
+        Assert.False(session.IsAggregateRefined);
+        Assert.False(session.CanGoBack);
+    }
+
+    [Fact]
     public async Task Hybrid_FilterChangesOnlyContextLayerAndIsReversible()
     {
         var provider = HybridProvider.Immediate();
@@ -240,14 +312,21 @@ public sealed class HybridSessionTests
         public int DirectoryRequestCount { get; private set; }
         public string? LastDirectoryTarget { get; private set; }
         public SearchRequest? LastSearchRequest { get; private set; }
+        public bool FailDirectoryRequests { get; set; }
+        public IReadOnlyList<ExplorerEntry> AdditionalChildren { get; set; } = [];
 
         public Task<ExplorerDirectorySnapshot> GetDirectoryAsync(string path, CancellationToken cancellationToken)
         {
+            if (FailDirectoryRequests)
+            {
+                throw new IOException("Controlled Structure failure.");
+            }
+
             DirectoryRequestCount++;
             LastDirectoryTarget = path;
             return Task.FromResult(ExplorerIdentity.Equals(path, _otherRoot.Id)
                 ? new ExplorerDirectorySnapshot(_otherRoot, [_c])
-                : new ExplorerDirectorySnapshot(_root, [_a, _b]));
+                : new ExplorerDirectorySnapshot(_root, [_a, _b, .. AdditionalChildren]));
         }
 
         public Task<ExplorerSearchResult> SearchAsync(SearchRequest request, CancellationToken cancellationToken)

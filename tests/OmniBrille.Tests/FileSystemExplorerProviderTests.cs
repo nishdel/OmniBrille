@@ -7,6 +7,108 @@ namespace OmniBrille.Tests;
 public sealed class FileSystemExplorerProviderTests
 {
     [Fact]
+    public async Task DirectoryPreview_ReturnsAtMostThreeActualDirectFoldersWithParentAuthority()
+    {
+        using var root = new TemporaryDirectory();
+        for (var index = 0; index < 6; index++)
+        {
+            Directory.CreateDirectory(Path.Combine(root.Path, $"folder-{index}", "deeper"));
+        }
+        await File.WriteAllTextAsync(Path.Combine(root.Path, "file.txt"), "ordinary file");
+        var provider = new FileSystemExplorerProvider(root.Path);
+
+        var preview = await provider.GetDirectoryPreviewAsync(root.Path, CancellationToken.None);
+
+        Assert.Equal(root.Path, preview.Focus.Target);
+        Assert.Equal(3, preview.Children.Count);
+        Assert.True(preview.WasTruncated);
+        Assert.All(preview.Children, child =>
+        {
+            Assert.Equal(ExplorerNodeKind.Folder, child.Kind);
+            Assert.True(child.IsNavigable);
+            Assert.False(child.IsReparsePoint);
+            Assert.Equal(root.Path, child.ParentNavigationTarget);
+            Assert.Equal(root.Path, Path.GetDirectoryName(child.Path));
+        });
+    }
+
+    [Fact]
+    public async Task DirectoryPreview_StopsAfterSixtyFourInspectedNonFolderEntries()
+    {
+        using var root = new TemporaryDirectory();
+        for (var index = 0; index < 80; index++)
+        {
+            await File.WriteAllTextAsync(Path.Combine(root.Path, $"{index:D3}.txt"), "x");
+        }
+        var provider = new FileSystemExplorerProvider(root.Path);
+
+        var preview = await provider.GetDirectoryPreviewAsync(root.Path, CancellationToken.None);
+
+        Assert.Empty(preview.Children);
+        Assert.Equal(64, preview.TotalChildCount);
+        Assert.True(preview.WasTruncated);
+    }
+
+    [Fact]
+    public async Task DirectoryPreview_RejectsOutsideRootAndCancellationAndSanitizesMissingTarget()
+    {
+        using var root = new TemporaryDirectory();
+        using var other = new TemporaryDirectory();
+        var provider = new FileSystemExplorerProvider(root.Path);
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            provider.GetDirectoryPreviewAsync(other.Path, CancellationToken.None));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            provider.GetDirectoryPreviewAsync(root.Path, new CancellationToken(canceled: true)));
+
+        var target = Path.Combine(root.Path, "private-missing-folder");
+        var preview = await provider.GetDirectoryPreviewAsync(target, CancellationToken.None);
+
+        Assert.Equal(ExplorerFailureKind.NotFound, preview.Failure);
+        Assert.Empty(preview.Children);
+        Assert.DoesNotContain("private-missing-folder", preview.Warning, StringComparison.Ordinal);
+    }
+
+    [UnixSymlinkFact]
+    public async Task DirectoryPreview_RejectsReplacedReparseTargetAndReparseAncestor()
+    {
+        using var root = new TemporaryDirectory();
+        using var outside = new TemporaryDirectory();
+        Directory.CreateDirectory(Path.Combine(outside.Path, "private", "nested"));
+        var target = Path.Combine(root.Path, "ordinary");
+        Directory.CreateDirectory(target);
+        var provider = new FileSystemExplorerProvider(root.Path);
+        var snapshot = await provider.GetDirectoryAsync(root.Path, CancellationToken.None);
+        Assert.True(Assert.Single(snapshot.Children).IsNavigable);
+        Directory.Delete(target);
+        Directory.CreateSymbolicLink(target, outside.Path);
+        try
+        {
+            var replaced = await provider.GetDirectoryPreviewAsync(target, CancellationToken.None);
+            var beneathLink = await provider.GetDirectoryPreviewAsync(Path.Combine(target, "private"), CancellationToken.None);
+
+            Assert.Equal(ExplorerFailureKind.AccessDenied, replaced.Failure);
+            Assert.Equal(ExplorerFailureKind.AccessDenied, beneathLink.Failure);
+            Assert.Empty(replaced.Children);
+            Assert.Empty(beneathLink.Children);
+        }
+        finally
+        {
+            Directory.Delete(target);
+        }
+    }
+
+    private sealed class UnixSymlinkFactAttribute : FactAttribute
+    {
+        public UnixSymlinkFactAttribute()
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                Skip = "This fixture uses unprivileged Unix symlinks; Windows junction behavior needs its platform check.";
+            }
+        }
+    }
+
+    [Fact]
     public async Task GetDirectory_ReturnsFoldersFilesAndMetadata()
     {
         using var directory = new TemporaryDirectory();

@@ -22,8 +22,12 @@ public sealed class ExplorerSession : IDisposable
     private ExplorerEntry? _previousContext;
     private AggregatePage? _aggregatePage;
     private readonly List<ConnectedHistoryEntry> _connectedHistory = [];
+    private readonly List<string> _structureHistoryNames = [];
+    private IReadOnlyList<TrailDestination>? _trailDestinations;
     private string? _structureReturnTarget;
     private string? _structureReturnSelectionId;
+    private string? _structureReturnName;
+    private AggregatePage? _structureReturnAggregatePage;
     private long _loadRequestVersion;
     private long _searchRequestVersion;
     private long _detailsRequestVersion;
@@ -107,29 +111,25 @@ public sealed class ExplorerSession : IDisposable
 
     public int NavigationHistoryCount => _navigation.History.Count + _connectedHistory.Count;
 
-    public string NavigationTrailSummary
+    /// <summary>Recent Back destinations. Provider identities remain private to this session.</summary>
+    public IReadOnlyList<NavigationTrailEntry> NavigationTrail
     {
         get
         {
-            if (NavigationHistoryCount == 0)
+            if (IsLoading || Neighborhood is null)
             {
-                return "No previous focus.";
+                return [];
             }
 
-            if (ProviderMode == ExplorerProviderMode.Connected)
-            {
-                return $"{NavigationHistoryCount:N0} authorized focus stop(s). Opaque connected identities are not exposed as filesystem paths.";
-            }
-
-            return string.Join(
-                Environment.NewLine,
-                _navigation.History
-                    .AsEnumerable()
-                    .Reverse()
-                    .Take(6)
-                    .Select((path, index) => $"{index + 1}. {DisplayPathName(path)}"));
+            _trailDestinations ??= BuildTrailDestinations();
+            return _trailDestinations.Select(destination => destination.Entry).ToArray();
         }
     }
+
+    public string NavigationTrailSummary => NavigationTrail.Count == 0
+        ? "No previous focus."
+        : string.Join(Environment.NewLine, NavigationTrail.Select((entry, index) =>
+            $"{index + 1}. {entry.DisplayName} · {entry.ViewMode}"));
 
     public bool IsAggregateRefined => _aggregatePage is not null;
 
@@ -167,8 +167,12 @@ public sealed class ExplorerSession : IDisposable
         _aggregatePage = null;
         ViewMode = ExplorerViewMode.Structure;
         _connectedHistory.Clear();
+        _structureHistoryNames.Clear();
+        InvalidateTrail();
         _structureReturnTarget = null;
         _structureReturnSelectionId = null;
+        _structureReturnName = null;
+        _structureReturnAggregatePage = null;
         ContextFilter = ContextFilter.None;
         ContextFilterSummary = null;
 
@@ -192,7 +196,15 @@ public sealed class ExplorerSession : IDisposable
             path,
             ToEntry(previousFocus),
             preferredSelectionId,
-            () => _navigation.NavigateTo(path),
+            () =>
+            {
+                var historyCount = _navigation.History.Count;
+                _navigation.NavigateTo(path);
+                if (_navigation.History.Count > historyCount)
+                {
+                    _structureHistoryNames.Add(previousFocus?.Name ?? "Previous folder");
+                }
+            },
             showFailureScene: false,
             cancellationToken);
         return outcome.Applied && outcome.Failure == ExplorerFailureKind.None;
@@ -211,11 +223,8 @@ public sealed class ExplorerSession : IDisposable
                     previous.FocusNodeId,
                     previous.ViewMode,
                     pushHistory: false,
-                    cancellationToken);
-                if (restored)
-                {
-                    _connectedHistory.RemoveAt(index);
-                }
+                    cancellationToken,
+                    onCommitted: () => _connectedHistory.RemoveAt(index));
 
                 return restored;
             }
@@ -225,6 +234,7 @@ public sealed class ExplorerSession : IDisposable
 
         if (_aggregatePage is not null)
         {
+            InvalidateTrail();
             _aggregatePage = null;
             RebuildCurrentScene();
             SelectedNode = null;
@@ -247,10 +257,63 @@ public sealed class ExplorerSession : IDisposable
             target,
             ToEntry(previousFocus),
             preferredSelectionId: null,
-            () => _navigation.GoBack(),
+            () => RewindStructureHistory(_navigation.History.Count - 1),
             showFailureScene: false,
             cancellationToken);
         return outcome.Applied;
+    }
+
+    public async Task<bool> NavigateTrailAsync(
+        NavigationTrailEntry entry,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        var destination = IsLoading ? null : _trailDestinations?.FirstOrDefault(item =>
+            ReferenceEquals(item.Entry, entry));
+        if (destination is null || _provider is null)
+        {
+            return false;
+        }
+
+        if (destination.Kind == TrailDestinationKind.AggregateOverview)
+        {
+            return await GoBackAsync(cancellationToken);
+        }
+
+        if (destination.Kind == TrailDestinationKind.ConnectedHistory)
+        {
+            var previous = _connectedHistory[destination.HistoryIndex];
+            return await LoadConnectedSceneAsync(
+                previous.FocusNodeId,
+                previous.ViewMode,
+                pushHistory: false,
+                cancellationToken,
+                onCommitted: () => _connectedHistory.RemoveRange(
+                    destination.HistoryIndex,
+                    _connectedHistory.Count - destination.HistoryIndex));
+        }
+
+        if (destination.Kind == TrailDestinationKind.StructureReturn)
+        {
+            return await SwitchToStructureAsync(cancellationToken);
+        }
+
+        var target = _navigation.History[destination.HistoryIndex];
+        var previousFocus = Neighborhood?.Focus;
+        var outcome = await LoadDirectoryAsync(
+            target,
+            ToEntry(previousFocus),
+            preferredSelectionId: null,
+            commitNavigation: () =>
+            {
+                RewindStructureHistory(destination.HistoryIndex);
+                ViewMode = ExplorerViewMode.Structure;
+                _connectedHistory.Clear();
+            },
+            showFailureScene: false,
+            cancellationToken,
+            requireComplete: true);
+        return outcome.Applied && outcome.Failure == ExplorerFailureKind.None;
     }
 
     public async Task<bool> GoUpAsync(CancellationToken cancellationToken = default)
@@ -307,6 +370,7 @@ public sealed class ExplorerSession : IDisposable
         _aggregatePage = action.Kind == AggregateActionKind.Overview
             ? null
             : new AggregatePage(action.TargetOffset ?? 0, 0);
+        InvalidateTrail();
         RebuildCurrentScene();
         SelectedNode = null;
         SelectedNodeDetails = null;
@@ -463,6 +527,8 @@ public sealed class ExplorerSession : IDisposable
         {
             _structureReturnTarget = _navigation.CurrentPath;
             _structureReturnSelectionId = SelectedNode?.Id;
+            _structureReturnName = Neighborhood?.Focus.Name;
+            _structureReturnAggregatePage = _aggregatePage;
             _hybridStructureSnapshot = _currentSnapshot;
             _connectedHistory.Clear();
         }
@@ -481,7 +547,7 @@ public sealed class ExplorerSession : IDisposable
                     cancellationToken);
             }
 
-            var previous = new ConnectedHistoryEntry(ViewMode, Neighborhood!.FocusNodeId);
+            var previous = new ConnectedHistoryEntry(ViewMode, Neighborhood!.FocusNodeId, Neighborhood.Focus.Name);
             var retainedSnapshot = targetMode == ExplorerViewMode.Hybrid
                 ? MergeHybridStructure(_currentContextSnapshot, _hybridStructureSnapshot!)
                 : _currentContextSnapshot;
@@ -508,16 +574,19 @@ public sealed class ExplorerSession : IDisposable
 
         var target = _structureReturnTarget ?? _navigation.CurrentPath ?? AccessRoot;
         var selection = _structureReturnSelectionId;
-        var previousMode = ViewMode;
-        ViewMode = ExplorerViewMode.Structure;
-        _connectedHistory.Clear();
         var outcome = await LoadDirectoryAsync(
             target,
             previousContext: null,
             preferredSelectionId: selection,
-            commitNavigation: null,
+            commitNavigation: () =>
+            {
+                ViewMode = ExplorerViewMode.Structure;
+                _connectedHistory.Clear();
+                _aggregatePage = _structureReturnAggregatePage;
+            },
             showFailureScene: false,
-            cancellationToken);
+            cancellationToken,
+            requireComplete: true);
         if (outcome.Applied)
         {
             _currentContextSnapshot = null;
@@ -525,11 +594,6 @@ public sealed class ExplorerSession : IDisposable
             Status = "Structure mode restored.";
             NotifyChanged();
         }
-        else
-        {
-            ViewMode = previousMode;
-        }
-
         return outcome.Applied;
     }
 
@@ -635,8 +699,12 @@ public sealed class ExplorerSession : IDisposable
         _previousContext = null;
         _aggregatePage = null;
         _connectedHistory.Clear();
+        _structureHistoryNames.Clear();
+        InvalidateTrail();
         _structureReturnTarget = null;
         _structureReturnSelectionId = null;
+        _structureReturnName = null;
+        _structureReturnAggregatePage = null;
         ContextFilter = ContextFilter.None;
         ContextFilterSummary = null;
         ViewMode = ExplorerViewMode.Structure;
@@ -673,7 +741,8 @@ public sealed class ExplorerSession : IDisposable
         string nodeId,
         ExplorerViewMode targetMode,
         bool pushHistory,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action? onCommitted = null)
     {
         if (_provider is not IExplorerContextProvider contextProvider)
         {
@@ -688,8 +757,10 @@ public sealed class ExplorerSession : IDisposable
         _loadCancellation?.Dispose();
         _loadCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var requestVersion = Interlocked.Increment(ref _loadRequestVersion);
+        InvalidateTrail();
         var previousMode = ViewMode;
         var previousFocusId = Neighborhood?.FocusNodeId;
+        var previousFocusName = Neighborhood?.Focus.Name ?? "Previous item";
         var backup = new SceneBackup(
             Neighborhood,
             SelectedNode,
@@ -718,6 +789,7 @@ public sealed class ExplorerSession : IDisposable
                 return false;
             }
 
+            _loadCancellation.Token.ThrowIfCancellationRequested();
             var result = BuildConnectedNeighborhood(snapshot, targetMode);
             var neighborhood = result.Neighborhood;
             if (pushHistory &&
@@ -726,9 +798,10 @@ public sealed class ExplorerSession : IDisposable
                 (previousMode != targetMode ||
                  !ExplorerIdentity.Equals(previousFocusId, neighborhood.FocusNodeId)))
             {
-                _connectedHistory.Add(new ConnectedHistoryEntry(previousMode, previousFocusId));
+                _connectedHistory.Add(new ConnectedHistoryEntry(previousMode, previousFocusId, previousFocusName));
             }
 
+            onCommitted?.Invoke();
             ViewMode = targetMode;
             Neighborhood = neighborhood;
             _currentContextSnapshot = snapshot;
@@ -756,6 +829,12 @@ public sealed class ExplorerSession : IDisposable
         }
         catch (Exception exception) when (IsProviderFailure(exception))
         {
+            if (requestVersion != Volatile.Read(ref _loadRequestVersion))
+            {
+                (_provider as IExplorerProviderDiagnostics)?.ReportStaleResponseRejected();
+                return false;
+            }
+
             RestoreScene(backup);
             ViewMode = previousMode;
             LoadState = ExplorerLoadState.Failed;
@@ -782,13 +861,17 @@ public sealed class ExplorerSession : IDisposable
         string? preferredSelectionId,
         Action? commitNavigation,
         bool showFailureScene,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool requireComplete = false)
     {
         _loadCancellation?.Cancel();
         _loadCancellation?.Dispose();
         _loadCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var requestVersion = Interlocked.Increment(ref _loadRequestVersion);
+        InvalidateTrail();
         var stopwatch = Stopwatch.StartNew();
+        var provider = _provider!;
+        var loadToken = _loadCancellation.Token;
         var backup = new SceneBackup(
             Neighborhood,
             SelectedNode,
@@ -799,7 +882,11 @@ public sealed class ExplorerSession : IDisposable
             _aggregatePage);
         var children = new List<ExplorerEntry>();
         var navigationCommitted = commitNavigation is null;
-        _aggregatePage = null;
+        if (!requireComplete)
+        {
+            _aggregatePage = null;
+        }
+
         LoadState = ExplorerLoadState.Loading;
         LoadedItemCount = 0;
         Status = "Opening the bounded graph shell…";
@@ -807,7 +894,7 @@ public sealed class ExplorerSession : IDisposable
 
         try
         {
-            if (_provider is IProgressiveExplorerProvider progressiveProvider)
+            if (!requireComplete && _provider is IProgressiveExplorerProvider progressiveProvider)
             {
                 var progressiveBatchIndex = 0;
                 await foreach (var batch in progressiveProvider.GetDirectoryBatchesAsync(
@@ -877,7 +964,14 @@ public sealed class ExplorerSession : IDisposable
                     RestoreScene(backup);
                     LoadState = ExplorerLoadState.Failed;
                     Status = snapshot.Warning ?? "The folder could not be read.";
+                    NotifyChanged();
                     return new LoadOutcome(false, snapshot.Failure);
+                }
+
+                _loadCancellation.Token.ThrowIfCancellationRequested();
+                if (requireComplete)
+                {
+                    _aggregatePage = null;
                 }
 
                 if (!navigationCommitted && snapshot.Failure == ExplorerFailureKind.None)
@@ -895,7 +989,15 @@ public sealed class ExplorerSession : IDisposable
                 NotifyChanged();
             }
 
-            return new LoadOutcome(_currentSnapshot is not null, _currentSnapshot?.Failure ?? ExplorerFailureKind.None);
+            var loadedSnapshot = _currentSnapshot;
+            if (loadedSnapshot?.Failure == ExplorerFailureKind.None)
+            {
+                await PopulateDirectoryPreviewsAsync(loadedSnapshot, provider, requestVersion, loadToken);
+            }
+
+            return requestVersion == Volatile.Read(ref _loadRequestVersion)
+                ? new LoadOutcome(loadedSnapshot is not null, loadedSnapshot?.Failure ?? ExplorerFailureKind.None)
+                : LoadOutcome.Obsolete;
         }
         catch (OperationCanceledException) when (requestVersion == Volatile.Read(ref _loadRequestVersion))
         {
@@ -906,6 +1008,12 @@ public sealed class ExplorerSession : IDisposable
         }
         catch (Exception exception) when (IsProviderFailure(exception))
         {
+            if (requestVersion != Volatile.Read(ref _loadRequestVersion))
+            {
+                (_provider as IExplorerProviderDiagnostics)?.ReportStaleResponseRejected();
+                return LoadOutcome.Obsolete;
+            }
+
             RestoreScene(backup);
             LoadState = ExplorerLoadState.Failed;
             Status = ProviderMode == ExplorerProviderMode.Connected
@@ -1049,11 +1157,168 @@ public sealed class ExplorerSession : IDisposable
         (ExplorerIdentity.Equals(structureSnapshot.Focus.Id, focusId) ||
          structureSnapshot.Children.Any(child => ExplorerIdentity.Equals(child.Id, focusId)));
 
-    private static string DisplayPathName(string path)
+    private List<TrailDestination> BuildTrailDestinations()
     {
-        var name = Path.GetFileName(path);
-        return string.IsNullOrWhiteSpace(name) ? path : name;
+        const int trailLimit = 6;
+        var destinations = new List<TrailDestination>(trailLimit);
+        if (ViewMode != ExplorerViewMode.Structure)
+        {
+            for (var index = _connectedHistory.Count - 1; index >= 0 && destinations.Count < trailLimit; index--)
+            {
+                var history = _connectedHistory[index];
+                destinations.Add(new TrailDestination(
+                    new NavigationTrailEntry(history.DisplayName, history.ViewMode),
+                    TrailDestinationKind.ConnectedHistory,
+                    index));
+            }
+
+            if (destinations.Count < trailLimit)
+            {
+                destinations.Add(new TrailDestination(
+                    new NavigationTrailEntry(_structureReturnName ?? "Structure overview", ExplorerViewMode.Structure),
+                    TrailDestinationKind.StructureReturn));
+            }
+        }
+        else if (_aggregatePage is not null)
+        {
+            destinations.Add(new TrailDestination(
+                new NavigationTrailEntry($"{Neighborhood!.Focus.Name} overview", ExplorerViewMode.Structure),
+                TrailDestinationKind.AggregateOverview));
+        }
+
+        for (var index = _navigation.History.Count - 1; index >= 0 && destinations.Count < trailLimit; index--)
+        {
+            destinations.Add(new TrailDestination(
+                new NavigationTrailEntry(_structureHistoryNames[index], ExplorerViewMode.Structure),
+                TrailDestinationKind.StructureHistory,
+                index));
+        }
+
+        return destinations;
     }
+
+    private async Task PopulateDirectoryPreviewsAsync(
+        ExplorerDirectorySnapshot snapshot,
+        IExplorerProvider provider,
+        long requestVersion,
+        CancellationToken cancellationToken)
+    {
+        if (provider is not IExplorerDirectoryPreviewProvider previewProvider ||
+            ViewMode != ExplorerViewMode.Structure || _aggregatePage is not null || Neighborhood is null)
+        {
+            return;
+        }
+
+        var baseNeighborhood = Neighborhood;
+        var remainingSlots = SceneBudget - baseNeighborhood.Nodes.Count;
+        if (remainingSlots <= 0)
+        {
+            return;
+        }
+
+        bool IsCurrent() => !cancellationToken.IsCancellationRequested &&
+            requestVersion == Volatile.Read(ref _loadRequestVersion) &&
+            ReferenceEquals(provider, _provider) && ReferenceEquals(snapshot, _currentSnapshot) &&
+            ReferenceEquals(baseNeighborhood, Neighborhood) &&
+            ViewMode == ExplorerViewMode.Structure && _aggregatePage is null;
+
+        var parents = baseNeighborhood.Nodes
+            .Where(node => node.Kind == ExplorerNodeKind.Folder && node.IsNavigable &&
+                ExplorerSceneSemantics.RelationOf(baseNeighborhood, node) == ExplorerSceneRelation.DirectChild)
+            .Take(GraphNeighborhoodBuilder.MaximumPreviewParents)
+            .ToArray();
+        var previews = new List<ExplorerDirectoryPreview>();
+        var seenIds = baseNeighborhood.Nodes.Select(node => node.Id).ToHashSet(ExplorerIdentity.Comparer);
+        var targetComparer = provider.Mode == ExplorerProviderMode.Connected
+            ? ExplorerIdentity.Comparer
+            : PathBoundary.Comparer;
+        foreach (var parent in parents)
+        {
+            if (!IsCurrent() || remainingSlots == 0)
+            {
+                break;
+            }
+
+            var maximumChildren = Math.Min(GraphNeighborhoodBuilder.MaximumPreviewChildrenPerParent, remainingSlots);
+            var children = new List<ExplorerEntry>(maximumChildren);
+            var failed = false;
+            try
+            {
+                var preview = await previewProvider.GetDirectoryPreviewAsync(parent.Target, cancellationToken);
+                if (!IsCurrent())
+                {
+                    return;
+                }
+
+                if (preview.Failure != ExplorerFailureKind.None ||
+                    !ExplorerIdentity.Equals(preview.Focus.Id, parent.Id) ||
+                    !targetComparer.Equals(preview.Focus.Target, parent.Target))
+                {
+                    failed = true;
+                }
+                else
+                {
+                    // Providers enforce their bounded acquisition contract. Session admission
+                    // also verifies exact containment and never recursively previews descendants.
+                    foreach (var child in preview.Children.Take(GraphNeighborhoodBuilder.MaximumPreviewChildrenPerParent))
+                    {
+                        if (child.Kind == ExplorerNodeKind.Folder && child.IsNavigable && !child.IsReparsePoint &&
+                            targetComparer.Equals(child.ParentNavigationTarget, parent.Target) &&
+                            !seenIds.Contains(child.Id) && children.All(item => !ExplorerIdentity.Equals(item.Id, child.Id)))
+                        {
+                            children.Add(child);
+                            if (children.Count == maximumChildren)
+                            {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
+                InvalidDataException or TimeoutException ||
+                (provider as IExplorerProviderDiagnostics)?.IsProviderFailure(exception) is true)
+            {
+                failed = true;
+            }
+
+            if (!failed && children.Count > 0)
+            {
+                previews.Add(new ExplorerDirectoryPreview(parent.Id, children));
+                seenIds.UnionWith(children.Select(child => child.Id));
+                remainingSlots -= children.Count;
+            }
+        }
+
+        if (!IsCurrent() || previews.Count == 0)
+        {
+            return;
+        }
+
+        var enrichedSnapshot = snapshot with { Previews = previews };
+        _currentSnapshot = enrichedSnapshot;
+        _hybridStructureSnapshot = enrichedSnapshot;
+        Neighborhood = _neighborhoodBuilder.Build(enrichedSnapshot, _previousContext, SelectedNode?.Id);
+        SelectedNode = SelectedNode is null ? null : Neighborhood.Nodes.FirstOrDefault(node =>
+            ExplorerIdentity.Equals(node.Id, SelectedNode.Id));
+        UpdateHighlights(notify: false);
+        NotifyChanged();
+    }
+
+    private void RewindStructureHistory(int destinationIndex)
+    {
+        while (_navigation.History.Count > destinationIndex)
+        {
+            _navigation.GoBack();
+            _structureHistoryNames.RemoveAt(_structureHistoryNames.Count - 1);
+        }
+    }
+
+    private void InvalidateTrail() => _trailDestinations = null;
 
     private static ExplorerContextSnapshot MergeHybridStructure(
         ExplorerContextSnapshot contextSnapshot,
@@ -1104,6 +1369,9 @@ public sealed class ExplorerSession : IDisposable
 
     private void ApplyConnectedSnapshot(ExplorerContextSnapshot snapshot, ExplorerViewMode viewMode)
     {
+        _loadCancellation?.Cancel();
+        Interlocked.Increment(ref _loadRequestVersion);
+        InvalidateTrail();
         var result = BuildConnectedNeighborhood(snapshot, viewMode);
         ViewMode = viewMode;
         Neighborhood = result.Neighborhood;
@@ -1184,6 +1452,7 @@ public sealed class ExplorerSession : IDisposable
 
     private void CancelActiveOperations(bool reportCancellation)
     {
+        InvalidateTrail();
         _loadCancellation?.Cancel();
         _searchCancellation?.Cancel();
         _detailsCancellation?.Cancel();
@@ -1265,5 +1534,33 @@ public sealed class ExplorerSession : IDisposable
         ExplorerEntry? PreviousContext,
         AggregatePage? AggregatePage);
 
-    private sealed record ConnectedHistoryEntry(ExplorerViewMode ViewMode, string FocusNodeId);
+    private sealed record ConnectedHistoryEntry(ExplorerViewMode ViewMode, string FocusNodeId, string DisplayName);
+
+    private enum TrailDestinationKind
+    {
+        StructureHistory,
+        ConnectedHistory,
+        StructureReturn,
+        AggregateOverview,
+    }
+
+    private sealed record TrailDestination(
+        NavigationTrailEntry Entry,
+        TrailDestinationKind Kind,
+        int HistoryIndex = -1);
+}
+
+public sealed class NavigationTrailEntry
+{
+    internal NavigationTrailEntry(string displayName, ExplorerViewMode viewMode)
+    {
+        DisplayName = displayName;
+        ViewMode = viewMode;
+    }
+
+    public string DisplayName { get; }
+
+    public ExplorerViewMode ViewMode { get; }
+
+    public override string ToString() => $"{DisplayName} · {ViewMode}";
 }

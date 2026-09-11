@@ -56,8 +56,51 @@ public sealed class ContextSessionTests
 
         Assert.Equal("opaque-root", session.Neighborhood!.FocusNodeId);
         Assert.Equal(ExplorerViewMode.Context, session.ViewMode);
-        Assert.Contains("authorized focus stop", session.NavigationTrailSummary, StringComparison.Ordinal);
+        Assert.Contains("First report", session.NavigationTrailSummary, StringComparison.Ordinal);
         Assert.DoesNotContain("Node-A", session.NavigationTrailSummary, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ConnectedTrail_UsesHumanNamesAndExactOpaqueTargetsAcrossCaseDistinctHistory()
+    {
+        var provider = ContextProvider.Immediate("opaque-root", "Node-A", "node-a");
+        using var session = new ExplorerSession();
+        await session.OpenRootAsync(provider, provider);
+        Assert.True(await session.SwitchToContextAsync("Node-A"));
+        Assert.True(await session.FocusContextNodeAsync("node-a"));
+        Assert.True(await session.FocusContextNodeAsync("opaque-root"));
+
+        Assert.Equal(["Second report", "First report", "Authorized folder"],
+            session.NavigationTrail.Select(entry => entry.DisplayName));
+        Assert.DoesNotContain("opaque", session.NavigationTrailSummary, StringComparison.OrdinalIgnoreCase);
+        Assert.True(await session.NavigateTrailAsync(session.NavigationTrail[1]));
+        Assert.Equal("Node-A", session.Neighborhood!.FocusNodeId);
+        Assert.Equal(ExplorerViewMode.Context, session.ViewMode);
+        Assert.Equal(0, session.NavigationHistoryCount);
+        Assert.True(await session.GoBackAsync());
+        Assert.Equal("opaque-root", session.Neighborhood.FocusNodeId);
+        Assert.Equal(ExplorerViewMode.Structure, session.ViewMode);
+    }
+
+    [Fact]
+    public async Task FailedConnectedTrailJump_RetainsModeFocusAndHistory()
+    {
+        var provider = ContextProvider.Immediate();
+        using var session = new ExplorerSession();
+        await session.OpenRootAsync(provider, provider);
+        Assert.True(await session.SwitchToContextAsync("a"));
+        Assert.True(await session.FocusContextNodeAsync("b"));
+        provider.FailContextRequests = true;
+        var priorScene = session.Neighborhood;
+
+        Assert.False(await session.NavigateTrailAsync(session.NavigationTrail[0]));
+
+        Assert.Same(priorScene, session.Neighborhood);
+        Assert.Equal(ExplorerViewMode.Context, session.ViewMode);
+        Assert.Equal(1, session.NavigationHistoryCount);
+        provider.FailContextRequests = false;
+        Assert.True(await session.GoBackAsync());
+        Assert.Equal("a", session.Neighborhood!.FocusNodeId);
     }
 
     [Fact]
@@ -147,9 +190,9 @@ public sealed class ContextSessionTests
         private ContextProvider(bool immediate, string rootId, string firstId, string secondId)
         {
             _immediate = immediate;
-            _root = Entry(rootId, ExplorerNodeKind.Folder);
-            _a = Entry(firstId, ExplorerNodeKind.File, _root.Id);
-            _b = Entry(secondId, ExplorerNodeKind.File, _root.Id);
+            _root = Entry(rootId, ExplorerNodeKind.Folder) with { Name = "Authorized folder" };
+            _a = Entry(firstId, ExplorerNodeKind.File, _root.Id) with { Name = "First report" };
+            _b = Entry(secondId, ExplorerNodeKind.File, _root.Id) with { Name = "Second report" };
         }
 
         public static ContextProvider Immediate(string rootId = "root", string firstId = "a", string secondId = "b") =>
@@ -160,6 +203,7 @@ public sealed class ContextSessionTests
         public string AccessRoot => _root.Id;
         public ExplorerProviderMode Mode => ExplorerProviderMode.Connected;
         public int StaleResponseRejections { get; private set; }
+        public bool FailContextRequests { get; set; }
 
         public Task<ExplorerDirectorySnapshot> GetDirectoryAsync(string path, CancellationToken cancellationToken) =>
             Task.FromResult(new ExplorerDirectorySnapshot(_root, [_a, _b]));
@@ -169,6 +213,11 @@ public sealed class ContextSessionTests
 
         public Task<ExplorerContextSnapshot> GetContextAsync(string nodeId, CancellationToken cancellationToken)
         {
+            if (FailContextRequests)
+            {
+                throw new IOException("Controlled Context failure.");
+            }
+
             if (_immediate)
             {
                 return Task.FromResult(Snapshot(nodeId));

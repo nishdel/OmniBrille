@@ -34,6 +34,7 @@ public enum ExplorerNodeRole
     None = 0,
     Structural = 1,
     Contextual = 2,
+    DescendantPreview = 8,
 }
 
 /// <summary>
@@ -49,6 +50,7 @@ public enum ExplorerSceneRelation
     StructuralAndContextual,
     Aggregate,
     Visible,
+    DescendantPreview,
 }
 
 public static class ExplorerSceneSemantics
@@ -73,6 +75,11 @@ public static class ExplorerSceneSemantics
             return ExplorerSceneRelation.Aggregate;
         }
 
+        if ((node.Roles & ExplorerNodeRole.DescendantPreview) != 0)
+        {
+            return ExplorerSceneRelation.DescendantPreview;
+        }
+
         var structural = (node.Roles & ExplorerNodeRole.Structural) != 0;
         var contextual = (node.Roles & ExplorerNodeRole.Contextual) != 0;
         return (structural, contextual) switch
@@ -93,8 +100,19 @@ public static class ExplorerSceneSemantics
             ExplorerSceneRelation.Contextual => $"contextually related to {neighborhood.Focus.Name}",
             ExplorerSceneRelation.StructuralAndContextual => $"direct child of and contextually related to {neighborhood.Focus.Name}",
             ExplorerSceneRelation.Aggregate => "bounded overflow portal",
+            ExplorerSceneRelation.DescendantPreview => DescribePreview(neighborhood, node),
             _ => "visible graph item",
         };
+
+    private static string DescribePreview(ExplorerNeighborhood neighborhood, ExplorerNode node)
+    {
+        var parentId = neighborhood.Edges.FirstOrDefault(edge =>
+            edge.Kind == ExplorerGraphEdgeKind.Structural && ExplorerIdentity.Equals(edge.TargetId, node.Id))?.SourceId;
+        var parent = neighborhood.Nodes.FirstOrDefault(candidate => ExplorerIdentity.Equals(candidate.Id, parentId));
+        return parent is null
+            ? "subfolder preview; two levels below current focus"
+            : $"subfolder of {parent.Name}; two levels below current focus";
+    }
 }
 
 public enum ExplorerGraphEdgeKind
@@ -167,13 +185,16 @@ public sealed record ExplorerEntry(
     public string Target => NavigationTarget ?? Path;
 }
 
+public sealed record ExplorerDirectoryPreview(string ParentNodeId, IReadOnlyList<ExplorerEntry> Children);
+
 public sealed record ExplorerDirectorySnapshot(
     ExplorerEntry Focus,
     IReadOnlyList<ExplorerEntry> Children,
     ExplorerFailureKind Failure = ExplorerFailureKind.None,
     string? Warning = null,
     int? TotalChildCount = null,
-    bool WasTruncated = false);
+    bool WasTruncated = false,
+    IReadOnlyList<ExplorerDirectoryPreview>? Previews = null);
 
 public sealed record ExplorerNode(
     string Id,
@@ -340,4 +361,15 @@ public interface IProgressiveExplorerProvider
         string path,
         int batchSize,
         CancellationToken cancellationToken);
+}
+
+/// <summary>
+/// Optional shallow preview acquisition. Implementations cap work at 64 inspected entries,
+/// return at most three actual folders, and never recursively acquire their contents.
+/// </summary>
+public interface IExplorerDirectoryPreviewProvider
+{
+    public Task<ExplorerDirectorySnapshot> GetDirectoryPreviewAsync(
+        string target,
+        CancellationToken cancellationToken = default);
 }

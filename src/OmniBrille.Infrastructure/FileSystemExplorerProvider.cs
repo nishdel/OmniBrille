@@ -6,6 +6,7 @@ namespace OmniBrille.Infrastructure;
 public sealed class FileSystemExplorerProvider :
     IExplorerProvider,
     IProgressiveExplorerProvider,
+    IExplorerDirectoryPreviewProvider,
     IExplorerSearchProvider
 {
     public const int DefaultEnumerationLimit = 5_000;
@@ -28,6 +29,91 @@ public sealed class FileSystemExplorerProvider :
     }
 
     public string AccessRoot { get; }
+
+    public Task<ExplorerDirectorySnapshot> GetDirectoryPreviewAsync(
+        string target,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var normalized = Normalize(target);
+        EnsureWithinAccessRoot(normalized);
+        return Task.Run(() => ReadDirectoryPreview(normalized, cancellationToken), cancellationToken);
+    }
+
+    private ExplorerDirectorySnapshot ReadDirectoryPreview(string path, CancellationToken cancellationToken)
+    {
+        var focus = CreateFocus(path, readMetadata: false);
+        var children = new List<ExplorerEntry>(3);
+        var observed = 0;
+        try
+        {
+            EnsureOrdinaryPreviewDirectory(path);
+            focus = CreateFocus(path);
+            using var entries = Directory.EnumerateFileSystemEntries(path).GetEnumerator();
+            while (observed < 64 && children.Count < 3)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!entries.MoveNext())
+                {
+                    return new ExplorerDirectorySnapshot(focus, children, TotalChildCount: observed);
+                }
+
+                observed++;
+                try
+                {
+                    var entry = CreateEntry(entries.Current);
+                    if (entry.Kind == ExplorerNodeKind.Folder && entry.IsNavigable && !entry.IsReparsePoint)
+                    {
+                        children.Add(entry);
+                    }
+                }
+                catch (Exception exception) when (IsRecoverable(exception))
+                {
+                    // Unreadable entries consume the inspection budget as well.
+                }
+            }
+
+            return new ExplorerDirectorySnapshot(focus, children, TotalChildCount: observed, WasTruncated: true);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return new ExplorerDirectorySnapshot(focus, [], ExplorerFailureKind.AccessDenied,
+                "This folder is unavailable for a safe bounded preview.", observed);
+        }
+        catch (DirectoryNotFoundException)
+        {
+            return new ExplorerDirectorySnapshot(focus, [], ExplorerFailureKind.NotFound,
+                "This folder no longer exists.", observed);
+        }
+        catch (Exception exception) when (IsRecoverable(exception))
+        {
+            return new ExplorerDirectorySnapshot(focus, [], ExplorerFailureKind.EnumerationFailed,
+                "This folder preview could not be read.", observed);
+        }
+    }
+
+    private void EnsureOrdinaryPreviewDirectory(string path)
+    {
+        for (var directory = new DirectoryInfo(path); directory is not null; directory = directory.Parent)
+        {
+            if (!directory.Exists)
+            {
+                throw new DirectoryNotFoundException();
+            }
+
+            if ((directory.Attributes & FileAttributes.ReparsePoint) != 0)
+            {
+                throw new UnauthorizedAccessException("Preview traversal through a reparse point is unavailable.");
+            }
+
+            if (PathBoundary.Comparer.Equals(directory.FullName, AccessRoot))
+            {
+                return;
+            }
+        }
+
+        throw new UnauthorizedAccessException("The preview target has no authorized access-root ancestor.");
+    }
 
     public async Task<ExplorerDirectorySnapshot> GetDirectoryAsync(
         string path,
@@ -352,7 +438,7 @@ public sealed class FileSystemExplorerProvider :
         return new ExplorerSearchResult(hits, truncated, directoriesVisited, warning);
     }
 
-    private ExplorerEntry CreateFocus(string path)
+    private ExplorerEntry CreateFocus(string path, bool readMetadata = true)
     {
         var name = Path.GetFileName(path);
         if (string.IsNullOrWhiteSpace(name))
@@ -363,7 +449,7 @@ public sealed class FileSystemExplorerProvider :
         DateTimeOffset? modified = null;
         try
         {
-            modified = Directory.Exists(path) ? Directory.GetLastWriteTimeUtc(path) : null;
+            modified = readMetadata && Directory.Exists(path) ? Directory.GetLastWriteTimeUtc(path) : null;
         }
         catch (Exception exception) when (IsRecoverable(exception))
         {
@@ -415,7 +501,8 @@ public sealed class FileSystemExplorerProvider :
             size,
             modified,
             isReparsePoint,
-            isDirectory && !isReparsePoint);
+            isDirectory && !isReparsePoint,
+            ParentNavigationTarget: Path.GetDirectoryName(normalized));
     }
 
     private void EnsureWithinAccessRoot(string path)

@@ -83,12 +83,9 @@ public static class GraphPresentationPolicy
                     ? GraphLevelOfDetail.Glyph
                     : GraphLevelOfDetail.Point;
 
-        if ((node.Roles & ExplorerNodeRole.Structural) != 0 && level < GraphLevelOfDetail.Glyph)
-        {
-            level = GraphLevelOfDetail.Glyph;
-        }
-
-        if (node.Kind == ExplorerNodeKind.Aggregate && level < GraphLevelOfDetail.Labeled)
+        // Every admitted item retains its name. Zoom changes type size and placement,
+        // not an arbitrary subset of identifiable files (#8).
+        if (level < GraphLevelOfDetail.Labeled)
         {
             level = GraphLevelOfDetail.Labeled;
         }
@@ -168,19 +165,60 @@ public static class GraphPresentationPolicy
 
     public static int RecommendedLabelBudget(double zoom, int sceneNodeCount, double textScale = 1)
     {
-        var scale = Math.Clamp(textScale, 1, 2);
-        var scaleLimit = scale >= 1.75 ? 10 : scale >= 1.4 ? 14 : scale >= 1.15 ? 18 : int.MaxValue;
-        if (zoom < 0.7)
-        {
-            return Math.Min(scaleLimit, Math.Min(10, sceneNodeCount));
-        }
+        return Math.Clamp(sceneNodeCount, 0, GraphNeighborhoodBuilder.DefaultNodeBudget);
+    }
 
-        if (zoom > 1.35)
+    /// <summary>Moves colliding labels to nearby free space instead of silently hiding names.</summary>
+    public static IReadOnlyDictionary<string, LabelBox> PlaceLabels(
+        IEnumerable<LabelCandidate> candidates, LabelBox viewport,
+        IReadOnlyList<LabelBox> glyphs, double padding = 3)
+    {
+        ArgumentNullException.ThrowIfNull(candidates);
+        ArgumentNullException.ThrowIfNull(glyphs);
+        var placed = new Dictionary<string, LabelBox>(ExplorerIdentity.Comparer);
+        foreach (var candidate in candidates.OrderByDescending(item => item.Priority).ThenBy(item => item.NodeId, ExplorerIdentity.Comparer))
         {
-            return Math.Min(scaleLimit, Math.Min(34, sceneNodeCount));
-        }
+            var original = candidate.Bounds;
+            var width = Math.Min(original.Width, viewport.Width);
+            var height = Math.Min(original.Height, viewport.Height);
+            LabelBox At(double x, double y) => new(
+                Math.Clamp(x, viewport.X, viewport.X + viewport.Width - width),
+                Math.Clamp(y, viewport.Y, viewport.Y + viewport.Height - height), width, height);
+            bool Free(LabelBox box)
+            {
+                for (var index = 0; index < glyphs.Count; index++)
+                {
+                    if (box.Intersects(glyphs[index], padding)) { return false; }
+                }
+                foreach (var existing in placed.Values)
+                {
+                    if (box.Intersects(existing, padding)) { return false; }
+                }
+                return true;
+            }
 
-        return Math.Min(scaleLimit, Math.Min(sceneNodeCount <= 24 ? 24 : 22, sceneNodeCount));
+            var chosen = At(original.X, original.Y);
+            if (!Free(chosen))
+            {
+                var found = false;
+                // Search outward in bounded screen-space rings; the first clear slot
+                // stays near its glyph. This also handles large text and zoomed-out scenes.
+                var limit = (int)Math.Ceiling(Math.Max(viewport.Width, viewport.Height) / 18);
+                for (var ring = 1; ring <= limit && !found; ring++)
+                {
+                    for (var side = 0; side < 16; side++)
+                    {
+                        var angle = -Math.PI / 2 + side * Math.PI / 8;
+                        var proposal = At(original.X + Math.Cos(angle) * ring * 18, original.Y + Math.Sin(angle) * ring * 18);
+                        if (Free(proposal)) { chosen = proposal; found = true; break; }
+                    }
+                }
+            }
+            // At an exceptionally constrained viewport retain the name; the synchronized
+            // list remains the full-size reading surface. Never drop a random subset.
+            placed[candidate.NodeId] = chosen;
+        }
+        return placed;
     }
 
     private static bool EqualsId(string left, string? right) =>

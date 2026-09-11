@@ -29,6 +29,20 @@ public sealed class ExplorerSceneSemanticsTests
         Assert.Equal("direct child of root", ExplorerSceneSemantics.Describe(scene, child));
     }
 
+    [Fact]
+    public void Describe_PreviewNamesItsActualParentWithoutExposingOpaqueIdsOrCallingItADirectChild()
+    {
+        var focus = Node("secret-root", ExplorerNodeKind.Folder, ExplorerNodeRole.Structural) with { Name = "Current folder" };
+        var parent = Node("secret-parent", ExplorerNodeKind.Folder, ExplorerNodeRole.Structural) with { Name = "Projects" };
+        var preview = Node("secret-preview", ExplorerNodeKind.Folder, ExplorerNodeRole.Structural | ExplorerNodeRole.DescendantPreview) with { Name = "Client" };
+        var scene = new ExplorerNeighborhood(focus.Id, [focus, parent, preview],
+            [new ExplorerEdge(focus.Id, parent.Id), new ExplorerEdge(parent.Id, preview.Id)], 1, 0);
+
+        Assert.Equal(ExplorerSceneRelation.DescendantPreview, ExplorerSceneSemantics.RelationOf(scene, preview));
+        Assert.Equal("subfolder of Projects; two levels below current focus", ExplorerSceneSemantics.Describe(scene, preview));
+        Assert.Equal("direct child of Current folder", ExplorerSceneSemantics.Describe(scene, parent));
+    }
+
     private static ExplorerNode Node(string id, ExplorerNodeKind kind, ExplorerNodeRole roles) =>
         new(id, id, id, kind, null, null, kind == ExplorerNodeKind.Folder, Roles: roles);
 }

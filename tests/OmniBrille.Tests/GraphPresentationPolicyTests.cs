@@ -5,11 +5,11 @@ namespace OmniBrille.Tests;
 public sealed class GraphPresentationPolicyTests
 {
     [Theory]
-    [InlineData(1.0, 22)]
-    [InlineData(1.25, 18)]
-    [InlineData(1.5, 14)]
-    [InlineData(2.0, 10)]
-    public void RecommendedLabelBudget_ReducesDensityAsTextScales(double textScale, int expected)
+    [InlineData(1.0, 48)]
+    [InlineData(1.25, 48)]
+    [InlineData(1.5, 48)]
+    [InlineData(2.0, 48)]
+    public void RecommendedLabelBudget_KeepsEveryNameAsTextScales(double textScale, int expected)
     {
         Assert.Equal(expected, GraphPresentationPolicy.RecommendedLabelBudget(1, 48, textScale));
     }
@@ -120,11 +120,39 @@ public sealed class GraphPresentationPolicyTests
     }
 
     [Theory]
-    [InlineData(0.55, 48, 10)]
-    [InlineData(1.0, 48, 22)]
-    [InlineData(1.5, 48, 34)]
-    public void RecommendedLabelBudget_IsZoomAware(double zoom, int nodes, int expected) =>
+    [InlineData(0.55, 48, 48)]
+    [InlineData(1.0, 48, 48)]
+    [InlineData(1.5, 48, 48)]
+    public void RecommendedLabelBudget_DoesNotHideNamesWhenZoomChanges(double zoom, int nodes, int expected) =>
         Assert.Equal(expected, GraphPresentationPolicy.RecommendedLabelBudget(zoom, nodes));
+
+    [Theory]
+    [InlineData(0.5, 0.3)]
+    [InlineData(1.0, 0.56)]
+    [InlineData(2.0, 0.7)]
+    public void EveryAdmittedFileHasALabelWithoutHover(double zoom, double scale)
+    {
+        var node = Node("far-away");
+        var result = GraphPresentationPolicy.Evaluate(node, new(node.Id, 0.6, 0.5, scale, 0.7, 1, 3), Context() with { Zoom = zoom });
+        Assert.True(result.LevelOfDetail >= GraphLevelOfDetail.Labeled);
+    }
+
+    [Fact]
+    public void LabelPlacementMovesCollisionsWithoutDroppingNamesOrCoveringGlyphs()
+    {
+        var candidates = Enumerable.Range(0, 48).Select(index => new LabelCandidate($"n{index:D2}", new LabelBox(360, 250, 75, 16), 0)).ToArray();
+        LabelBox[] glyphs = [new(340, 240, 80, 55)];
+        var placed = GraphPresentationPolicy.PlaceLabels(candidates, new(6, 6, 808, 508), glyphs);
+        Assert.Equal(48, placed.Count);
+        foreach (var (id, box) in placed)
+        {
+            Assert.InRange(box.X, 6, 814 - box.Width);
+            Assert.InRange(box.Y, 6, 514 - box.Height);
+            Assert.DoesNotContain(glyphs, glyph => box.Intersects(glyph, 3));
+            Assert.DoesNotContain(placed, other => other.Key != id && box.Intersects(other.Value, 3));
+        }
+        Assert.Equal(placed, GraphPresentationPolicy.PlaceLabels(candidates.Reverse(), new(6, 6, 808, 508), glyphs));
+    }
 
     private static ExplorerNode Node(string id) => new(id, id, id, ExplorerNodeKind.File, null, null, false);
 

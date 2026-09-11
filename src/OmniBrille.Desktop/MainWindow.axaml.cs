@@ -43,6 +43,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
     private bool _isSynchronizingAccessibleList;
     private bool _voicePulseHigh;
     private string _detailsTypingTarget = string.Empty;
+    private (TextBlock Control, string Text)[] _detailsTypingFields = [];
     private int _detailsTypingIndex;
     private string? _lastDetailsNodeId;
     private string? _lastAnnouncement;
@@ -558,7 +559,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
 
     private void OnHistoryClick(object? sender, RoutedEventArgs e)
     {
-        if (_session.NavigationHistoryCount == 0)
+        if (_session.NavigationTrail.Count == 0)
         {
             return;
         }
@@ -1136,7 +1137,17 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         {
             _preferences = (_preferences with { VoiceEnabled = true }).Normalize();
             _preferencesStore.Save(_preferences);
-            VoiceEnabledToggle.IsChecked = true;
+            // This click owns startup. Do not also start a capability refresh from the
+            // preference event, which would make this same click cancel Loading.
+            _isApplyingPreferences = true;
+            try
+            {
+                VoiceEnabledToggle.IsChecked = true;
+            }
+            finally
+            {
+                _isApplyingPreferences = false;
+            }
         }
 
         try
@@ -1200,18 +1211,16 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             _voiceTranscriptTimer.Stop();
         }
         VoiceCancelButton.IsVisible = _voice.IsActive;
-        VoiceButton.Content = _voice.State switch
-        {
-            VoiceCapabilityState.Listening => "Listening… Stop",
-            VoiceCapabilityState.Loading or VoiceCapabilityState.Transcribing or VoiceCapabilityState.Executing => "Cancel voice",
-            VoiceCapabilityState.Disabled => "Listen",
-            _ => "Listen",
-        };
+        VoiceMicrophoneIcon.IsVisible = !_voice.IsActive;
+        VoiceStopIcon.IsVisible = _voice.IsActive;
+        ToolTip.SetTip(VoiceButton, _voice.State == VoiceCapabilityState.Listening
+            ? "Stop and transcribe · Ctrl+Shift+Space"
+            : _voice.IsActive ? "Cancel voice · Escape" : "Listen · Ctrl+Shift+Space");
         var stateName = _voice.State.ToString();
         AutomationProperties.SetName(VoiceButton, $"Toggle local listening. Voice state: {stateName}");
         AutomationProperties.SetHelpText(
             VoiceButton,
-            "Press once to begin bounded microphone capture and again to stop and transcribe locally. Keyboard shortcut Control Shift Space.");
+            "Press once to listen, then press Stop or pause for two seconds after speaking to transcribe locally. Escape cancels. Keyboard shortcut Control Shift Space.");
         AutomationProperties.SetName(VoiceHud, $"Voice input. {_voice.Status}");
 
         var shouldAnimate = _voice.State == VoiceCapabilityState.Listening &&
@@ -1614,7 +1623,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         BackButton.IsEnabled = _session.CanGoBack && !_session.IsLoading;
         UpButton.IsEnabled = _session.CanGoUp && !_session.IsLoading;
         ChooseFolderButton.IsEnabled = _session.CanGoRoot && !_session.IsLoading;
-        HistoryButton.IsEnabled = _session.NavigationHistoryCount > 0;
+        HistoryButton.IsEnabled = _session.NavigationTrail.Count > 0;
         HistoryButton.Content = $"TRAIL {_session.NavigationHistoryCount}";
         SoundButton.Content = _preferences.SoundEnabled ? "SOUND ON" : "SOUND OFF";
         AutomationProperties.SetName(
@@ -1667,6 +1676,12 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         if (selected is not null)
         {
             UpdateDetails(selected, neighborhood);
+        }
+        else
+        {
+            _detailsTypingTimer.Stop();
+            _detailsTypingFields = [];
+            _lastDetailsNodeId = null;
         }
 
         SearchResultsList.ItemsSource = results?.Hits;
@@ -1798,7 +1813,7 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
                 ? _session.ViewMode == ExplorerViewMode.Hybrid
                     ? "Read-only indexed data. Solid edges show Structure; dashed edges show OmniSorSe-authored Context."
                     : "Read-only indexed data supplied by OmniSorSe Explorer Protocol v1."
-                : "Single-click selects and inspects. Double-click enters a folder or opens an ordinary file with Windows. Reparse points and executable/script-like files are never launched.";
+                : "Click a folder to enter; right-click the graph to go back. Click a file to inspect; double-click to open it with Windows. Reparse points and executable/script-like files are never launched.";
         DetailsIndexText.Text = connectedDetails is null
             ? _session.ProviderMode == ExplorerProviderMode.Connected ? "Loading…" : "Not applicable"
             : connectedDetails.IsFullyIndexed ? "Complete" : "Incomplete";
@@ -1842,22 +1857,33 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
             AutomationProperties.SetHelpText(DetailsPanel, accessibleRelationshipSummary);
         }
 
-        var terminal = string.Join(
-            Environment.NewLine,
-            $"> inspect --node \"{selected.Name}\"",
-            $"TYPE  {DetailsTypeText.Text}",
-            $"ACCESS  {DetailsAccessText.Text}",
-            $"INDEX  {DetailsIndexText.Text}",
-            "STATUS  READY");
-        AutomationProperties.SetName(DetailsTerminalText, terminal.Replace(Environment.NewLine, ". "));
-        StartDetailsTyping(selected.Id, terminal);
+        StartDetailsTyping(selected.Id);
     }
 
-    private void StartDetailsTyping(string nodeId, string terminal)
+    private void StartDetailsTyping(string nodeId)
     {
+        (TextBlock Control, string Label)[] fields =
+        [
+            (DetailsTypeText, "Type"), (DetailsSizeText, "Size/items"),
+            (DetailsModifiedText, "Modified"), (DetailsAccessText, "Access"),
+            (DetailsPathText, "Path"), (DetailsHintText, "Action"),
+            (DetailsIndexText, "Index"), (DetailsSummaryText, "Summary"),
+            (DetailsRelationshipText, "Relationship reason"),
+            (DetailsRelationshipStrengthText, "Relationship ranking strength"),
+            (DetailsRelationshipEvidenceText, "Relationship evidence class"),
+            (DetailsProvenanceText, "Relationship provenance"),
+        ];
+        _detailsTypingFields = fields.Select(field => (field.Control, field.Control.Text ?? string.Empty)).ToArray();
+        foreach (var field in fields)
+        {
+            // UIA receives the complete value immediately; only its visual clip changes.
+            AutomationProperties.SetName(field.Control, $"{field.Label}: {field.Control.Text}");
+        }
+        var terminal = string.Join("\n", _detailsTypingFields.Select(field => field.Text));
         if (ExplorerIdentity.Equals(_lastDetailsNodeId, nodeId) &&
             string.Equals(_detailsTypingTarget, terminal, StringComparison.Ordinal))
         {
+            ApplyDetailsTyping();
             return;
         }
 
@@ -1867,11 +1893,12 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
         _detailsTypingTimer.Stop();
         if (_preferences.ReducedMotion)
         {
-            DetailsTerminalText.Text = terminal;
+            _detailsTypingIndex = int.MaxValue;
+            ApplyDetailsTyping();
             return;
         }
 
-        DetailsTerminalText.Text = string.Empty;
+        ApplyDetailsTyping();
         _detailsTypingTimer.Start();
     }
 
@@ -1879,13 +1906,40 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
     {
         if (_preferences.ReducedMotion || _detailsTypingIndex >= _detailsTypingTarget.Length)
         {
-            DetailsTerminalText.Text = _detailsTypingTarget;
+            _detailsTypingIndex = int.MaxValue;
+            ApplyDetailsTyping();
             _detailsTypingTimer.Stop();
             return;
         }
 
-        _detailsTypingIndex = Math.Min(_detailsTypingTarget.Length, _detailsTypingIndex + 4);
-        DetailsTerminalText.Text = _detailsTypingTarget[.._detailsTypingIndex];
+        _detailsTypingIndex = Math.Min(_detailsTypingTarget.Length, _detailsTypingIndex + Math.Max(4, _detailsTypingTarget.Length / 60));
+        ApplyDetailsTyping();
+    }
+
+    private void ApplyDetailsTyping()
+    {
+        var remaining = _detailsTypingIndex;
+        foreach (var field in _detailsTypingFields)
+        {
+            var visible = Math.Min(field.Text.Length, remaining);
+            if (visible == field.Text.Length)
+            {
+                field.Control.Clip = null;
+            }
+            else if (visible == 0)
+            {
+                field.Control.Clip = new Avalonia.Media.RectangleGeometry(default);
+            }
+            else
+            {
+                var caret = field.Control.TextLayout.HitTestTextPosition(visible);
+                var clip = new Avalonia.Media.GeometryGroup();
+                clip.Children.Add(new Avalonia.Media.RectangleGeometry(new Rect(0, 0, field.Control.Bounds.Width, caret.Y)));
+                clip.Children.Add(new Avalonia.Media.RectangleGeometry(new Rect(0, caret.Y, caret.X, caret.Height)));
+                field.Control.Clip = clip;
+            }
+            remaining -= visible;
+        }
     }
 
     private void ApplyPreferencesToControls()
@@ -1936,7 +1990,8 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
 
         if (_preferences.ReducedMotion && _detailsTypingTimer.IsEnabled)
         {
-            DetailsTerminalText.Text = _detailsTypingTarget;
+            _detailsTypingIndex = int.MaxValue;
+            ApplyDetailsTyping();
             _detailsTypingTimer.Stop();
         }
         UpdateVoiceView();
@@ -2098,7 +2153,33 @@ public sealed partial class MainWindow : Window, IDisposable, IVoiceActionTarget
     {
         if (HistoryText is not null)
         {
-            HistoryText.Text = _session.NavigationTrailSummary;
+            HistoryText.Text = _session.NavigationTrail.Count == 0 ? "No previous focus." : "Recent stops";
+            HistoryEntries.Children.Clear();
+            foreach (var entry in _session.NavigationTrail)
+            {
+                var button = new Button
+                {
+                    Content = $"{entry.DisplayName} · {entry.ViewMode}",
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
+                    HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Left,
+                    MinHeight = 44,
+                };
+                button.Classes.Add("hud");
+                AutomationProperties.SetName(button, $"Return to {entry.DisplayName}, {entry.ViewMode}");
+                button.Click += async (_, _) =>
+                {
+                    HistoryPanel.IsVisible = false;
+                    _detailsDismissed = true;
+                    try
+                    {
+                        if (await _session.NavigateTrailAsync(entry)) { _sound.Play(InteractionSoundCue.Navigate); }
+                    }
+                    catch (OperationCanceledException) { }
+                    UpdateView();
+                    GraphScene.Focus();
+                };
+                HistoryEntries.Children.Add(button);
+            }
         }
     }
 

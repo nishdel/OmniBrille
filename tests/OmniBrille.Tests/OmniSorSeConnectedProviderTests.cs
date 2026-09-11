@@ -9,6 +9,102 @@ namespace OmniBrille.Tests;
 public sealed class OmniSorSeConnectedProviderTests
 {
     [Fact]
+    public async Task DirectoryPreview_UsesOneBoundedOpaquePageAndAdmitsThreeActualFolders()
+    {
+        var root = Node("root-id", "Indexed", Protocol.ExplorerNodeKind.Source, null) with
+        {
+            AuthorizedPath = Path.GetTempPath(),
+        };
+        var children = Enumerable.Range(0, 80)
+            .Select(index => Node($"folder-{index}", $"Folder {index}", Protocol.ExplorerNodeKind.Folder, root.Id))
+            .ToArray();
+        var client = new FakeProtocolClient(root, children);
+        var provider = new OmniSorSeConnectedProvider(client, Info(), root);
+
+        var preview = await provider.GetDirectoryPreviewAsync(root.Id, CancellationToken.None);
+
+        Assert.Equal(root.Id, preview.Focus.Target);
+        Assert.Equal(3, preview.Children.Count);
+        Assert.Equal(1, client.ChildrenCalls);
+        Assert.Equal(1, client.DetailsCalls);
+        Assert.Equal(32, client.LastChildrenRequest!.MaximumResults);
+        Assert.Equal(root.Id, client.LastChildrenRequest.ParentNodeId);
+        Assert.Null(client.LastChildrenRequest.ContinuationToken);
+        Assert.True(preview.WasTruncated);
+        Assert.All(preview.Children, child =>
+        {
+            Assert.Equal(ExplorerNodeKind.Folder, child.Kind);
+            Assert.Equal(root.Id, child.ParentNavigationTarget);
+            Assert.StartsWith("folder-", child.Target, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public async Task DirectoryPreview_DoesNotFetchContinuationToFindFolders()
+    {
+        var root = Node("root-id", "Indexed", Protocol.ExplorerNodeKind.Source, null);
+        var children = Enumerable.Range(0, 32)
+            .Select(index => Node($"file-{index}", $"File {index}", Protocol.ExplorerNodeKind.File, root.Id))
+            .Append(Node("later-folder", "Later", Protocol.ExplorerNodeKind.Folder, root.Id))
+            .ToArray();
+        var client = new FakeProtocolClient(root, children);
+        var provider = new OmniSorSeConnectedProvider(client, Info(), root);
+
+        var preview = await provider.GetDirectoryPreviewAsync(root.Id, CancellationToken.None);
+
+        Assert.Empty(preview.Children);
+        Assert.Equal(1, client.ChildrenCalls);
+        Assert.True(preview.WasTruncated);
+    }
+
+    [Theory]
+    [InlineData(true, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(false, false, true)]
+    public async Task DirectoryPreview_RejectsWrongParentOversizedPageAndWrongFocus(
+        bool wrongParent, bool oversizedPage, bool wrongFocus)
+    {
+        var root = Node("root-id", "Indexed", Protocol.ExplorerNodeKind.Source, null);
+        var children = Enumerable.Range(0, 40)
+            .Select(index => Node($"folder-{index}", $"Folder {index}", Protocol.ExplorerNodeKind.Folder,
+                wrongParent ? "other-parent" : root.Id))
+            .ToArray();
+        var client = new FakeProtocolClient(root, children)
+        {
+            ReturnUnscopedChildren = wrongParent,
+            ReturnOversizedPage = oversizedPage,
+            ReturnWrongFocus = wrongFocus,
+        };
+        var provider = new OmniSorSeConnectedProvider(client, Info(), root);
+
+        await Assert.ThrowsAsync<ExplorerProtocolMalformedResponseException>(() =>
+            provider.GetDirectoryPreviewAsync(root.Id, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task DirectoryPreview_PropagatesCancellationAndFailureWithoutFilesystemFallback()
+    {
+        var root = Node("root-id", "Indexed", Protocol.ExplorerNodeKind.Source, null) with
+        {
+            AuthorizedPath = Path.GetTempPath(),
+        };
+        var client = new FakeProtocolClient(root, []) { BlockChildren = true };
+        var provider = new OmniSorSeConnectedProvider(client, Info(), root);
+        using var cancellation = new CancellationTokenSource();
+        var preview = provider.GetDirectoryPreviewAsync(root.Id, cancellation.Token);
+        await client.ChildrenStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => preview);
+        Assert.True(client.CancellationObserved);
+
+        var failedClient = new FakeProtocolClient(root, []) { FailChildren = true };
+        var failedProvider = new OmniSorSeConnectedProvider(failedClient, Info(), root);
+        await Assert.ThrowsAsync<IOException>(() =>
+            failedProvider.GetDirectoryPreviewAsync(root.Id, CancellationToken.None));
+        Assert.Equal(root.Id, failedClient.LastChildrenRequest!.ParentNodeId);
+    }
+
+    [Fact]
     public async Task ProgressiveStructure_UsesOpaqueIdsAndProtocolTotals()
     {
         var root = Node("opaque-root", "Indexed", Protocol.ExplorerNodeKind.Source, null, childCount: 80);
@@ -252,6 +348,12 @@ public sealed class OmniSorSeConnectedProviderTests
         public bool BlockChildren { get; init; }
         public bool RepeatContinuation { get; init; }
         public bool ReturnUnscopedChildren { get; init; }
+        public bool ReturnOversizedPage { get; init; }
+        public bool ReturnWrongFocus { get; init; }
+        public bool FailChildren { get; init; }
+        public int ChildrenCalls { get; private set; }
+        public int DetailsCalls { get; private set; }
+        public Protocol.ExplorerChildrenRequest? LastChildrenRequest { get; private set; }
         public TaskCompletionSource ChildrenStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public bool CancellationObserved { get; private set; }
         public Protocol.ExplorerNeighborhood? ContextNeighborhood { get; init; }
@@ -275,7 +377,13 @@ public sealed class OmniSorSeConnectedProviderTests
             Protocol.ExplorerChildrenRequest request,
             CancellationToken cancellationToken)
         {
+            ChildrenCalls++;
+            LastChildrenRequest = request;
             ChildrenStarted.TrySetResult();
+            if (FailChildren)
+            {
+                throw new IOException("Controlled connection failure.");
+            }
             if (BlockChildren)
             {
                 try
@@ -294,7 +402,7 @@ public sealed class OmniSorSeConnectedProviderTests
             IReadOnlyList<Protocol.ExplorerNode> matching = ReturnUnscopedChildren
                 ? _children
                 : _children.Where(node => node.ParentId == request.ParentNodeId).ToArray();
-            var page = matching.Skip(offset).Take(count).ToArray();
+            var page = matching.Skip(offset).Take(ReturnOversizedPage ? count + 1 : count).ToArray();
             var total = matching.Count;
             var next = RepeatContinuation
                 ? "o:0"
@@ -322,7 +430,12 @@ public sealed class OmniSorSeConnectedProviderTests
 
         public Task<Protocol.ExplorerNodeDetails> GetNodeDetailsAsync(Protocol.ExplorerNodeDetailsRequest request, CancellationToken cancellationToken)
         {
+            DetailsCalls++;
             var node = _nodes[request.NodeId];
+            if (ReturnWrongFocus)
+            {
+                node = node with { Id = "unrelated-focus" };
+            }
             return Task.FromResult(Details.Node.Id == node.Id
                 ? Details
                 : new Protocol.ExplorerNodeDetails(node, null, null, null, [], [], null, [], true));

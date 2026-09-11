@@ -9,7 +9,11 @@ namespace OmniBrille.HeadlessTests;
 
 public static class TestAppBuilder
 {
-    public static AppBuilder BuildAvaloniaApp() => AppBuilder
-        .Configure<App>()
-        .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = true });
+    public static AppBuilder BuildAvaloniaApp()
+    {
+        var renderEvidence = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OMNIBRILLE_RENDER_EVIDENCE"));
+        var builder = AppBuilder.Configure<App>()
+            .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = !renderEvidence });
+        return renderEvidence ? builder.UseSkia().WithInterFont() : builder;
+    }
 }

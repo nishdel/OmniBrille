@@ -10,6 +10,7 @@ namespace OmniBrille.Infrastructure.OmniSorSe;
 public sealed class OmniSorSeConnectedProvider :
     IExplorerProvider,
     IProgressiveExplorerProvider,
+    IExplorerDirectoryPreviewProvider,
     IExplorerSearchProvider,
     IExplorerContextProvider,
     IExplorerNodeDetailsProvider,
@@ -63,6 +64,30 @@ public sealed class OmniSorSeConnectedProvider :
         ExplorerProtocolException or
         ExplorerProtocolMalformedResponseException;
 
+    public async Task<ExplorerDirectorySnapshot> GetDirectoryPreviewAsync(
+        string target,
+        CancellationToken cancellationToken)
+    {
+        // The existing stream validates/maps issued IDs. Disposing after its first page
+        // avoids continuation acquisition; projected display paths never become authority.
+        await foreach (var batch in GetDirectoryBatchesAsync(target, 32, cancellationToken).ConfigureAwait(false))
+        {
+            if (batch.AddedChildren.Count == 0 && !batch.IsComplete)
+            {
+                continue;
+            }
+
+            var folders = batch.AddedChildren
+                .Where(entry => entry.Kind == ExplorerNodeKind.Folder && entry.IsNavigable && !entry.IsReparsePoint)
+                .Take(3)
+                .ToArray();
+            return new ExplorerDirectorySnapshot(batch.Focus, folders, batch.Failure, batch.Warning,
+                batch.TotalChildCount, batch.WasTruncated || folders.Length < batch.AddedChildren.Count);
+        }
+
+        throw new ExplorerProtocolMalformedResponseException("OmniSorSe returned no structural preview batch.");
+    }
+
     public async Task<ExplorerDirectorySnapshot> GetDirectoryAsync(
         string path,
         CancellationToken cancellationToken)
@@ -103,6 +128,11 @@ public sealed class OmniSorSeConnectedProvider :
         var details = await _client.GetNodeDetailsAsync(
             new Protocol.ExplorerNodeDetailsRequest(path),
             cancellationToken).ConfigureAwait(false);
+        if (!string.Equals(details.Node.Id, path, StringComparison.Ordinal))
+        {
+            throw new ExplorerProtocolMalformedResponseException(
+                "OmniSorSe returned details for a different structural focus.");
+        }
         var focus = MapNode(details.Node);
         if (focus.Kind == ExplorerNodeKind.File)
         {
@@ -120,6 +150,11 @@ public sealed class OmniSorSeConnectedProvider :
             var page = await _client.GetChildrenAsync(
                 new Protocol.ExplorerChildrenRequest(path, pageSize, continuation),
                 cancellationToken).ConfigureAwait(false);
+            if (page.Nodes.Count > pageSize)
+            {
+                throw new ExplorerProtocolMalformedResponseException(
+                    "OmniSorSe returned more children than the requested structural page bound.");
+            }
             if (page.Nodes.Any(node => !string.Equals(node.ParentId, path, StringComparison.Ordinal)))
             {
                 throw new ExplorerProtocolMalformedResponseException(
