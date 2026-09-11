@@ -97,6 +97,7 @@ public sealed class WindowsWaveInAudioCaptureService : IAudioCaptureService
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         Task<Exception?>? stoppedTask;
+        WaveInEvent recorder;
         lock (_sync)
         {
             if (_recorder is null || _buffer is null || _stopped is null)
@@ -105,6 +106,7 @@ public sealed class WindowsWaveInAudioCaptureService : IAudioCaptureService
             }
 
             stoppedTask = _stopped.Task;
+            recorder = _recorder;
             try
             {
                 _recorder.StopRecording();
@@ -119,6 +121,11 @@ public sealed class WindowsWaveInAudioCaptureService : IAudioCaptureService
         var failure = await stoppedTask.WaitAsync(cancellationToken).ConfigureAwait(false);
         lock (_sync)
         {
+            if (!ReferenceEquals(_recorder, recorder))
+            {
+                return new VoiceAudioClip([], CaptureSampleRate, TimeSpan.Zero);
+            }
+
             var clip = _buffer?.ToClip() ?? new VoiceAudioClip([], CaptureSampleRate, TimeSpan.Zero);
             CleanupRecorder();
             if (failure is not null)
@@ -133,8 +140,10 @@ public sealed class WindowsWaveInAudioCaptureService : IAudioCaptureService
     public async Task CancelAsync()
     {
         Task<Exception?>? stoppedTask = null;
+        WaveInEvent? recorder;
         lock (_sync)
         {
+            recorder = _recorder;
             if (_recorder is not null && _stopped is not null)
             {
                 stoppedTask = _stopped.Task;
@@ -161,7 +170,10 @@ public sealed class WindowsWaveInAudioCaptureService : IAudioCaptureService
 
         lock (_sync)
         {
-            CleanupRecorder();
+            if (ReferenceEquals(_recorder, recorder))
+            {
+                CleanupRecorder();
+            }
         }
     }
 
@@ -181,7 +193,7 @@ public sealed class WindowsWaveInAudioCaptureService : IAudioCaptureService
         double level;
         lock (_sync)
         {
-            if (_buffer is null)
+            if (_buffer is null || !ReferenceEquals(sender, _recorder))
             {
                 return;
             }
@@ -192,8 +204,17 @@ public sealed class WindowsWaveInAudioCaptureService : IAudioCaptureService
         LevelChanged?.Invoke(level);
     }
 
-    private void OnRecordingStopped(object? sender, StoppedEventArgs eventArgs) =>
-        _stopped?.TrySetResult(eventArgs.Exception);
+    private void OnRecordingStopped(object? sender, StoppedEventArgs eventArgs)
+    {
+        // Capture the completion source before checking identity so a late event can
+        // never complete a replacement recorder's stop task. Do not block its thread
+        // on the cleanup lock while WaveInEvent.Dispose is waiting for it to finish.
+        var stopped = _stopped;
+        if (ReferenceEquals(sender, _recorder))
+        {
+            stopped?.TrySetResult(eventArgs.Exception);
+        }
+    }
 
     private void CleanupRecorder()
     {

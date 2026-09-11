@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using OmniBrille.Core;
 
 namespace OmniBrille.Infrastructure.Voice;
@@ -51,5 +52,13 @@ public sealed class BoundedVoiceAudioBuffer : IDisposable
         return new VoiceAudioClip(bytes, SampleRate, duration);
     }
 
-    public void Dispose() => _stream.Dispose();
+    public void Dispose()
+    {
+        if (_stream.TryGetBuffer(out var buffer))
+        {
+            CryptographicOperations.ZeroMemory(buffer.AsSpan());
+        }
+
+        _stream.Dispose();
+    }
 }

@@ -10,10 +10,9 @@ namespace OmniBrille.Infrastructure;
 /// </summary>
 public sealed class CyberInteractionSoundService : IInteractionSoundService
 {
-    private const int SampleRate = 22_050;
-    private static readonly WaveFormat Format = new(SampleRate, 16, 1);
+    private static readonly WaveFormat Format = new(InteractionSoundSynthesis.SampleRate, 16, 1);
     private static readonly Dictionary<InteractionSoundCue, byte[]> Clips =
-        Enum.GetValues<InteractionSoundCue>().ToDictionary(cue => cue, BuildClip);
+        Enum.GetValues<InteractionSoundCue>().ToDictionary(cue => cue, InteractionSoundSynthesis.CreatePcm16Mono);
     private readonly object _gate = new();
     private WaveOutEvent? _output;
     private BufferedWaveProvider? _buffer;
@@ -119,33 +118,5 @@ public sealed class CyberInteractionSoundService : IInteractionSoundService
         _output?.Dispose();
         _output = null;
         _buffer = null;
-    }
-
-    private static byte[] BuildClip(InteractionSoundCue cue)
-    {
-        var (duration, low, high, volume) = cue switch
-        {
-            InteractionSoundCue.Hover => (0.045, 920d, 1_160d, 0.07),
-            InteractionSoundCue.Select => (0.075, 520d, 880d, 0.1),
-            InteractionSoundCue.Navigate => (0.14, 300d, 690d, 0.12),
-            InteractionSoundCue.FolderEnter => (0.18, 240d, 780d, 0.13),
-            InteractionSoundCue.FileOpen => (0.11, 680d, 1_120d, 0.11),
-            _ => (0.06, 500d, 700d, 0.08),
-        };
-        var sampleCount = Math.Max(1, (int)(SampleRate * duration));
-        var bytes = new byte[sampleCount * 2];
-        for (var index = 0; index < sampleCount; index++)
-        {
-            var progress = index / (double)Math.Max(1, sampleCount - 1);
-            var frequency = low + ((high - low) * progress);
-            var envelope = Math.Sin(Math.PI * progress) * (1 - (progress * 0.35));
-            var carrier = Math.Sin(Math.PI * 2 * frequency * index / SampleRate);
-            var shimmer = Math.Sin(Math.PI * 2 * (frequency * 1.51) * index / SampleRate) * 0.18;
-            var sample = (short)Math.Clamp((carrier + shimmer) * envelope * volume * short.MaxValue, short.MinValue, short.MaxValue);
-            bytes[index * 2] = (byte)(sample & 0xff);
-            bytes[(index * 2) + 1] = (byte)((sample >> 8) & 0xff);
-        }
-
-        return bytes;
     }
 }
