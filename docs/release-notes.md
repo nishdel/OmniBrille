@@ -1,58 +1,61 @@
-> **Stable release:** v1.1.0 is the current public release. Download only from the official [v1.1.0 GitHub Release](https://github.com/nishdel/OmniBrille/releases/tag/v1.1.0); v1.0.0 remains available as the previous release.
+# OmniBrille v1.2.0
+
+**[Download the Windows installer](https://github.com/nishdel/OmniBrille/releases/download/v1.2.0/OmniBrille-1.2.0-win-x64-setup.exe)** · [v1.2.0 release and verification files](https://github.com/nishdel/OmniBrille/releases/tag/v1.2.0) · [Latest stable release](https://github.com/nishdel/OmniBrille/releases/latest)
+
+Version 1.2.0 includes the implementation work from issues #1–#9 and is published for continued manual acceptance testing. The release remains a self-contained Windows x64 Standalone explorer with optional local English Voice and compatibility-dependent OmniSorSe integration. Implementation and automated evidence are distinct from the manual checks below.
 
 ## Install on Windows
 
-The OmniBrille 1.1.0 release provides a self-contained Windows x64 installer. It installs for the current user at `%LOCALAPPDATA%\Programs\OmniBrille`, creates a Start Menu shortcut and uninstall entry, and requires no separately installed .NET runtime or administrator access.
+1. Download `OmniBrille-1.2.0-win-x64-setup.exe` and its matching `.sha256` from the official release.
+2. Verify the checksum, then run the installer as your normal Windows user. The package is **unsigned**: Windows may show **Unknown Publisher** or a SmartScreen reputation warning. Do not disable Windows security globally. The checksum confirms the bytes, not publisher identity.
+3. Open **OmniBrille** from the Start Menu and choose the folder to explore. No filesystem content is preloaded before that choice.
 
-OmniBrille installs no service, startup task, file association, telemetry component, updater, or OmniSorSe binary. It includes an installer-owned, hash-bound local whisper.cpp runtime and English model; the installed app never downloads or updates those assets.
+The application installs below `%LOCALAPPDATA%\Programs\OmniBrille`, with a Start Menu shortcut and uninstall entry. It requires no separately installed .NET runtime or administrator access. To upgrade, run the new installer under the same Windows account. Safe UI preferences survive upgrade and uninstall; user content is outside installer ownership.
+
+OmniBrille installs no service, startup task, file association, telemetry component, updater, or OmniSorSe binary. The installer includes its pinned whisper.cpp runtime and English-only model. The installed application never downloads or updates those assets.
 
 ## Verify the installer
 
-After publication, download the installer, `.sha256` sidecar, manifest, and these notes from the same GitHub Release. Calculate the hash independently:
+Keep the installer, `.sha256` sidecar, manifest, generated notes, and hosted validation record from the same release together. Calculate the hash independently:
 
 ```powershell
-Get-FileHash .\OmniBrille-1.1.0-win-x64-setup.exe -Algorithm SHA256
+Get-FileHash .\OmniBrille-1.2.0-win-x64-setup.exe -Algorithm SHA256
 ```
 
-The generated artifact-specific notes place the expected SHA-256 above this template content. The calculated value must match that value, the `.sha256` file, and the manifest. A checksum identifies the exact bytes; it does not authenticate an unsigned publisher.
+The value must match the sidecar, manifest, and artifact-specific hash near the top of the generated notes. The manifest identifies the release commit and build workflow; the hosted validation JSON identifies the exact installer exercised. A later build from the same source can have a different checksum because build timestamps are not normalized.
 
-## License and source
+## Improvements in v1.2.0
 
-OmniBrille project code is licensed under the **MIT License**. The release includes the full `LICENSE`, and its source is available from the matching `v1.1.0` tag and source archives on the official GitHub Release. Bundled third-party components retain their own installed licenses and notices. The Windows renderer uses a project-built SkiaSharp 3.119.4 native asset with the unused Adobe DNG/RAW codec excluded; its exact upstream pins, build configuration, hash, and notice derivation are recorded in the release manifest and repository provenance guide.
+- **Hierarchy and graph geometry (#1, #5):** direct children remain semantically distinct from real subfolder previews. Bounded previews connect to their actual parent, use a `↳` label, and never displace direct children from the 48-node scene. Peripheral connectors, folder silhouettes, and deterministic asymmetric placement improve graph readability.
+- **Navigation and controls (#3):** first-click Structure folder entry, graph right-click Back, and clickable named Trail destinations use the same session history. Centered controls, reserved HUD space, and scrolling Trail entries keep actions usable. File double-click activation requires the same node and unchanged scene across both presses.
+- **Voice setup and reliability (#2, #4):** the installer retains the bundled local English runtime/model. First activation enables Voice and listens; the microphone becomes Stop. A second activation or two seconds of quiet after detected input stops capture. Initial silence does not submit an utterance. Cancellation and provider changes invalidate obsolete work before it can start, stop a newer capture, show a transcript, or execute an action.
+- **Motion and Details (#6):** hover magnification acts locally while the central focus stays steady. The actual metadata fields reveal in sequence, with complete text immediately available to automation and Reduced motion. New selection cancels an earlier reveal.
+- **Sound (#7):** bounded, locally synthesized airy hover, selection, file-open, and folder/navigation cues provide optional feedback. Master mute and device failure preserve every navigation outcome.
+- **Names and file grouping (#8, #9):** every admitted node whose center is on the graph retains its name at every zoom. Labels move around glyphs and other labels with peripheral leaders where unobstructed. Like file extensions group together, including an unknown-type group, while placement remains deterministic and asymmetric.
+- **Regression coverage:** new fixtures cover previews and provider authority, crowded targets, cross-scene double-clicks, Trail history, labels, metadata reveal, Voice cancellation races, and audio bounds. The [issue audit](https://github.com/nishdel/OmniBrille/blob/v1.2.0/docs/runs/2026-09-11-github-issue-audit.md) records the investigation and retained evidence; exact final release validation is recorded with the release artifacts and CI.
 
-## What changed in v1.1
+## Supported experience and limits
 
-- The graph fills a borderless application client area with angular Back/Up/Root/Trail, mode, Search, utility, Sound, zoom, Details, Voice, status, and custom window-control surfaces.
-- Current Focus, direct children, previous focus, and Context are explicit semantic roles. Every admitted direct child remains on one truthful plane as a recognizable outlined glyph; separate density bands no longer imply deeper folders.
-- Geometric arrow selection, 44-DIP targets, a distinct graph keyboard-focus cue, and graph `SelectionItem` semantics keep keyboard/list/automation behavior aligned.
-- Bounded analytic float and hover lens preserve immutable topology; Reduced motion removes float, lens, transition, and Details typing movement.
-- Details has a fast cancel-safe terminal reveal while complete semantic/automation text is available immediately. Short local interaction cues are redundant and governed by a persisted `SOUND OFF` switch.
-- Ordinary Standalone files may open after explicit activation and immediate selected-root/reparse/type checks. Connected display paths are never filesystem authority.
-- Voice is first-click Listen, second-click Stop/Transcribe, with Back/Up/Root/Enter/selected-node variants over the same existing session actions.
-- Cancelling Voice or replacing the active provider during its capability check prevents obsolete work from starting microphone capture.
-- First-run guidance and the bottom status surface yield when a secondary panel claims their space, keeping focused controls unobscured at the supported minimum size.
-- Dark and Light themes use a deeper navy/cyan and pale ice-blue visual system; the bounded loading data rain has a restrained focal aperture.
-- Connected server-authored Context, Explorer Protocol v1, 48-node scene admission, stale-result rejection, and no-destructive-operation policy remain unchanged. Connected opaque target comparison is now correctly ordinal on Windows.
+Windows x64 is the download target. Standalone supports selected-root Structure, bounded aggregation, Search, Details, safe ordinary-file activation, themes, sensory preferences, and synchronized keyboard/list navigation. Connected Structure/Context/Hybrid requires a compatible OmniSorSe host and keeps server-authored relationships and opaque IDs; publication does not imply a fresh live-host check. See the [compatibility matrix](https://github.com/nishdel/OmniBrille/blob/v1.2.0/COMPATIBILITY.md).
 
-## Supported v1.1 experience
+Voice uses the default Windows input device and an English-only bundled model. Auto-detect does not add multilingual support. Model loading occurs for each utterance, so CPU and model-load latency affect response time. Missing hardware or a failed bundle-integrity check leaves typed and pointer operation available.
 
-- Standalone selected-folder Structure navigation, bounded aggregation, Search, details, Dark/Light themes, reduced motion/effects, and the synchronized keyboard-friendly list.
-- Optional compatibility-dependent OmniSorSe Connected mode for authorized indexed Structure, Search, details, and server-authored Context/Hybrid data. See `COMPATIBILITY.md`; current-host validation is not implied by the installer alone.
-- Optional local Voice uses the exact pinned runtime/model in the Windows package; missing microphone or integrity failure leaves typed/pointer operation available.
+Remaining manual acceptance areas are:
 
-## Current limitations
+- native control usability and transition feel (#3);
+- real microphone capture, background noise, quiet completion, and command/Search behavior (#4);
+- native visual composition and concept acceptance (#5);
+- motion comfort and native readability (#6);
+- physical playback, device behavior, and subjective sound character (#7);
+- dense graph layouts at extreme text/display scales; names may crowd, and the synchronized list provides full-size text;
+- Narrator/NVDA, high contrast, custom-chrome DPI/snap, GPU behavior, and broader platform/runtime qualification.
 
-- Windows x64 is the only download target. Exact local build/install/upgrade qualification is recorded against Windows 10 22H2 x64, and the public artifact passed a fresh hosted Windows lifecycle; manual visual, physical-hardware, and assistive-technology qualification remains unverified. Other Windows client versions are not separately validated.
-- Linux has source build/test coverage only; no package or interactive-runtime support is claimed. macOS runtime is unverified.
-- Connected mode depends on a compatible OmniSorSe build and is not the primary v1.1 support contract.
-- Automated keyboard, list, text-scaling, and automation coverage is not screen-reader certification.
-- Real microphone, physical sound output, Narrator/NVDA, custom-chrome DPI/snap, and GPU-backed continuous-motion validation remain outstanding and block their respective v1.1 release claims.
-- Destructive file operations, automatic updating, cloud services, always-listening audio, and telemetry are intentionally absent.
+These are manual validation items, not known implementation blockers. Automated headless/software evidence does not certify them. Linux has source build/test coverage only; macOS runtime remains unverified. Destructive file operations, cloud services, always-listening audio, automatic updating, and telemetry are intentionally absent.
 
-The exact public v1.0.0 installer was exercised as the predecessor for an in-place upgrade to an exact-release-commit local package: installer-owned files advanced to v1.1.0, the obsolete v1.0 runtime-diagnostics file was removed, preferences were preserved, and uninstall still removed only installer-owned state. The separately timestamped public artifact passed the hosted fresh-install workflow rather than that upgrade path.
+## License, privacy, and support
 
-## Privacy and support
+OmniBrille project code uses the **MIT License**. The installed `LICENSE`, matching `v1.2.0` source tag, third-party notices, and bundled component licenses preserve the distribution terms. The Windows renderer uses a project-built SkiaSharp 3.119.4 native asset with the unused Adobe DNG/RAW codec excluded; its pins and notice derivation are documented in [native renderer provenance](https://github.com/nishdel/OmniBrille/blob/v1.2.0/docs/native-skia.md).
 
-Standalone reads only the folder explicitly selected by the user. OmniBrille does not persist selected roots, Search queries, audio, transcripts, grants, or connected identities. Uninstall removes installer-owned files and registration; safe visual/voice configuration remains below `%LOCALAPPDATA%\OmniBrille` by policy.
+Standalone reads only the explicitly selected root. OmniBrille does not persist selected roots, Search queries, audio, transcripts, grants, or connected identities. Safe preferences remain below `%LOCALAPPDATA%\OmniBrille` by policy.
 
-Use **Copy safe diagnostics** and review the text before sharing it. Do not attach private filenames, paths, file contents, queries, audio, tokens, handoff values, or databases unless separately reviewed and requested.
+Use **Copy safe diagnostics** and review the text before sharing an issue. Include version, Windows version, steps, expected behavior, and observed behavior. Do not attach private filenames, paths, file contents, queries, audio, tokens, handoff values, or databases unless separately reviewed and requested.

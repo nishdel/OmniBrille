@@ -14,23 +14,23 @@ MSIX was not selected because its identity/signing lifecycle would raise the fir
 
 ## Version and artifacts
 
-`Directory.Build.props` is the version authority for the current stable v1.1.0 source:
+`Directory.Build.props` is the version authority for v1.2.0:
 
-- semantic/informational version: `1.1.0`;
-- assembly version: `1.1.0.0`;
-- Windows file and installer version: `1.1.0.0`.
+- semantic/informational version: `1.2.0`;
+- assembly version: `1.2.0.0`;
+- Windows file and installer version: `1.2.0.0`.
 
 The package is self-contained, non-trimmed, multi-file, and `win-x64`. Users do not need a separate .NET runtime. The retained multi-file deployment avoids first-release risk around Avalonia XAML, reflection, and native-library loading.
 
 ```text
-OmniBrille-1.1.0-win-x64-setup.exe
-OmniBrille-1.1.0-win-x64-setup.exe.sha256
-OmniBrille-1.1.0-win-x64-setup-manifest.json
-OmniBrille-1.1.0-win-x64-setup-dependencies.json
-OmniBrille-1.1.0-win-x64-setup-release-notes.md
+OmniBrille-1.2.0-win-x64-setup.exe
+OmniBrille-1.2.0-win-x64-setup.exe.sha256
+OmniBrille-1.2.0-win-x64-setup-manifest.json
+OmniBrille-1.2.0-win-x64-setup-dependencies.json
+OmniBrille-1.2.0-win-x64-setup-release-notes.md
 ```
 
-The schema-5 manifest binds the installer to version, release commit, UTC build time, runtime/deployment, Explorer Protocol version, size, checksum, signing state, voice-bundle manifest hash/file inventory, and—when built in Actions—the workflow run. The dependency document is a sanitized project dependency graph; it is neither an exact packaged-file inventory nor a formal SPDX/CycloneDX SBOM. The generated notes bind the same exact artifact to its install, support, and limitation guidance.
+The schema-5 manifest binds the installer to version, release commit, UTC build time, runtime/deployment, Explorer Protocol version, size, checksum, signing state, voice-bundle manifest hash/file inventory, and—when built in Actions—the workflow run. The dependency document is a sanitized project dependency graph; it is neither an exact packaged-file inventory nor a formal SPDX/CycloneDX SBOM. The generated notes bind the same exact artifact to its install, support, and limitation guidance. The public release also retains the hosted installed-artifact validation JSON with the matching checksum. Download the complete matching set from the [v1.2.0 release](https://github.com/nishdel/OmniBrille/releases/tag/v1.2.0).
 
 ## Pinned local voice bundle
 
@@ -92,10 +92,12 @@ The installer owns its application directory, Start Menu shortcut, uninstall reg
 
 Safe UI preferences remain at `%LOCALAPPDATA%\OmniBrille\visual-preferences.json` and intentionally survive upgrade/uninstall. They may include theme, effects, diagnostics, sound, voice enablement, and language. Selected roots, queries, audio, transcripts, grants, bearer tokens, endpoints, connected node IDs, and Context caches are not persisted. User content and OmniSorSe state are never removed; uninstall removes installer-owned voice assets.
 
-Forward in-place upgrade is supported through the stable application ID. The v1.1 packaging step excludes the diagnostics-only `mscordaccore_*.dll` family even if a servicing runtime pack supplies it, and the installer narrowly removes the obsolete installer-owned copy carried by public v1.0.0; it does not broadly clear the application directory. Both the package verifier and hosted installed-artifact gate reject that family. Downgrade is neither blocked nor promised. A public release must validate both a fresh install and an upgrade from the exact public predecessor, plus representative Standalone interaction, normal close/relaunch, and uninstall. Earlier release lifecycle measurements are historical evidence, not proof for a new exact artifact.
+Forward in-place upgrade is supported through the stable application ID. Packaging excludes the diagnostics-only `mscordaccore_*.dll` family even if a servicing runtime pack supplies it, and the installer narrowly removes the obsolete installer-owned copy carried by public v1.0.0; it does not broadly clear the application directory. Both the package verifier and hosted installed-artifact gate reject that family. Downgrade is neither blocked nor promised. Qualification records fresh install, upgrade from the exact public predecessor, representative Standalone interaction, normal close/relaunch, and uninstall separately. Earlier release lifecycle measurements are historical evidence, not proof for a new exact artifact. An owner-authorized release for continued manual testing may retain explicitly unverified manual checks; that publication does not qualify those behaviors.
 
 ## Publication boundary
 
 The owner selects and records the project license. Independent release review then checks the exact artifact, validation record, screenshots, public claims, release notes, signing disclosure, compatibility language, and repository state. Never retag a different commit or replace an attached installer without changing the release/version and rerunning validation.
 
-Stable v1.1.0 was published unsigned from tag `v1.1.0` at commit `6a0199c70d230e5162028b860bad95d8fd12a8cb` after the owner explicitly accepted publication. Its automated exact-artifact gates passed; the manual visual, assistive-technology, hardware, live Connected, and broader-platform checks left open in the release checklist were not implied by publication and remain excluded from public qualification claims.
+For v1.2.0, the owner authorized integration and unsigned publication so the Windows installer can be used for continued manual testing. Source qualification runs on the final clean commit before normal integration/push to `main`. The annotated `v1.2.0` tag identifies that exact validated `main` commit; the public assets are then built from the tag and pass the hosted artifact-only gate before upload. The release page records commit, CI, installer hash, signing disclosure, and manual limits. Do not change the source tree, move the tag, or rebuild/replace an already validated upload set without requalification.
+
+The previous stable v1.1.0 was published unsigned from tag `v1.1.0` at commit `6a0199c70d230e5162028b860bad95d8fd12a8cb`. Its exact evidence remains in the [historical release report](runs/2026-09-04-v1.1.0-public-release.md); it does not qualify v1.2.0. The [issue audit](runs/2026-09-11-github-issue-audit.md) separately records the implementation work now included in v1.2.0.

@@ -11,6 +11,8 @@ Retain a report only for architecture/product boundary changes, serious regressi
 
 ## Reports
 
+- [`2026-09-11-v1.2.0-release.md`](2026-09-11-v1.2.0-release.md) — v1.2.0 integration, publication evidence map, version/documentation audit and retained manual acceptance.
+
 - [`2026-09-11-github-issue-audit.md`](2026-09-11-github-issue-audit.md) — nine-issue audit, bounded actual previews, navigation/labels/Voice/sound corrections, software evidence, and retained manual acceptance gates.
 
 - [`2026-08-20-engineering-knowledge-foundation.md`](2026-08-20-engineering-knowledge-foundation.md) — repository archaeology and engineering-knowledge foundation.

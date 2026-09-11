@@ -1,6 +1,6 @@
 # Issue audit software renders — 2026-09-11
 
-These images depict the unreleased `codex/github-issue-fixes` source using deterministic synthetic data. They are captured by `RenderedIssueEvidence` in the headless test project with real Skia software drawing, Inter font, 1× scale, Reduced motion enabled, and effects enabled. They are not installed application, GPU, animation, DPI, or accessibility-backend evidence.
+These retained images depict the issue-fix implementation included in v1.2.0, captured before publication from `codex/github-issue-fixes` using deterministic synthetic data. They were captured by `RenderedIssueEvidence` in the headless test project with real Skia software drawing, Inter font, 1× scale, Reduced motion enabled, and effects enabled. Their source/validation context is recorded in the [issue audit](../../../runs/2026-09-11-github-issue-audit.md). They are not exact v1.2.0 installed application, GPU, animation, DPI, or accessibility-backend evidence.
 
 | Scene | Image | Conditions |
 | --- | --- | --- |

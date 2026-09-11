@@ -1,6 +1,6 @@
 # Security and privacy posture
 
-OmniBrille is local-first and has no telemetry, cloud upload, crash-reporting service, always-listening microphone, background recorder, auto-start task, daemon, or destructive file operation. Microphone access is optional and begins only through an explicit click/shortcut; a second activation stops and transcribes.
+OmniBrille is local-first and has no telemetry, cloud upload, crash-reporting service, always-listening microphone, background recorder, auto-start task, daemon, or destructive file operation. Microphone access is optional and begins only through an explicit click/shortcut; a second activation or two seconds of quiet after detected input stops and transcribes.
 
 ## Data authority
 
@@ -25,7 +25,7 @@ The release gate rejects debug symbols, source/test artifacts, databases, logs, 
 ## Local voice
 
 - Voice readiness is lazy. There is no wake word, passive monitoring, helper service, auto-start, speaker identification, voiceprint, or emotion analysis.
-- The microphone starts only after the button or `Ctrl+Shift+Space` is activated, remains visibly announced, and stops on a second activation, `Escape`, cancellation, error, or the 45-second bound.
+- The microphone starts only after the button or `Ctrl+Shift+Space` is activated, remains visibly announced, and stops on a second activation, two seconds of quiet after detected input, `Escape`, cancellation, error, or the 45-second bound. Initial silence does not submit an utterance. Delayed completion and cancellation remain bound to their originating operation so they cannot stop a newer capture.
 - Windows capture is 16 kHz mono PCM in a bounded in-memory buffer. Raw audio is never logged or persisted as a preference.
 - The optional whisper.cpp provider creates only an unpredictable app-owned temporary workspace on a local, non-network Windows volume when its CLI requires a WAV, and rejects reparse-point ancestors. Cancellation/timeout terminates the process tree and waits for exit before audio cleanup. Buffers are zeroed, deletion is retried with bounded backoff, and cleanup failure is reported. Provider startup schedules a background inspection of at most sixteen stale application-shaped workspaces older than one hour; oversized artifacts are rejected before zeroing and readiness/transcription await the recovery result. Audio is never included in diagnostics or packages.
 - `whisper-cli`, every native dependency, and the quantized English model are pinned installer-owned files under the application directory. Build/package/application gates bind their exact hashes and reject omissions or extras; the application rechecks every hash whenever it resolves the bundle and never downloads or updates it. Invocation uses `UseShellExecute=false`, structured `ArgumentList`, at most four worker threads, and a minimal allowlisted environment; model/transcript text never becomes shell syntax. Process time/output and parsed JSON are bounded, and cancellation terminates the process tree before returning.

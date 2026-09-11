@@ -701,7 +701,7 @@
                     IsCheckedChanged="OnVoicePreferenceChanged"
                     AutomationProperties.Name="Enable local toggle voice"
                     AutomationProperties.HelpText="Voice remains optional and records only after explicit activation." />
-          <TextBlock Text="Toggle listening: press Listen once to capture and again to stop. The pinned whisper.cpp CPU runtime and English model are installed with OmniBrille. Audio is processed locally and is not retained."
+          <TextBlock Text="Click the microphone to listen, then Stop to submit. Two seconds of quiet after speech also submits. The bundled whisper.cpp runtime and model recognize English locally; audio is not retained."
                      FontSize="10"
                      TextWrapping="Wrap"
                      Foreground="{DynamicResource SecondaryTextBrush}" />
@@ -711,7 +711,7 @@
                     SelectionChanged="OnVoiceLanguageChanged"
                     AutomationProperties.Name="Voice transcription language">
             <ComboBoxItem Content="English" />
-            <ComboBoxItem Content="Auto-detect (Search only; commands remain English)" />
+            <ComboBoxItem Content="Auto (bundled model remains English-only)" />
           </ComboBox>
           <TextBlock Text="Voice is optional. No speech assets are downloaded or updated while the installed application is running."
                      FontSize="10"

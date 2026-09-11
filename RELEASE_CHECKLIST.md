@@ -1,71 +1,44 @@
-# v1.1.0 public-release checklist
+# v1.2.0 release evidence checklist
 
-Checkboxes are maintainer gates. Automation does not mark manual checks complete, and a source build is not installed-artifact validation. The immutable v1.0.0 outcome remains in the [v1.0.0 owner report](docs/runs/2026-08-21-v1.0.0-public-release.md).
+This is the reusable evidence checklist for the v1.2.0 release. Checkboxes describe what a release record must establish; they are not a claim that every item was performed when this source document was written. The final [GitHub Release](https://github.com/nishdel/OmniBrille/releases/tag/v1.2.0), exact-artifact manifest, hosted validation JSON, and linked CI runs record actual outcomes without requiring a post-tag source edit. The [issue audit](docs/runs/2026-09-11-github-issue-audit.md) remains an unchanged historical snapshot of PR #11 qualification.
 
-Stable v1.1.0 was published on 2026-09-04 after explicit owner authorization to proceed unsigned. Checked items below record evidence actually obtained. Unchecked manual, hardware, assistive-technology, live Connected, and broader-platform gates were not performed and are not implied by publication or by the deliberately limited public support claims.
+The owner authorized v1.2.0 integration and unsigned publication to continue manual testing. Implementation for issues #1–#9 is complete. The manual acceptance items below remain separate and do not imply an implementation blocker or a requirement for another publication approval.
 
-## Release authority
+## Source and integration evidence
 
-- [x] Use a new `v1.1.0` release; do not move `v1.0.0` or replace its checksum-bound assets.
-- [x] Keep Explorer Protocol v1, server-authored Context, provider replacement, stale-result, and 48-node scene-admission contracts unchanged; explicitly review the new navigation, file-activation, sound, and installer-owned Voice boundaries.
-- [x] The release commit is identified, independently reviewed, clean, and equals GitHub `main`.
-- [x] Source/package version authorities, executable, installer, changelog, compatibility, release notes, screenshot provenance, and artifact names say `1.1.0`; README points to the stable v1.1.0 download and keeps v1.0.0 as historical release evidence.
-- [x] MIT project licensing and the separate installed third-party terms remain unchanged.
-- [x] The pinned DNG-free native renderer package/provenance gate remains unchanged and fail-closed.
-- [x] The owner explicitly selected unsigned publication for v1.1.0. The exact installer/application report `NotSigned`, and public notes retain the SmartScreen/Unknown Publisher disclosure.
+- [ ] Record previous `main`, PR #11 candidate, final release commit, and normal integration method without rewriting published history.
+- [ ] Source/package/assembly/installer metadata, current documentation, download links, artifact names, and release notes consistently identify `1.2.0` / `1.2.0.0` as appropriate.
+- [ ] Preserve historical v1.0/v1.1 releases, reports, screenshots, dependency pins, and the issue audit; distinguish them from current claims.
+- [ ] Confirm Explorer Protocol v1, server-authored Context, provider replacement, stale-result rejection, the 48-node cap, privacy, and installer ownership remain intact.
+- [ ] Independently review release scripts, licensing/native provenance, artifact notes, signing disclosure, source changes, and unresolved manual claims.
+- [ ] Run the clean exact-commit release gate: restore, documentation links/fences, formatting, analyzer-enabled Release build, full tests, vulnerability/dependency audits, package generation, artifact checks, and `git diff --check`.
+- [ ] Confirm Windows and Ubuntu CI outcomes for final `main`, with test totals and platform-specific skips recorded accurately.
+- [ ] Confirm PR #11 is merged, remote `main` equals the validated commit, and the local working tree is clean.
 
-## Focus Plane + Navigation Trail gate
+## Tagged artifact and publication evidence
 
-- [x] The graph owns the full client area; no reserved application toolbar/footer remains.
-- [x] Floating Root/Back/Up/Trail, Current Focus, modes, Search, provider/theme/list/settings/Sound, zoom, Voice, status, custom chrome, and secondary panels use one reusable visual system.
-- [x] Search is collapsed initially, expands/focuses on click or `Ctrl+F`, and dismisses without duplicating session query/result state.
-- [x] Semantic current-focus/direct-child/previous-focus/Context/aggregate relation is independent from presentation band in source, list, graph automation, and tests.
-- [x] Back, provider-authored Up, Root, Trail, geometric arrows, 44-DIP targets, Details semantics, Reduced motion, and master mute have automated contracts.
-- [ ] Dark, Light, dense, nested/details, Search-expanded, list, listening, loading, custom-chrome, and minimum-size exact source-candidate states are inspected on the interactive Windows host.
-- [ ] Fresh screenshots bind one exact installed candidate and non-private data and are independently reviewed at full size; the earlier v1.1 set is superseded.
-- [ ] Actual Windows UIA event exposure, Tab/Shift+Tab, visible graph keyboard focus, Narrator/NVDA, high contrast, and 100/125/150/200% OS text/display scaling are recorded.
-- [ ] Same-host foreground/minimized motion CPU/GPU, managed allocations, accepted-label changes, timer suspension, and bounded cache capacities show no material unexplained regression.
+- [ ] Create and push annotated tag `v1.2.0` on the exact validated `main` commit. Never move an existing release tag.
+- [ ] Build the public assets from that tag with the existing release artifact workflow; record source commit and workflow identity.
+- [ ] Validate exact installer/application versions and unsigned status, payload contents, pinned English Voice bundle, DNG-free native asset, and required licenses/notices.
+- [ ] Pass the fresh hosted artifact-only install, launch, normal close/relaunch, Start Menu/uninstall registration, uninstall, and cleanup checks.
+- [ ] Match installer SHA-256 independently against sidecar, manifest, generated notes, hosted validation JSON, and downloaded public bytes.
+- [ ] Retain one matching artifact set: `OmniBrille-1.2.0-win-x64-setup.exe`, checksum, manifest, dependency graph, generated notes, and hosted validation JSON. Do not rebuild between validation and upload.
+- [ ] Publish a stable GitHub Release with the exact tagged assets, prominent Windows download, unsigned/Unknown Publisher/SmartScreen disclosure, implementation highlights, and manual limits.
+- [ ] Verify release/tag/main identity, asset filenames, direct installer download, latest stable link, checksum, README discoverability, and issue #1–#9 comments/status.
+- [ ] Record the final outcome in the release evidence ledger while keeping the tagged source tree unchanged.
 
-## Automated release gate
+## Manual acceptance record
 
-- [x] Run `.\build\verify-release.ps1` from the exact clean Windows release commit.
-- [x] Engineering-document validation, restore, format, Release build/analyzers, all tests, and NuGet vulnerability audit pass.
-- [x] The release-candidate workflow succeeds for unsigned mode on the exact release commit.
-- [x] Installer, `.sha256`, manifest, dependency graph, generated notes, native proof, and hosted validation JSON are retained together.
-- [x] Independent, sidecar, manifest, validation-record, and uploaded SHA-256 values all agree.
-- [x] The artifact-only gate passes version/signature policy, install, first launch, normal close/relaunch, registration, uninstall, and cleanup.
+Record each check as performed, not performed, or failed, with the exact installer hash, Windows version, scaling, host type, and result. Hosted lifecycle checks and software renders do not substitute for interactive checks.
 
-## Exact installed Windows candidate
+- [ ] Fresh interactive current-user install, Start Menu launch, explicit non-private root selection, and representative Structure/Search/Details/list use.
+- [ ] Upgrade from the exact public v1.1.0 predecessor with preserved safe preferences, normal close/relaunch, and uninstall that leaves user content untouched.
+- [ ] Native controls, first-click folder entry, right-click Back, clickable Trail, file activation, keyboard targets, and transition feel (#3).
+- [ ] Default real microphone, input noise, initial silence, quiet completion, explicit stop/cancel, replacement races, and command/Search behavior using the installed English model (#4).
+- [ ] Dark/Light, hierarchy/previews, connector geometry, grouping, names, minimum-window overlays, and visual/concept acceptance using non-private data (#5).
+- [ ] Local hover/float comfort, native metadata readability, Reduced motion/effects, foreground/minimized behavior, and GPU/performance observations (#6).
+- [ ] Physical audio output, cue character, master mute, debounce, and unavailable-device behavior (#7).
+- [ ] Dense layouts at extreme text/display scales, synchronized-list fallback, actual UIA, Narrator/NVDA, high contrast, and custom-chrome DPI/snap behavior.
+- [ ] Fresh live Connected-host compatibility or broader Linux/macOS runtime checks before expanding those support claims.
 
-- [ ] Record the Windows version, display scaling, and whether validation used an interactive host/VM or hosted runner.
-- [ ] Fresh current-user install succeeds without a separate .NET installation or administrator access.
-- [ ] Start Menu launch opens Standalone with no filesystem content preloaded.
-- [ ] Selecting the non-private demo root exercises Structure, drill-down, Back, Search/result focus, details, Dark/Light, reduced settings, and accessible list.
-- [ ] The final DNG-free renderer draws graph lines, outlined glyphs, labels, floating controls, loading aperture/data rain, and both themes without an obvious regression.
-- [ ] Close/relaunch work and uninstall removes installer-owned files, shortcuts, and registration without deleting demo/user data.
-- [ ] Exact installer/application signature status matches the recorded owner decision.
-
-## Capability and hardware gates
-
-- [ ] Connected mode is revalidated against the exact claimed OmniSorSe host before any claim beyond compatibility-dependent status.
-- [ ] The pinned installed whisper runtime/model pass exact-hash, known-WAV, uninstall-ownership, and no-runtime-download checks; real microphone hardware completes listen/stop/transcribe/command/Search before any validated-Voice claim.
-- [ ] Physical audio output verifies cues/mute/debounce/disposal and disabled-device failure parity.
-- [ ] Borderless chrome passes drag, double-click maximize/restore, Minimize/Maximize/Close, snap, DPI, keyboard, and UIA checks.
-- [ ] Real screen-reader evidence exists before any accessibility certification claim.
-- [ ] Linux/macOS package and interactive evidence exists before any runtime-support claim.
-
-## Privacy and public truthfulness
-
-- [x] Hosted package and installed-artifact gates confirm project/dependency/voice licenses, the exact allowlisted voice runtime/model, and absence of forbidden PDB/source/test/database/key/raw-or-test-audio material, private content, and developer paths.
-- [ ] README, screenshots, generated notes, release body, platform/Connected/voice/accessibility/signing status, and downloadable files describe the same artifact.
-- [ ] No telemetry, cloud upload, background recorder/indexer service, auto-start, file mutation, installed-app asset download, or updater was introduced.
-- [ ] Independent adversarial review finds no blocker and distinguishes verified, inferred, and unverified claims.
-
-## Publication
-
-- [x] Push the exact release commit to `main` normally and wait for required CI.
-- [x] Create annotated tag `v1.1.0` on that exact commit and push normally.
-- [x] Create stable non-prerelease GitHub Release `OmniBrille 1.1.0` with reviewed user-facing notes.
-- [x] Attach only the exact validated installer, checksum, manifest, dependency graph, generated notes, and hosted validation record; never rebuild after validation.
-- [x] Verify the public page, tag, assets, direct download, checksum, repository metadata, and README links.
-- [x] Retain the owner report/retrospective as historical evidence without rewriting the v1.0.0 record.
+No unchecked manual item may be described as tested. Prior release and software-render evidence retains its original scope. The [testing guide](docs/testing.md), [packaging guide](docs/PACKAGING.md), and [interaction contract](docs/interaction-state-contract.md) define the relevant automated and behavioral boundaries.

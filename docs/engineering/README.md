@@ -19,6 +19,7 @@ Repository evidence wins in this order: current source and observable behavior, 
 | DNG-free Windows SkiaSharp native asset | [`docs/native-skia.md`](../native-skia.md) | Authoritative native-build provenance and upgrade procedure |
 | Architectural reasons | [`docs/decisions/README.md`](../decisions/README.md) | Decision records; not alternate current architecture |
 | Risk, specialists, and validation | [`risk-and-validation.md`](risk-and-validation.md) | Engineering guidance |
+| Contributor setup, test commands, and evidence limits | [`CONTRIBUTING.md`](../../CONTRIBUTING.md), [`docs/testing.md`](../testing.md) | Current developer guidance |
 | Retrospectives, lesson promotion, freshness, and reports | [`learning-and-reports.md`](learning-and-reports.md) | Engineering guidance |
 | Failure chains and earned lessons | [`history-and-lessons.md`](history-and-lessons.md) | Historical evidence; not active architecture |
 | Milestones and unscheduled work | [`CHANGELOG.md`](../../CHANGELOG.md), [`ROADMAP.md`](../../ROADMAP.md) | Historical/planned |

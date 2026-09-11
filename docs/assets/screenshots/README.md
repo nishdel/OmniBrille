@@ -1,8 +1,12 @@
 # Screenshot provenance
 
+## v1.2.0 implementation evidence
+
+The [September 11 issue-audit software renders](issue-audit-2026-09-11/README.md) show the hierarchy, descendant previews, labels, and grouping implementation included in v1.2.0. Their provenance records synthetic data, source context, real Skia software drawing, and exact fixture settings. They do not claim native installed-window, motion, GPU, DPI, or accessibility validation. Fresh native captures and visual acceptance remain manual follow-up for the downloadable v1.2.0 release.
+
 ## v1.1 visual-convergence candidate
 
-> Superseded evidence: owner issues #1–#7 and the later Focus Plane + Navigation Trail implementation changed hierarchy, controls, chrome, motion, Details, Sound, and Voice. These files remain honest historical captures of commit `6f9f2ee`, but they are not current screenshots and cannot satisfy the v1.1 release visual gate. A fresh exact installed-candidate set is required.
+> Superseded evidence: owner issues #1–#7 and the later Focus Plane + Navigation Trail implementation changed hierarchy, controls, chrome, motion, Details, Sound, and Voice. These files remain honest historical captures of commit `6f9f2ee`; they cannot satisfy the current release's visual acceptance checks. The capture and candidate descriptions below record the historical run.
 
 The `v1.1-*.png` files are real captures of an installed Windows x64 `1.1.0` candidate after the sparse focus-plane correction. They are not mockups, concept art, or AI-generated application imagery.
 

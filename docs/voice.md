@@ -1,6 +1,6 @@
 # Local click-to-toggle voice
 
-Voice provides optional, one-shot input to OmniBrille. The current source includes Unreleased microphone/Stop and quiet-completion refinements to the Stage 9 boundary. Each explicit utterance becomes either a deterministic UI/navigation command or an existing Search request. There is no wake word, always-listening mode, conversational loop, destructive voice action, LLM intent parser, cloud transcription requirement, or telemetry.
+Voice provides optional, one-shot input to OmniBrille. Version 1.2.0 includes microphone/Stop, quiet-completion, and cancellation-race refinements to the Stage 9 boundary. Each explicit utterance becomes either a deterministic UI/navigation command or an existing Search request. There is no wake word, always-listening mode, conversational loop, destructive voice action, LLM intent parser, cloud transcription requirement, or telemetry.
 
 ## Technology decision
 
@@ -25,7 +25,7 @@ An unavailable or integrity-failing bundle reports a reinstall action and leaves
 ## Setup and use
 
 1. Install the Windows x64 package containing the pinned voice bundle.
-2. Select English, or Auto-detect for free-form transcription. Deterministic commands are English-only.
+2. Use English for commands and free-form Search. The installer contains an English-only model; the Auto-detect setting passes an option to whisper.cpp but does not add multilingual recognition support.
 3. Click the **microphone** or press `Ctrl+Shift+Space` once to enable Voice and begin. No enablement submenu is required; this action owns the capability check and capture startup.
 4. Click **Stop**, press the same shortcut again, or pause for two seconds after detected input to stop and transcribe. During initialization or transcription the same control cancels the active operation. `Escape` or **Cancel** also cancels capture/transcription.
 
@@ -58,7 +58,7 @@ Standalone voice Search uses the current bounded standalone structural provider.
 ## Current limits
 
 - Real capture is implemented for Windows WinMM, but no live microphone device was available for the retained validation run, so hardware capture remains unvalidated. Linux/macOS microphone runtime support is not claimed; source/build tests remain cross-platform.
-- Commands are English-only. Free-form Search transcription may use whisper.cpp auto-detection, subject to the selected model.
+- Commands and the bundled model are English-only. The Auto-detect setting does not turn the installed English model into a multilingual model.
 - `whisper-cli` loads the model per utterance, so cold transcription latency and memory depend on CPU/model. There is no warm persistent speech service.
 - Confidence is not fabricated because `whisper-cli` JSON does not provide a single reliable utterance-confidence value through this adapter.
 - Input-device selection and shortcut customization are deferred. The default Windows input device and `Ctrl+Shift+Space` are used.

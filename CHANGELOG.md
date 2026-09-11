@@ -1,8 +1,10 @@
 # Changelog
 
-All notable OmniBrille changes are recorded here. The project uses SemVer-compatible pre-release versions; dates identify validated engineering checkpoints, not public availability.
+All notable OmniBrille changes are recorded here. Stable releases use semantic versions; historical preview dates identify engineering checkpoints rather than public availability.
 
-## [Unreleased]
+## [1.2.0] - 2026-09-11
+
+Third stable Windows x64 release. [Download v1.2.0](https://github.com/nishdel/OmniBrille/releases/tag/v1.2.0). This release integrates PR #11 and the implementation findings from issues #1–#9. It is unsigned and intended for continued manual acceptance testing alongside the automated release qualification.
 
 ### Added
 
@@ -25,7 +27,14 @@ All notable OmniBrille changes are recorded here. The project uses SemVer-compat
 - Voice silence/duration callbacks are bound to their originating operation; cancelled or obsolete recognition cannot publish a transcript or execute an action. Capture and returned PCM buffers are cleared after use.
 - Failed Trail/Structure-return navigation preserves the prior mode, scene, and history; late provider failures cannot restore obsolete state.
 
-These are current-source changes, not a new release or a claim of installed, hardware, visual, or assistive-technology qualification. Validation evidence and remaining gates are recorded separately from historical release entries.
+### Qualification and remaining acceptance
+
+- Expanded regression coverage from 287 to 377 cases, including preview authority/bounds, late provider results, Trail rollback, crowded click targets, label visibility, metadata semantics, Voice races and audio bounds. Windows runs 376 with one Unix-specific skip; Ubuntu runs all 377.
+- Four inspected software captures document hierarchy and labels in both themes and dense/minimum-zoom scenes; they do not certify native composition or motion comfort.
+- The installer bundles the pinned whisper.cpp runtime and **English** model introduced in v1.1.0 (#2). This release fixes first-click and cancellation behavior; it does not add a multilingual model.
+- Issues #1, #2, #8 and #9 have verified implementation scopes. #3–#7 remain open for native controls/transitions, real microphone and room noise, concept/visual acceptance, motion comfort/native readability, and physical sound-character listening. Extreme text-scale dense-layout behavior remains a manual check. These are acceptance items, not known implementation blockers.
+- Protocol, persistence, permission boundaries, and the 48-node limit remain unchanged. No real screen-reader, live current-host, GPU/DPI, microphone, or physical audio qualification is implied.
+- Preserve the [issue audit and retrospective](docs/runs/2026-09-11-github-issue-audit.md); exact release commit, installer checksum and hosted lifecycle results are attached to the GitHub Release.
 
 ## [1.1.0] - 2026-09-04
 

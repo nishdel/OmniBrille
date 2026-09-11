@@ -1,6 +1,8 @@
 # OmniBrille roadmap
 
-Status language is intentionally conservative: checked items exist in the application or its validated engineering foundation.
+Version 1.2.0 includes the implementation fixes from issues #1–#9; native visual/control/motion, microphone/noise, and physical sound acceptance remain manual follow-up. See [release notes](docs/release-notes.md) for current behavior and downloads and the [issue audit](docs/runs/2026-09-11-github-issue-audit.md) for the preserved investigation.
+
+Checked items record implementation or engineering evidence at their named stage. Older stage descriptions are historical milestones and may be superseded by later stages; [architecture](docs/architecture.md) and the [interaction contract](docs/interaction-state-contract.md) define current behavior.
 
 ## Stage 1 — Architecture and working Structure slice (complete)
 
@@ -74,7 +76,7 @@ Status language is intentionally conservative: checked items exist in the applic
 - [ ] Private tester rollout, support triage, and evidence-driven blocker remediation.
 - [ ] Windows VM matrix expansion and Linux/macOS interactive runtime validation.
 
-## Stage 9 — Local push-to-talk voice Search and navigation (architecture complete; hardware gate outstanding)
+## Stage 9 — Initial local voice Search and navigation (historical implementation; hardware follow-up retained)
 
 - [x] Optional bounded Windows push-to-talk capture with explicit listening/transcribing/cancel states and no background service.
 - [x] Replaceable local speech provider; user-provided whisper.cpp/GGML setup with no mandatory download or bundled model.
@@ -83,6 +85,8 @@ Status language is intentionally conservative: checked items exist in the applic
 - [x] Provider-generation stale-result rejection, temporary-audio cleanup, privacy-safe diagnostics, accessibility, reduced motion/effects, and fake-provider/headless tests.
 - [ ] Real Windows microphone + local model command/Search smoke on available hardware.
 - [x] Validated Stage 9 installer/private-preview workflow; controlled voice tester rollout remains deferred until real microphone hardware validation.
+
+The Stage 9 push-to-talk and user-provided-model workflow was superseded by the installer-owned English bundle in Stage 14 and the click-to-toggle/quiet-completion refinements in Stage 15. See the [current Voice guide](docs/voice.md); the earlier setup is not required by v1.2.0.
 
 ## Stage 10 — Hybrid mode and graph exploration maturation (complete)
 
@@ -125,9 +129,8 @@ This candidate established the full-client shell but owner issues #1–#7 later 
 - [x] Refine the deep navy/cyan and pale ice-blue themes plus the bounded data-rain identity without adding blur, unbounded resources, or a second animation loop.
 - [x] Extend minimum-window, Search focus/dismissal, text-scale, hierarchy, keyboard, automation, reduced-effects, and renderer-profile validation.
 - [x] Capture and independently review the final corrected v1.1.0 screenshot set from one exact candidate using non-private data.
-- [ ] Complete exact-artifact and hosted lifecycle qualification for v1.1.0.
-- [ ] Record the v1.1.0 signing decision before publication; the owner’s prior unsigned authorization applies specifically to v1.0.0.
-- [ ] Publish v1.1.0 only after all release gates pass. The existing v1.0.0 tag and artifacts are immutable historical release evidence.
+
+This candidate was not published. Its open publication steps were superseded by Stage 14, which separately qualified and published v1.1.0 with explicit unsigned authorization. Historical tags and artifacts remain immutable.
 
 ## Stage 14 — Focus Plane + Navigation Trail convergence (stable v1.1.0 published; manual follow-up open)
 
@@ -140,6 +143,19 @@ This candidate established the full-client shell but owner issues #1–#7 later 
 - [ ] Validate real Narrator or NVDA behavior, actual Windows text/high-contrast settings, borderless chrome DPI/snap, GPU-backed motion, physical sound output, real microphone capture/transcription, and exact installed/uninstalled voice bytes.
 - [x] Run clean exact-artifact/hosted qualification, record the explicit unsigned decision, and publish stable v1.1.0 from the exact qualified commit with deliberately limited public claims.
 - [ ] Revalidate the compatibility-dependent Connected combination with a live host and complete the outstanding manual visual, assistive-technology, hardware, and broader-platform follow-up before making any stronger claims.
+
+## Stage 15 — v1.2.0 issue fixes (implementation complete; manual acceptance open)
+
+- [x] Audit issues #1–#9, including comments and supplied visual evidence, and preserve the root causes, tests, independent review, and retrospective in the issue audit.
+- [x] Keep direct-child hierarchy truthful, add bounded actual descendant previews through the active provider, refine connectors/folder silhouettes, and organize like file types with deterministic asymmetric placement.
+- [x] Keep every admitted on-graph node named at every zoom, position labels around glyphs, reserve HUD space, and preserve full-size synchronized-list reading under extreme density.
+- [x] Add first-click Structure entry, right-click Back, bounded clickable Trail history, centered controls, and same-scene/same-node file double-click protection.
+- [x] Refine local hover motion, reveal actual Details metadata with atomic accessible text, and synthesize bounded optional interaction sounds with mute/failure parity.
+- [x] Make Voice first-click startup reliable, expose microphone/Stop state, complete after two seconds of quiet following detected input, and reject stale capture/cancel/transcription operations.
+- [x] Expand deterministic regression coverage for provider work/authority bounds, stale results, crowded input, labels, navigation, metadata, Voice races, and sound bounds.
+- [ ] Record native controls/transitions (#3), real microphone/noise (#4), visual/concept acceptance (#5), motion/native readability (#6), physical sound-character listening (#7), and extreme text-scale dense-layout results from the downloadable installer.
+
+The owner authorized v1.2.0 publication for these manual checks. The [release evidence checklist](RELEASE_CHECKLIST.md) defines qualification and the [GitHub Release](https://github.com/nishdel/OmniBrille/releases/tag/v1.2.0) retains the exact released commit, installer hash, CI, and artifact results. Unverified manual behavior is not claimed as tested.
 
 ## Unscheduled engineering follow-up
 

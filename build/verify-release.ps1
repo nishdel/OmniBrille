@@ -164,7 +164,7 @@ function Assert-PackagedContents {
         Get-ChildItem -LiteralPath $publishDirectory -File -Filter 'mscordaccore_*.dll'
     )
     if ($obsoleteRuntimeDiagnostics.Count -gt 0) {
-        throw "Obsolete runtime-diagnostics files were found in the v1.1 payload: $($obsoleteRuntimeDiagnostics.Name -join ', ')"
+        throw "Obsolete runtime-diagnostics files were found in the release payload: $($obsoleteRuntimeDiagnostics.Name -join ', ')"
     }
 
     $voiceRoot = Join-Path $publishDirectory 'Voice'
